@@ -442,94 +442,73 @@ int main(int argc, char* argv[])
                                      lennard_jones);
 
     // set to evaluate with grid
-    // integrator->integrate_with_grid(a_x, b_x, b_y, cut_off, cluster);
     integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
                                         box_mass, target_pressure,
                                         npt_langevin_friction);
 
-    #pragma omp parallel shared(integrator, cluster)
+    if(rebuild_bool)
+        integrator->npt_set_initial(cluster, "Init/initial_position.csv",
+                                    "Init/initial_momentum.csv",
+                                    "Init/initial_volume.csv");
+
+    // Integration loop
+#pragma omp parallel shared(integrator, cluster)
     for(unsigned i=0; i<number_of_steps; i++)
     {
+        // integrate forward one step
         integrator->integrate(cluster);
 
-        print_positions(cluster, i / write_frequency);
-    }
+        // print the position
+#pragma omp single
+        {
+            if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
+            {
+                double time_stamp = TIME * i / double(number_of_steps);
 
-//   // make a problem class instance
-//   BAOAB<LJcluster>* ProblemPt = new BAOAB<LJcluster>(time_step, gamma,
-//                                                      gamma_rot, temp);
-//
-//   // make a systems object
-//   ProblemPt->system_pt()->system_initialise(cluster, sigma, epsilon, a_x);
-//
-//   // set the grid acceleration to true.
-//   ProblemPt->set_npt_grid(a_x, b_x, b_y, cut_off, cluster, box_mass,
-//                            target_pressure, npt_langevin_friction);
-//   // readd in the relaxed initial conditions
-//   if(rebuild_bool)
-//     ProblemPt->set_npt_initial(cluster, "initial_position.csv",
-//                                "initial_momentum.csv",
-//                                 "initial_volume.csv");
-//   // ProblemPt->set_grid(a_x, b_x, b_y, cut_off, cluster);
-//
-//     // Integration loop
-// #pragma omp parallel shared(ProblemPt, cluster)
-//     for(unsigned i=0; i<number_of_steps; i++)
-//     {
-//         // integrate forward one step
-//         ProblemPt->Integrate(cluster);
-//
-//         // print the position
-// #pragma omp single
-//         {
-//             if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
-//             {
-//                 double time_stamp = TIME * i / double(number_of_steps);
-//
-//                 // update the pressure and temperature
-//                 ProblemPt->update_pressure_temperature();
-//                 // ProblemPt->update_temperature();
-//
-//                 // print the pressure
-//                 double instant_pressure = ProblemPt->get_instant_npt_pressure();
-//                 double pressure = ProblemPt->get_npt_pressure();
-//                 print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-//                                control_number);
-//
-//                 // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
-//
-//                 // print temperature
-//                 double instant_temperature = ProblemPt->get_instant_temperature();
-//                 double temperature = ProblemPt->get_temperature();
-//                 print_temperature(instant_temperature, temperature, time_stamp,
-//                                   "temperature", control_number);
-//
-//                 // //print the density
-//                 // double volume = ProblemPt->get_instant_npt_volume();
-//                 // print_density(volume, number_of_particles, time_stamp, control_number);
-//                 //
-//                 // //double volume = ProblemPt->get_npt_volume();
-//                 // std::vector<double> box_coordinate = ProblemPt->get_npt_box_coord();
-//                 // print_volume(volume, box_coordinate, time_stamp);
-//
-//                 // print the positions
-//                 // print_positions(cluster, i / write_frequency);
-//             }
-//
-//             // only print on the last step
-//             if(i == number_of_steps-1)
-//             {
-//                 // get box size and momentum
-//                 std::vector<double> box_coordinate = ProblemPt->get_npt_box_coord();
-//                 std::vector<double> box_momentum = ProblemPt->get_npt_box_momentum();
-//                 print_final_box_size(box_coordinate, box_momentum, number_of_particles);
-//
-//                 // print the position of all the particles
-//                 print_final_positions(cluster);
-//
-//                 // print the momentum of all the particles
-//                 print_final_momentum(cluster);
-//             }
-//         }
-//     }
+                // update the pressure and temperature
+                integrator->npt_update_pressure_temperature();
+                // integrator->update_temperature();
+
+                // print the pressure
+                double instant_pressure = integrator->npt_get_instant_pressure();
+                double pressure = integrator->npt_get_pressure();
+                print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+                               control_number);
+
+                // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
+
+                // print temperature
+                double instant_temperature = integrator->npt_get_instant_temperature();
+                double temperature = integrator->npt_get_temperature();
+                print_temperature(instant_temperature, temperature, time_stamp,
+                                  "temperature", control_number);
+
+                // //print the density
+                // double volume = integrator->get_instant_npt_volume();
+                // print_density(volume, number_of_particles, time_stamp, control_number);
+                //
+                // //double volume = integrator->get_npt_volume();
+                // std::vector<double> box_coordinate = integrator->get_npt_box_coord();
+                // print_volume(volume, box_coordinate, time_stamp);
+
+                // print the positions
+                // print_positions(cluster, i / write_frequency);
+            }
+
+            // only print on the last step
+            // if(i == number_of_steps-1)
+            // {
+            //     // get box size and momentum
+            //     std::vector<double> box_coordinate = integrator->get_npt_box_coord();
+            //     std::vector<double> box_momentum = integrator->get_npt_box_momentum();
+            //     print_final_box_size(box_coordinate, box_momentum, number_of_particles);
+            //
+            //     // print the position of all the particles
+            //     print_final_positions(cluster);
+            //
+            //     // print the momentum of all the particles
+            //     print_final_momentum(cluster);
+            // }
+        }
+    }
 } // end main

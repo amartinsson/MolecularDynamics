@@ -50,6 +50,21 @@ public:
     void integrate_with_grid(const double& a_x, const double& b_x,
                              const double& b_y, const double& cut_off,
                              Molecule* molecule_pt);
+    // update the pressure and temperature reading
+    void npt_update_pressure_temperature();
+    double npt_get_instant_pressure();
+    // get the pressure reading
+    double npt_get_pressure();
+    // get the instant temperature reading
+    double npt_get_instant_temperature();
+    // get the temperature reading
+    double npt_get_temperature();
+    // set the  initial condition from file
+    void npt_set_initial(Molecule* molecule_pt,
+                         const char* initial_pos_filename,
+                         const char* initial_mom_filename,
+                         const char* initial_box_filename);
+
 
 protected:
     void A(Particle* particle_pt, const double& h);

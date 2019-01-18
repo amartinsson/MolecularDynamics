@@ -328,6 +328,50 @@ void Langevin::B_NPT_box(const double& h)
     }
 }
 
+// update the pressure and temperature reading
+void Langevin::npt_update_pressure_temperature()
+{
+    NptGrid_pt->update_pressure_temperature();
+}
+
+// get the instant pressure reading
+double Langevin::npt_get_instant_pressure()
+{
+    return NptGrid_pt->get_instant_pressure();
+}
+
+// get the pressure reading
+double Langevin::npt_get_pressure()
+{
+    return NptGrid_pt->get_pressure();
+}
+
+// get the instant temperature reading
+double Langevin::npt_get_instant_temperature()
+{
+    return NptGrid_pt->get_instant_temperature();
+}
+
+// get the temperature reading
+double Langevin::npt_get_temperature()
+{
+    return NptGrid_pt->get_temperature();
+}
+
+void Langevin::npt_set_initial(Molecule* molecule_pt,
+                               const char* initial_pos_filename,
+                               const char* initial_mom_filename,
+                               const char* initial_box_filename)
+{
+    // read in the particles and the box
+    NptGrid_pt->add_file_initial_condition(molecule_pt, initial_pos_filename,
+        initial_mom_filename,
+        initial_box_filename);
+
+    // check the initial condition
+    NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
+}
+
 // compute the force in the correct way
 void Langevin::compute_force(Molecule* molecule_pt)
 {
