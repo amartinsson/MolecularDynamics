@@ -189,7 +189,7 @@ void print_temperature(const double& instant_temperature, double& temperature,
     sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
     FILE* temperature_file = fopen(filename, "a");
 
-    fprintf(temperature_file, "%1.3e, %1.3e, %1.3e\n",
+    fprintf(temperature_file, "%1.4e, %1.3e, %1.3e\n",
             time_stamp, instant_temperature, temperature);
 
     // close the file
@@ -203,7 +203,7 @@ void print_box_temperature(const double& temperature, const double& time_stamp)
   sprintf(filename, "Observables/box_temperature.csv");
   FILE* temperature_file = fopen(filename, "a");
 
-  fprintf(temperature_file, "%1.3e, %1.3e\n", time_stamp, temperature);
+  fprintf(temperature_file, "%1.4e, %1.3e\n", time_stamp, temperature);
 
     // close the file
   fclose(temperature_file);
@@ -221,7 +221,7 @@ void print_pressure(const double& instant_pressure, const double& pressure,
     sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
     FILE* pressure_file = fopen(filename, "a");
 
-    fprintf(pressure_file, "%1.3e, %1.3e, %1.3e\n",
+    fprintf(pressure_file, "%1.4e, %1.3e, %1.3e\n",
             time_stamp, instant_pressure, pressure);
 
     // close the file
@@ -237,7 +237,7 @@ void print_density(const double& instant_volume, const unsigned& N,
   FILE* volume_file = fopen(filename, "a");
 
   //fprintf(volume_file, "%d, %.3f\n", time_stamp, volume);
-  fprintf(volume_file, "%1.3e, %1.4e\n",
+  fprintf(volume_file, "%1.4e, %1.4e\n",
           time_stamp, (double)N / instant_volume);
 
     // close the file
@@ -253,7 +253,7 @@ void print_volume(const double& volume, const std::vector<double> box, const dou
   FILE* volume_file = fopen(filename, "a");
 
   //fprintf(volume_file, "%d, %.3f\n", time_stamp, volume);
-  fprintf(volume_file, "%1.3e, %.3f, %.3f, %.3f, %.3f\n", time_stamp, volume, box[0], box[1], box[2]);
+  fprintf(volume_file, "%1.4e, %.3f, %.3f, %.3f, %.3f\n", time_stamp, volume, box[0], box[1], box[2]);
 
     // close the file
   fclose(volume_file);
@@ -446,11 +446,14 @@ int main(int argc, char* argv[])
                                         box_mass, target_pressure,
                                         npt_langevin_friction);
 
+    // set the integrator scheme
+    integrator->set_npt_integrator_version(npt_scheme_nr);
+
     if(rebuild_bool)
         integrator->npt_set_initial(cluster, "Init/initial_position.csv",
                                     "Init/initial_momentum.csv",
                                     "Init/initial_volume.csv");
-
+                                    
     // Integration loop
 #pragma omp parallel shared(integrator, cluster)
     for(unsigned i=0; i<number_of_steps; i++)
@@ -463,7 +466,7 @@ int main(int argc, char* argv[])
         {
             if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
             {
-                double time_stamp = TIME * i / double(number_of_steps);
+                double time_stamp = TIME * double(i) / double(number_of_steps);
 
                 // update the pressure and temperature
                 integrator->npt_update_pressure_temperature();

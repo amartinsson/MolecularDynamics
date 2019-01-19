@@ -26,11 +26,14 @@ public:
                            const double& tmax,
                            const double& n_temperatures,
                            const unsigned& mod_switch);
+    // set which npt integration version
+    void set_npt_integrator_version(const unsigned& version);
 
 private:
     double Time_Step;
     unsigned Step;
-    
+    unsigned Npt_version;
+
     bool With_npt;
     bool With_st;
 

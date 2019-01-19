@@ -11,6 +11,7 @@ BAOAB::BAOAB(const double& beta, const double& gamma, const double& gamma_rot,
 {
     Time_Step = time_step;
     Step = 0;
+    Npt_version = 1;
 
     With_npt = false;
     With_st = false;
@@ -66,6 +67,11 @@ void BAOAB::integrate_with_st(const double& tmin,
     Langevin::integrate_with_st(tmin, tmax, n_temperatures, mod_switch);
 }
 
+void BAOAB::set_npt_integrator_version(const unsigned& version)
+{
+    Npt_version = version;
+}
+
 // Integrate forward using NVT
 void BAOAB::nvt_integration(Molecule* molecule_pt)
 {
@@ -104,17 +110,37 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
 // Integrate forward using NPT
 void BAOAB::npt_integration(Molecule* molecule_pt)
 {
-    // integrate forward
-    Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
-    Langevin::A_1_NPT(0.5 * Time_Step);
-    Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
-    Langevin::O_NPT(molecule_pt);
-    Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
-    Langevin::A_1_NPT(0.5 * Time_Step);
+    if(Npt_version == 1)
+    {
+        // integrate forward
+        Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_1_NPT(0.5 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::O_NPT(molecule_pt);
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_1_NPT(0.5 * Time_Step);
 
-    // force solve
-    Langevin::compute_force(molecule_pt);
+        // force solve
+        Langevin::compute_force(molecule_pt);
 
-    // integrate forward
-    Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+        // integrate forward
+        Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+    }
+    else if(Npt_version == 2)
+    {
+        // integrate forward
+        Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_1_NPT(0.5 * Time_Step);
+        Langevin::O_NPT(molecule_pt);
+        Langevin::A_1_NPT(0.5 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+
+        // force solve
+        Langevin::compute_force(molecule_pt);
+
+        // integrate forward
+        Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+    }
+
 }
