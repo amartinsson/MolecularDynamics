@@ -472,7 +472,7 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
 
     // loop over all the boxes to calculate the forces
     //#pragma omp target
-    #pragma omp for
+    #pragma omp for firstprivate(number_of_cells_x)
      for(int j=0; j<number_of_cells_y; j++)
      {
          // parameters for cell loops

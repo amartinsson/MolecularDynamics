@@ -453,9 +453,9 @@ int main(int argc, char* argv[])
         integrator->npt_set_initial(cluster, "Init/initial_position.csv",
                                     "Init/initial_momentum.csv",
                                     "Init/initial_volume.csv");
-                                    
+
     // Integration loop
-#pragma omp parallel shared(integrator, cluster)
+#pragma omp parallel shared(integrator, cluster) firstprivate(lennard_jones)
     for(unsigned i=0; i<number_of_steps; i++)
     {
         // integrate forward one step
