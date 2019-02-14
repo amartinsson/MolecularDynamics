@@ -26,33 +26,22 @@ InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
     // set the timestep
     time_step = time_step_scaling * t_step;
 
-    // make the integration table
-    gsl_integration_glfixed_table * tbl =
-    		gsl_integration_glfixed_table_alloc(number_of_interpolation_points);
 
-    // set the integration points and the reciprocal temperatures
+
+    // get the legendre polynominals basis for the interpolation points
+    gauss_weight = new double[number_of_interpolation_points];
+    beta = new double[number_of_interpolation_points];
+    partition_estimate = new AverageObservable[number_of_interpolation_points];
+
+    legendre_compute_glr(number_of_interpolation_points, beta, gauss_weight);
+    rescale(beta_min, beta_max, number_of_interpolation_points,
+            beta, gauss_weight);
+
+    // set the initial weights
+    beta_weight = new double[number_of_interpolation_points];
+
     for(unsigned i=0; i<number_of_interpolation_points; i++)
-    {
-        // helpers
-        double x_i = 0.0;
-        double w_i = 0.0;
-
-        // get the integration points
-        gsl_integration_glfixed_point(beta_min, beta_max, i, &x_i, &w_i, tbl);
-
-        // add the new values to vector
-        beta.push_back(x_i);
-        gauss_weight.push_back(w_i);
-
-        // set the temperature weights
-    	beta_weight.push_back(1.0);
-
-    	// initialise the average partion Observables
-    	partition_estimate.push_back(new AverageObservable());
-    }
-
-    // free the integration table
-    gsl_integration_glfixed_table_free(tbl);
+        beta_weight[i] = 1.0;
 
     // rescale the temperature weights
     normalise_weights();
@@ -75,13 +64,8 @@ InfiniteSwitchSimulatedTempering::~InfiniteSwitchSimulatedTempering()
         delete &beta[i];
         delete &gauss_weight[i];
         delete &beta_weight[i];
-        delete partition_estimate[i];
+        delete &partition_estimate[i];
     }
-
-    beta.clear();
-    gauss_weight.clear();
-    beta_weight.clear();
-    partition_estimate.clear();
 
     // double holders
     delete &beta_min;
@@ -139,7 +123,7 @@ vector<double> InfiniteSwitchSimulatedTempering::get_observable_weights(
    	for(unsigned i=0; i<number_of_interpolation_points; i++)
     {
         // dereference
-		double z_i = partition_estimate[i]->get_average();
+		double z_i = partition_estimate[i].get_average();
        	double beta_i = beta[i];
 		double integral = 0.0;
 
@@ -235,7 +219,7 @@ void InfiniteSwitchSimulatedTempering::learn_beta_weights(Molecule* molecule_pt)
 	for(unsigned i=0; i<number_of_interpolation_points; i++)
 	{
 		// partition estimate
-		partition_estimate[i]->observe(exp(-beta[i] * V) / BarDeNumSum);
+		partition_estimate[i].observe(exp(-beta[i] * V) / BarDeNumSum);
 	}
 
 	// update all the weights with the new values
@@ -248,7 +232,7 @@ void InfiniteSwitchSimulatedTempering::learn_beta_weights(Molecule* molecule_pt)
 		double omega_n = beta_weight[i];
 
 		// get the partion partition
-		double z_n = partition_estimate[i]->get_average();
+		double z_n = partition_estimate[i].get_average();
 
 		// calculate the new f's
 		omega_np1 = (1.0 - h) * omega_n + h / z_n;

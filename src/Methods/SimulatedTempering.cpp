@@ -7,7 +7,9 @@ using namespace::std;
  *****************************************************************************/
 SimulatedTempering::SimulatedTempering(const double& tmin, const double& tmax,
 				   					   const double& n_temperatures,
-				   		   			   const unsigned& mod_switch)
+				   		   			   const unsigned& mod_switch,
+								   	   const int& seed) :
+				                       uniform_gen(0.0, 1.0, seed)
 {
 	// read in all the parameteres
 	beta_min = 1.0 / tmax;
@@ -35,13 +37,13 @@ SimulatedTempering::SimulatedTempering(const double& tmin, const double& tmax,
 	}
 
 	// initialise random number generator
-	long unsigned seed;
-	struct timeval tv;
-	gettimeofday(&tv,0);
-	seed = tv.tv_sec + tv.tv_usec + 7 * omp_get_thread_num();
-
-	uniform = gsl_rng_alloc(gsl_rng_mt19937);
-	gsl_rng_set(uniform, seed);
+	// long unsigned seed;
+	// struct timeval tv;
+	// gettimeofday(&tv,0);
+	// seed = tv.tv_sec + tv.tv_usec + 7 * omp_get_thread_num();
+	//
+	// uniform = gsl_rng_alloc(gsl_rng_mt19937);
+	// gsl_rng_set(uniform, seed);
 }
 
 // destructor
@@ -67,7 +69,8 @@ SimulatedTempering::~SimulatedTempering()
     delete &switch_frequency;
 
     // free uniform random
-    gsl_rng_free(uniform);
+	delete &uniform_gen;
+    // gsl_rng_free(uniform);
 }
 
 // get the i^th beta
@@ -143,7 +146,7 @@ void SimulatedTempering::update_temperature(Molecule* molecule_pt,
 		}
 
 		// generator uniform random variable
-		U = gsl_rng_uniform(uniform);
+		U = uniform_gen();//gsl_rng_uniform(uniform);
 
 		// propose shift up
 		if(U >= 0.5 && current_index + 1 < number_of_temperatures)

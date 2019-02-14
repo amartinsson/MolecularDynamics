@@ -32,6 +32,9 @@ NptGrid::NptGrid(const double& a_x, const double& b_x, const double& b_y,
         box_grad_potential[i] = 0.0;
         momentum_sq[i] = 0.0;
     }
+
+    printf("Inital grid set as %d x %d\n",
+           number_of_cells_x, number_of_cells_y);
 }
 
 // destructor
@@ -60,6 +63,18 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
                             Particle* current_particle,
                             Particle* neighbour_particle)
 {
+    // int test = 0;
+    // #pragma omp target data map(to:test)
+    // {
+    //     printf("This is GPU\n");
+    //     while(test != 2)
+    //     {
+    //         if(test == 0)
+    //             test += 1;
+    //         else
+    //             test -= 1;
+    //     }
+    // }
   // vector for holding distance
   std::vector<double> distance(3, 0.0);
 
@@ -70,7 +85,8 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
   if(distance[0] < cut_off_sq)
   {
       // holder for the pair force
-      std::vector<double> f_ij(2, 0.0);
+      vector<double> f_ij(2, 0.0);
+      vector<double> r_tilde(2, 0.0);
 
       // calculate the actual distance
       distance[0] = sqrt(distance[0]);
@@ -81,23 +97,19 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
                                            distance[1], distance[2]);
 
       // rescale the separation into box invariant coordinates
-      //std::vector<double> r_tilde = apply_box_rescaling(r);
-      std::vector<double> r_tilde = get_box_min_image_sep(current_particle,
-                                                          neighbour_particle);
+      r_tilde = get_box_min_image_sep(current_particle, neighbour_particle);
+
       // these need to be minus additive as we are calculating the
       // force but we need the gradient!
       //
       // These are the virials
         #pragma omp atomic
-            // box_grad_potential[0] -= r_tilde[0] * f_ij[0];
             box_grad_potential[0] += r_tilde[0] * f_ij[0];
 
         #pragma omp atomic
-            // box_grad_potential[1] -= r_tilde[1] * f_ij[0];
             box_grad_potential[1] += r_tilde[1] * f_ij[0];
 
         #pragma omp atomic
-            // box_grad_potential[2] -= r_tilde[1] * f_ij[1];
             box_grad_potential[2] += r_tilde[1] * f_ij[1];
   }
 }
@@ -454,9 +466,9 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
     {
       if(rebuild_grid_check())
       {
-        printf("got to rebuild grid\n");
         rebuild_periodic_grid(molecule_pt);
-        printf("\tfinished rebuilding grid\n");
+        printf("\tfinished rebuilding %d x %d grid\n",
+               number_of_cells_x, number_of_cells_y);
       }
       else
         update_particles_on_grid();
@@ -471,7 +483,6 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
     }
 
     // loop over all the boxes to calculate the forces
-    //#pragma omp target
     #pragma omp for firstprivate(number_of_cells_x)
      for(int j=0; j<number_of_cells_y; j++)
      {
@@ -566,13 +577,4 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
          } // end of loop over n, number of neighbours
        } // end of loop over i, x-direction
      } // end of loop over j, y-direction
-
-     // assign the vectors since shit isn't working otherwise
-     // #pragma omp barrier
-     // #pragma omp single
-     // {
-     //     box_grad_potential[0] = red_help_grad_ax;
-     //     box_grad_potential[1] = red_help_grad_bx;
-     //     box_grad_potential[2] = red_help_grad_by;
-     // }
   }

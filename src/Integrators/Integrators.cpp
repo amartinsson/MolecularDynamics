@@ -7,7 +7,8 @@ using namespace::std;
  *****************************************************************************/
 Langevin::Langevin(const double& beta, const double& gamma,
                    const double& gamma_rot, const double& o_time_step,
-                   System* system_pt)
+                   System* system_pt, const int& seed)
+                   : normal_gen(0.0, 1.0, seed)
 {
     // parameters
     Beta = beta;
@@ -29,20 +30,6 @@ Langevin::Langevin(const double& beta, const double& gamma,
     // rotational
     OstepCphi = exp(-GammaRot * o_time_step);
     OstepZphi = sqrt((1.0 - OstepCphi * OstepCphi) * 1.0 / Beta);
-
-    // a seed for the random number generators
-    pos_gen = gsl_rng_alloc(gsl_rng_mt19937);
-    rot_gen = gsl_rng_alloc(gsl_rng_mt19937);
-
-    long unsigned seed;
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    seed = tv.tv_sec + tv.tv_usec + 5.0 * omp_get_thread_num();
-
-    gsl_rng_set(pos_gen, seed);
-
-    seed += 7.0 * omp_get_thread_num();
-    gsl_rng_set(rot_gen, seed);
 }
 
 // destructor
@@ -65,10 +52,6 @@ Langevin::~Langevin()
     delete &With_isst;
     delete &With_grid;
     delete &With_npt;
-
-    gsl_rng_free(pos_gen);
-    gsl_rng_free(rot_gen);
-    gsl_rng_free(box_gen);
 
     delete System_pt;
     delete St_pt;
@@ -375,19 +358,8 @@ void Langevin::npt_set_initial(Molecule* molecule_pt,
 // compute the force in the correct way
 void Langevin::compute_force(Molecule* molecule_pt)
 {
-    if(With_isst)
-    {
-        if(With_grid)
-            Grid_pt->update_particle_forces(System_pt, molecule_pt);
-        else if(With_npt)
-            NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
-        else
-            System_pt->compute_force(molecule_pt);
 
-        // apply the rescaling of the force
-        Isst_pt->apply_force_rescaling(molecule_pt);
-    }
-    else if(With_grid)
+    if(With_grid)
     {
         Grid_pt->update_particle_forces(System_pt, molecule_pt);
     }
@@ -399,6 +371,10 @@ void Langevin::compute_force(Molecule* molecule_pt)
     {
         System_pt->compute_force(molecule_pt);
     }
+
+    // if we are running with ISST rescale the forces =
+    if(With_isst)
+        Isst_pt->apply_force_rescaling(molecule_pt);
 }
 
 // Langevin Stochastic Momentum based update
@@ -415,7 +391,7 @@ void Langevin::O(Particle* particle_pt)
         p = particle_pt->p_pt(j);
 	    m = *particle_pt->m_pt(j);
 
-        *p = OstepC * (*p) + OstepZ * sqrt(m) * gsl_ran_gaussian(pos_gen, 1.0);
+        *p = OstepC * (*p) + OstepZ * sqrt(m) * normal_gen();
     }
 
     if(particle_pt->rigid_body() == true)
@@ -459,8 +435,7 @@ void Langevin::O_NPT_box()
         Lp = NptGrid_pt->Lp_pt(i);
 
         // update
-        *Lp = OstepCbox * (*Lp) + OstepZbox * sqrt(box_mass)
-              * gsl_ran_gaussian(box_gen, 1.0);
+        *Lp = OstepCbox * (*Lp) + OstepZbox * sqrt(box_mass) * normal_gen();
     }
 }
 
@@ -509,16 +484,6 @@ void Langevin::integrate_with_npt_grid(const double& a_x, const double& b_x,
     // Box o step values
     OstepCbox = exp(-GammaNpt * o_box_time_step);
     OstepZbox = sqrt((1.0 - OstepCbox * OstepCbox) * 1.0 / Beta);
-
-    // a seed for the random number generators
-    box_gen = gsl_rng_alloc(gsl_rng_mt19937);
-
-    long unsigned seed;
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    seed = tv.tv_sec + tv.tv_usec + 3.0 * omp_get_thread_num();
-
-    gsl_rng_set(box_gen, seed);
 }
 
 // set with isst
@@ -535,11 +500,12 @@ void Langevin::integrate_with_isst(Molecule* molecule_pt, const double& tmin,
 void Langevin::integrate_with_st(const double& tmin,
                                  const double& tmax,
                                  const double& n_temperatures,
-                                 const unsigned& mod_switch)
+                                 const unsigned& mod_switch,
+                                 const int& seed)
 {
     // initialise the simulated tempering class
     St_pt = new SimulatedTempering(tmin, tmax, n_temperatures,
-                                   mod_switch);
+                                   mod_switch, seed);
 }
 
 // check if to update temperature
@@ -665,8 +631,7 @@ void Langevin::O_rot(Particle* particle_pt)
         pi = particle_pt->pi_pt(j);
         I = *particle_pt->I_pt(j);
 
-        *pi = OstepCphi * (*pi) + OstepZphi * sqrt(I)
-            * gsl_ran_gaussian(rot_gen, 1.0);
+        *pi = OstepCphi * (*pi) + OstepZphi * sqrt(I) * normal_gen();
     }
 }
 // #include <vector>

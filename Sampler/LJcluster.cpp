@@ -278,8 +278,14 @@ void print_final_box_size(const std::vector<double> box, const std::vector<doubl
 
 int main(int argc, char* argv[])
 {
+    // print GPU information
+    printf("Number of devices detected: %.d\n",  omp_get_num_devices());
+    // omp_set_default_device(1);
+    printf("The Default device is: %.d\n", omp_get_default_device());
+
 //     std::cout << omp_get_num_devices() << " number of devices\n";
   // parameters
+  int SEED = 1234;
   unsigned dimension = 2;
   unsigned number_of_particles = 25*25;
   double temp = 0.2;
@@ -414,6 +420,13 @@ int main(int argc, char* argv[])
             control_number = arg_in;
             printf("Control number set to: %.0d\n", control_number);
         }
+        else if(arg == "--seed")
+        {
+            int arg_in = std::stod(arg2);
+            SEED = arg_in;
+            printf("Seed set to: %.0d\n", SEED);
+        }
+
     }
 
     // calculate the cut off
@@ -439,7 +452,7 @@ int main(int argc, char* argv[])
 
     // make integrator
     BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
-                                     lennard_jones);
+                                     lennard_jones, SEED);
 
     // set to evaluate with grid
     integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
@@ -454,12 +467,28 @@ int main(int argc, char* argv[])
                                     "Init/initial_momentum.csv",
                                     "Init/initial_volume.csv");
 
+
     // Integration loop
 #pragma omp parallel shared(integrator, cluster) firstprivate(lennard_jones)
+{
+    // #pragma omp target firstprivate(lennard_jones)
+
     for(unsigned i=0; i<number_of_steps; i++)
     {
         // integrate forward one step
+        // double before = 0.0;
+        // #pragma omp master
+        // before = omp_get_wtime();
+
         integrator->integrate(cluster);
+
+        // #pragma omp master
+        // {
+        //     double after = omp_get_wtime();
+        //     printf("Elapsed Time is %f\n", after-before);
+        // }
+
+
 
         // print the position
 #pragma omp single
@@ -514,4 +543,5 @@ int main(int argc, char* argv[])
             // }
         }
     }
+}
 } // end main

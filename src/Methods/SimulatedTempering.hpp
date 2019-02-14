@@ -2,11 +2,9 @@
 #define SIMULATEDTEMPERING_HPP
 
 #include <vector>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <sys/time.h>
 #include <omp.h>
 
+#include "Generator.hpp"
 #include "AverageObservable.hpp"
 #include "Molecules.hpp"
 
@@ -19,7 +17,8 @@ class SimulatedTempering
 public:
     SimulatedTempering(const double& tmin, const double& tmax,
                        const double& n_temperatures,
-                       const unsigned& mod_switch);
+                       const unsigned& mod_switch,
+                       const int& seed);
     // destructor
     ~SimulatedTempering();
     // print method info to stream
@@ -51,7 +50,8 @@ private:
     // keeper of average potential energy
     std::vector<AverageObservable*> ave_V;
     // uniform random variable
-    gsl_rng* uniform;
+    //gsl_rng* uniform;
+    UniformGenerator uniform_gen;
 
     // rescaling the weights such that they sum to one
     void normalise_weights();

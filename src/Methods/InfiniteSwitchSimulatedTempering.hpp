@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <omp.h>
-#include <gsl/gsl_integration.h>
 
+#include "LegendreRuleFast.hpp"
 #include "AverageObservable.hpp"
 #include "Molecules.hpp"
 
@@ -32,12 +32,12 @@ public:
 
 private:
     // vector holders
-    vector<double> beta;
-    vector<double> gauss_weight;
-    vector<double> beta_weight;
+    double* beta;
+    double* gauss_weight;
+    double* beta_weight;
 
     // vector average holders
-    vector<AverageObservable*> partition_estimate;
+    AverageObservable* partition_estimate;
 
     // double holders
     double beta_min;

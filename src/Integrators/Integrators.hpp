@@ -3,11 +3,12 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <sys/time.h>
+// #include <gsl/gsl_rng.h>
+// #include <gsl/gsl_randist.h>
+// #include <sys/time.h>
 #include <omp.h>
 
+#include "Generator.hpp"
 #include "Grid.hpp"
 #include "InfiniteSwitchSimulatedTempering.hpp"
 #include "NptGrid.hpp"
@@ -37,7 +38,7 @@ class Langevin : public Integrator
 {
 public:
     Langevin(const double& beta, const double& gamma, const double& gamma_rot,
-             const double& o_step_size, System* system_pt);
+             const double& o_step_size, System* system_pt, const int& seed);
     // destructor
     ~Langevin();
     // integrator
@@ -89,7 +90,8 @@ protected:
     void integrate_with_st(const double& tmin,
                            const double& tmax,
                            const double& n_temperatures,
-                           const unsigned& mod_switch);
+                           const unsigned& mod_switch,
+                           const int& seed);
     // check if to update temperature
     void update_simulated_tempering(Molecule* molecule_pt,
                                     const unsigned& step,
@@ -115,9 +117,15 @@ private:
     bool With_grid;
     bool With_npt;
 
-    gsl_rng* pos_gen;
-    gsl_rng* rot_gen;
-    gsl_rng* box_gen;
+    // gsl_rng* pos_gen;
+    // gsl_rng* rot_gen;
+    // gsl_rng* box_gen;
+    // std::mt19937_64 pos_gen;
+    // std::mt19937_64 rot_gen;
+    // std::mt19937_64 box_gen;
+    NormalGenerator normal_gen;
+    //NormalGenerator* rot_gen_pt;
+    //NormalGenerator* box_gen_pt;
 
     // class pointers
     System* System_pt;

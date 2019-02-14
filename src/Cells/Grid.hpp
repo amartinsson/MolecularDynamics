@@ -1,13 +1,11 @@
 #ifndef GRID_HPP
 #define GRID_HPP
 
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <sys/time.h>
 #include <omp.h>
 #include <fstream>
 #include <sstream>
 
+#include "Generator.hpp"
 #include "AverageObservable.hpp"
 #include "Cells.hpp"
 #include "Molecules.hpp"

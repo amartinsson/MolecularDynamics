@@ -6,8 +6,8 @@ using namespace::std;
                                  BAOAB Class
  *****************************************************************************/
 BAOAB::BAOAB(const double& beta, const double& gamma, const double& gamma_rot,
-             const double& time_step, System* system_pt)
-             : Langevin(beta, gamma, gamma_rot, time_step, system_pt)
+             const double& time_step, System* system_pt, const int& seed)
+             : Langevin(beta, gamma, gamma_rot, time_step, system_pt, seed)
 {
     Time_Step = time_step;
     Step = 0;
@@ -59,12 +59,13 @@ void BAOAB::integrate_with_npt_grid(const double& a_x, const double& b_x,
 void BAOAB::integrate_with_st(const double& tmin,
                               const double& tmax,
                               const double& n_temperatures,
-                              const unsigned& mod_switch)
+                              const unsigned& mod_switch,
+                              const int& seed)
 {
     With_st = true;
 
     // initialise the simulated tempering class
-    Langevin::integrate_with_st(tmin, tmax, n_temperatures, mod_switch);
+    Langevin::integrate_with_st(tmin, tmax, n_temperatures, mod_switch, seed);
 }
 
 void BAOAB::set_npt_integrator_version(const unsigned& version)

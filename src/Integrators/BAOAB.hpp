@@ -10,7 +10,7 @@ class BAOAB : public Langevin
 {
 public:
     BAOAB(const double& beta, const double& gamma, const double& gamma_rot,
-          const double& time_step, System* system_pt);
+          const double& time_step, System* system_pt, const int& seed);
     // destructor
     ~BAOAB();
     // must have integrate
@@ -25,7 +25,8 @@ public:
     void integrate_with_st(const double& tmin,
                            const double& tmax,
                            const double& n_temperatures,
-                           const unsigned& mod_switch);
+                           const unsigned& mod_switch,
+                           const int& seed);
     // set which npt integration version
     void set_npt_integrator_version(const unsigned& version);
 

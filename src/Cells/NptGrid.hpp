@@ -63,6 +63,7 @@ public:
     // the temperature by calculating the dot product of q and f for all the
     // particles
     void update_particle_forces(System* system_pt, Molecule* molecule_pt);
+
 private:
     // tracking for average observables
     AverageObservable* Pressure_pt;

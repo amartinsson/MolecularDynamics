@@ -349,14 +349,8 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
   // derefernce the number of particles
   double beta = 1.0 / molecule_pt->kt();
 
-  // set up random number generator
-  long unsigned seed;
-  struct timeval tv;
-  gettimeofday(&tv,0);
-  seed = tv.tv_sec + tv.tv_usec + 15.0 * omp_get_thread_num();
-
-  gsl_rng* generator = gsl_rng_alloc (gsl_rng_mt19937);
-  gsl_rng_set(generator, seed);
+  // set up random normal generator
+  NormalGenerator normal_momentum(0.0, 1.0, 4563);
 
   // set the holders for the position of the particles
   double* x = NULL;
@@ -422,8 +416,10 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
             mx = *particle_k->m_pt(1);
 
             // set the momentum of the particle
-            *p_x = sqrt(mx / beta) * gsl_ran_gaussian(generator, 1.0);
-            *p_y = sqrt(my / beta) * gsl_ran_gaussian(generator, 1.0);
+            // *p_x = sqrt(mx / beta) * gsl_ran_gaussian(generator, 1.0);
+            // *p_y = sqrt(my / beta) * gsl_ran_gaussian(generator, 1.0);
+            *p_x = sqrt(mx / beta) * normal_momentum();
+            *p_y = sqrt(my / beta) * normal_momentum();
 
         // if particle rotates set all the rotations
         if(particle_k->rigid_body() != false)
@@ -473,9 +469,6 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
       // increment the particle counter
       k++;
     }
-
-  // free the generator memory
-  gsl_rng_free (generator);
 }
 
 // update the position of all the particles on the grid
