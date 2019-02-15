@@ -8,11 +8,12 @@ DEPDIR = ../.d
 $(shell mkdir -p $(OBJDIR) >/dev/null)
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
-#CXX       = g++
-#CXX = gcc-7
-#CXX = g++-7
-CXX = mpicxx
-CXXFLAGS  = -g -std=c++11 -lstdc++ -O3 -fopenmp -foffload=-lm $(INCLUDE)
+CXX = g++-7 # XPS
+#CXX = mpicxx # XPS - mpi wrapper
+#CXX = g++ # Compute servers
+#CXX = cc # Archer
+
+CXXFLAGS  = -g -std=c++11 -O3 -fopenmp -fopenmp-simd -foffload=-lm $(INCLUDE) -lstdc++ -ftree-vectorize -funroll-loops -ffast-math
 CPP_FILES:= $(shell find ../src -type f -name '*.cpp')
 # GSLFLAGS  = -lgsl -lgslcblas -lm
 HH_FILES := $(shell find ../src -type f -name '*.hpp')
@@ -38,7 +39,7 @@ CURDEPS:= $(patsubst $(CUROBJDIR)/%.o,$(CURDEPDIR)/%.d,$(CUR_OBJS))
 LJcluster: LJcluster.cpp ${OBJS} ${CUR_OBJS}
 	@mkdir -p $(BIN)
 	@echo ${OBJS}
-	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} #$(GSLFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} -lstddc++
 
 -include $(DEPS)
 -include $(CURDEPS)
