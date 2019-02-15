@@ -2,7 +2,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
-#include <mpi.h>
+// #include <mpi.h>
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
@@ -280,15 +280,15 @@ void print_final_box_size(const std::vector<double> box, const std::vector<doubl
 int main(int argc, char* argv[])
 {
     // Initialize the MPI environment
-    MPI_Init(NULL, NULL);
+    //MPI_Init(NULL, NULL);
 
     // Get the number of processes
-    int world_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    //int world_size;
+    // MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // Get the rank of the process
-    int world_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    int world_rank = 0;
+    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
     // Get the name of the processor
     // char processor_name[MPI_MAX_PROCESSOR_NAME];
@@ -491,31 +491,33 @@ int main(int argc, char* argv[])
                                     "Init/initial_momentum.csv",
                                     "Init/initial_volume.csv");
 
+    // char filename[50];
+    // sprintf(filename, "timing_0.csv");
+    // FILE* output = fopen(filename, "w");
 
     // Integration loop
-#pragma omp parallel shared(integrator, cluster) firstprivate(lennard_jones)
+// #pragma omp parallel shared(integrator, cluster) firstprivate(lennard_jones)
 {
-    // #pragma omp target firstprivate(lennard_jones)
-
     for(unsigned i=0; i<number_of_steps; i++)
     {
         // integrate forward one step
-        // double before = 0.0;
+        double before = 0.0;
         // #pragma omp master
-        // before = omp_get_wtime();
+        before = omp_get_wtime();
 
         integrator->integrate(cluster);
 
         // #pragma omp master
-        // {
-        //     double after = omp_get_wtime();
-        //     printf("Elapsed Time is %f\n", after-before);
-        // }
+        {
+            double after = omp_get_wtime();
+            // fprintf(output, "%f\n", after-before);
+            printf("%f\n", after-before);
+        }
 
 
 
         // print the position
-#pragma omp single
+// #pragma omp single
         {
             if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
             {
@@ -570,6 +572,6 @@ int main(int argc, char* argv[])
 }
 
     // Finalize the MPI environment.
-    MPI_Finalize();
+    // MPI_Finalize();
 
 } // end main

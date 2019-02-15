@@ -25,9 +25,10 @@ NptGrid::NptGrid(const double& a_x, const double& b_x, const double& b_y,
 
     // reserve space for the box force in each direction
     box_grad_potential.resize(3);
+    //box_grad_potential = new double[3];
     momentum_sq.resize(3);
 
-    for(unsigned i=0; i<box_grad_potential.size(); i++)
+    for(unsigned i=0; i<momentum_sq.size(); i++)
     {
         box_grad_potential[i] = 0.0;
         momentum_sq[i] = 0.0;
@@ -44,8 +45,12 @@ NptGrid::~NptGrid()
     delete Volume_pt;
     delete Pressure_pt;
 
+    delete &box_grad_zero;
+    delete &box_grad_one;
+    delete &box_grad_two;
+
     // remove all the box force variables
-    for(unsigned i=0; i<box_grad_potential.size(); i++)
+    for(unsigned i=0; i<momentum_sq.size(); i++)
     {
         delete &box_grad_potential[i];
         delete &momentum_sq[i];
@@ -103,14 +108,16 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       // force but we need the gradient!
       //
       // These are the virials
-        #pragma omp atomic
-            box_grad_potential[0] += r_tilde[0] * f_ij[0];
+        //#pragma omp atomic
+            // box_grad_potential[0] += r_tilde[0] * f_ij[0];
+    box_grad_zero += r_tilde[0] * f_ij[0];
 
-        #pragma omp atomic
-            box_grad_potential[1] += r_tilde[1] * f_ij[0];
-
-        #pragma omp atomic
-            box_grad_potential[2] += r_tilde[1] * f_ij[1];
+        //#pragma omp atomic
+            // box_grad_potential[1] += r_tilde[1] * f_ij[0];
+            box_grad_one += r_tilde[1] * f_ij[0];
+        //#pragma omp atomic
+            // box_grad_potential[2] += r_tilde[1] * f_ij[1];
+            box_grad_two += r_tilde[1] * f_ij[1];
   }
 }
 
@@ -462,7 +469,7 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
     // Otherwise simply make sure that all the particles
     // are in the correct cells and that the boundary
     // conditions are enforced.
-  #pragma omp single
+  // #pragma omp single
     {
       if(rebuild_grid_check())
       {
@@ -482,99 +489,116 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       box_grad_potential[2] = 0.0;
     }
 
+    box_grad_zero = 0.0;
+    box_grad_one = 0.0;
+    box_grad_two = 0.0;
+
     // loop over all the boxes to calculate the forces
-    #pragma omp for firstprivate(number_of_cells_x)
+    // #pragma omp parallel for firstprivate(number_of_cells_x)
+#pragma omp parallel for reduction(+:box_grad_zero, box_grad_one, box_grad_two) schedule(static) collapse(3) \
+        firstprivate(number_of_cells_x, number_of_neighbours)
      for(int j=0; j<number_of_cells_y; j++)
      {
-         // parameters for cell loops
-         Cell* current_cell = NULL;
-         Cell* neighbour_cell = NULL;
-
-         ListNode* current_conductor = NULL;
-         ListNode* neighbour_conductor = NULL;
-
-         Particle* current_particle = NULL;
-         Particle* neighbour_particle = NULL;
-
-         // make iterators to do Newton iteration
-         // forces are equal and opposite
-         unsigned current_newton_iterator = 0;
-         unsigned neighbour_newton_iterator = 0;
-
-         // vector for holding distance
-         std::vector<double> distance(3, 0.0);
-
        for(int i=0; i<number_of_cells_x; i++)
        {
-         // get the current cell
-         current_cell = get_cell(i,j);
-
          for(unsigned n=0; n<number_of_neighbours; n++)
          {
-           // get the current cells conductor
-           current_conductor = current_cell->get_particle_list_head();
+             // parameters for cell loops
+             // Cell* current_cell = NULL;
+             // Cell* neighbour_cell = NULL;
 
-           // get the neighbour cell
-           neighbour_cell = current_cell->get_neighbour(n);
+             // ListNode* current_conductor = NULL;
+             // ListNode* neighbour_conductor = NULL;
 
-           // reset newton iterator
-           current_newton_iterator = 0;
+             // Particle* current_particle = NULL;
+             // Particle* neighbour_particle = NULL;
 
-           // loop over particles in current cell
-           while(current_conductor != NULL)
-           {
-             // conductor over neighbour cell
-             neighbour_conductor = neighbour_cell->get_particle_list_head();
+             // make iterators to do Newton iteration
+             // forces are equal and opposite
+             // unsigned current_newton_iterator = 0;
+             // unsigned neighbour_newton_iterator = 0;
 
-             // get the particle pointer
-             current_particle = current_conductor->particle;
+             // vector for holding distance
+             // std::vector<double> distance(3, 0.0);
+
+             // get the current cell
+             Cell* current_cell = get_cell(i,j);
+
+             // get the current cells conductor
+             ListNode* current_conductor
+                                    = current_cell->get_particle_list_head();
+
+             // get the neighbour cell
+             Cell* neighbour_cell = current_cell->get_neighbour(n);
 
              // reset newton iterator
-             neighbour_newton_iterator = 0;
+             unsigned current_newton_iterator = 0;
 
-             // loop over particles in neighbour cell
-             while(neighbour_conductor != NULL)
+             // loop over particles in current cell
+             while(current_conductor != NULL)
              {
-               // apply Newton iterators if we are in the same cell
-               if(current_cell == neighbour_cell)
-               {
-                 if(current_newton_iterator <= neighbour_newton_iterator)
+                 // conductor over neighbour cell
+                 ListNode* neighbour_conductor
+                                    = neighbour_cell->get_particle_list_head();
+
+                 // get the particle pointer
+                 Particle* current_particle = current_conductor->particle;
+
+                 // reset newton iterator
+                 unsigned neighbour_newton_iterator = 0;
+
+                 // loop over particles in neighbour cell
+                 while(neighbour_conductor != NULL)
                  {
-                    // get the neighbour particle
-                    neighbour_particle = neighbour_conductor->particle;
+                     // apply Newton iterators if we are in the same cell
+                     if(current_cell == neighbour_cell)
+                     {
+                         if(current_newton_iterator <= neighbour_newton_iterator)
+                         {
+                             // get the neighbour particle
+                             Particle* neighbour_particle
+                                            = neighbour_conductor->particle;
 
-                    // don't compute the force for the same particles
-                    if(current_particle != neighbour_particle)
-                      compute_force(system_pt, molecule_pt,
-                                    current_particle, neighbour_particle);
-                  }
+                             // don't compute the force for the same particles
+                             if(current_particle != neighbour_particle)
+                             {
+                                 compute_force(system_pt, molecule_pt,
+                                               current_particle,
+                                               neighbour_particle);
+                             }
+                         }
 
-                  // iterate the newton current newton iterator
-                  neighbour_newton_iterator++;
-               }
-               else
-               {
-                 // get the neighbour particle
-                 neighbour_particle = neighbour_conductor->particle;
+                         // iterate the newton current newton iterator
+                         neighbour_newton_iterator++;
+                     }
+                     else
+                     {
+                         // get the neighbour particle
+                         Particle* neighbour_particle
+                                            = neighbour_conductor->particle;
 
-                 // compute the force
-                 compute_force(system_pt, molecule_pt, current_particle,
-                               neighbour_particle);
-                }
+                         // compute the force
+                         compute_force(system_pt, molecule_pt,
+                                       current_particle, neighbour_particle);
+                     }
 
-                // itreate the current conductor
-                neighbour_conductor = neighbour_conductor->next;
+                     // itreate the current conductor
+                     neighbour_conductor = neighbour_conductor->next;
 
-             } // end of loop over neighbour_conductor
+                 } // end of loop over neighbour_conductor
 
-            // iterate the newton current newton iterator
-            current_newton_iterator++;
+                 // iterate the newton current newton iterator
+                 current_newton_iterator++;
 
-            // itreate the current conductor
-            current_conductor = current_conductor->next;
+                 // itreate the current conductor
+                 current_conductor = current_conductor->next;
 
-          } // end of loop over current_conductor
+             } // end of loop over current_conductor
          } // end of loop over n, number of neighbours
-       } // end of loop over i, x-direction
-     } // end of loop over j, y-direction
-  }
+     } // end of loop over i, x-direction
+ } // end of loop over j, y-direction
+
+ box_grad_potential[0] = box_grad_zero;
+ box_grad_potential[1] = box_grad_one;
+ box_grad_potential[2] = box_grad_two;
+}

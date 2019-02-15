@@ -82,8 +82,8 @@ void Langevin::A(Particle* particle_pt, const double& h)
 // Langevin based position step, constant pressure
 void Langevin::A_1_NPT(const double& h)
 {
-    #pragma omp barrier
-    #pragma omp single
+    // #pragma omp barrier
+    // #pragma omp single
     {
         // make references
         double* L = NULL;
@@ -116,14 +116,15 @@ void Langevin::A_1_NPT(const double& h)
 // Langevin based position step, constant pressure
 void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 {
-    #pragma omp barrier
-    #pragma omp single
+    // #pragma omp barrier
+    // #pragma omp single
     {
         // helper dereference
         unsigned number_of_particles = molecule_pt->nparticle();
         Particle* particle_pt = NULL;
 
         // particle integration
+        #pragma omp parallel for simd
         for(unsigned i=0; i<number_of_particles; i++)
         {
             particle_pt = molecule_pt->particle_pt(i);
@@ -231,14 +232,15 @@ void Langevin::B(Particle* particle_pt, const double& h)
 // Langevin Momentum based update, constant pressure
 void Langevin::B_NPT(Molecule* molecule_pt, const double& h)
 {
-    #pragma omp barrier
-    #pragma omp single
+    // #pragma omp barrier
+    // #pragma omp single
     {
         // helper dereference
         unsigned number_of_particles = molecule_pt->nparticle();
         Particle* particle_pt = NULL;
 
         // particle integration
+        #pragma omp parallel for simd
         for(unsigned i=0; i<number_of_particles; i++)
         {
             particle_pt = molecule_pt->particle_pt(i);
@@ -401,14 +403,15 @@ void Langevin::O(Particle* particle_pt)
 // Langevin Stochastic Momentum based update, constant pressure
 void Langevin::O_NPT(Molecule* molecule_pt)
 {
-    #pragma omp barrier
-    #pragma omp single
+    // #pragma omp barrier
+    // #pragma omp single
     {
         // helper dereference
         unsigned number_of_particles = molecule_pt->nparticle();
         Particle* particle_pt = NULL;
 
         // particle integration
+        #pragma omp parallel for simd
         for(unsigned i=0; i<number_of_particles; i++)
         {
             particle_pt = molecule_pt->particle_pt(i);

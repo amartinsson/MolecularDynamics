@@ -75,6 +75,10 @@ private:
     double box_mass;
     // holder for box force
     std::vector<double> box_grad_potential;
+    double box_grad_zero;
+    double box_grad_one;
+    double box_grad_two;
+    //double* box_grad_potential;
     std::vector<double> momentum_sq;
     // reducto helpers for caluclating the force
     double red_help_grad_ax;

@@ -39,7 +39,7 @@ CURDEPS:= $(patsubst $(CUROBJDIR)/%.o,$(CURDEPDIR)/%.d,$(CUR_OBJS))
 LJcluster: LJcluster.cpp ${OBJS} ${CUR_OBJS}
 	@mkdir -p $(BIN)
 	@echo ${OBJS}
-	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} -lstddc++
+	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} -lstdc++
 
 -include $(DEPS)
 -include $(CURDEPS)
