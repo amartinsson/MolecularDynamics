@@ -10,8 +10,9 @@ $(shell mkdir -p $(DEPDIR) >/dev/null)
 
 #CXX       = g++
 #CXX = gcc-7
-CXX = g++-7
-CXXFLAGS  = -g -std=c++11 -O3 -fopenmp -foffload=-lm $(INCLUDE)
+#CXX = g++-7
+CXX = mpicxx
+CXXFLAGS  = -g -std=c++11 -lstdc++ -O3 -fopenmp -foffload=-lm $(INCLUDE)
 CPP_FILES:= $(shell find ../src -type f -name '*.cpp')
 # GSLFLAGS  = -lgsl -lgslcblas -lm
 HH_FILES := $(shell find ../src -type f -name '*.hpp')

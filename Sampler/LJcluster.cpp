@@ -2,6 +2,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
+#include <mpi.h>
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
@@ -189,7 +190,7 @@ void print_temperature(const double& instant_temperature, double& temperature,
     sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
     FILE* temperature_file = fopen(filename, "a");
 
-    fprintf(temperature_file, "%1.4e, %1.3e, %1.3e\n",
+    fprintf(temperature_file, "%1.7e, %1.7e, %1.7e\n",
             time_stamp, instant_temperature, temperature);
 
     // close the file
@@ -221,7 +222,7 @@ void print_pressure(const double& instant_pressure, const double& pressure,
     sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
     FILE* pressure_file = fopen(filename, "a");
 
-    fprintf(pressure_file, "%1.4e, %1.3e, %1.3e\n",
+    fprintf(pressure_file, "%1.7e, %1.7e, %1.7e\n",
             time_stamp, instant_pressure, pressure);
 
     // close the file
@@ -278,10 +279,30 @@ void print_final_box_size(const std::vector<double> box, const std::vector<doubl
 
 int main(int argc, char* argv[])
 {
+    // Initialize the MPI environment
+    MPI_Init(NULL, NULL);
+
+    // Get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // Get the rank of the process
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // Get the name of the processor
+    // char processor_name[MPI_MAX_PROCESSOR_NAME];
+    // int name_len;
+    // MPI_Get_processor_name(processor_name, &name_len);
+    //
+    // // Print off a hello world message
+    // printf("Hello world from processor %s, rank %d out of %d processors\n",
+    //        processor_name, world_rank, world_size);
+
     // print GPU information
-    printf("Number of devices detected: %.d\n",  omp_get_num_devices());
+    // printf("Number of devices detected: %.d\n",  omp_get_num_devices());
     // omp_set_default_device(1);
-    printf("The Default device is: %.d\n", omp_get_default_device());
+    // printf("The Default device is: %.d\n", omp_get_default_device());
 
 //     std::cout << omp_get_num_devices() << " number of devices\n";
   // parameters
@@ -429,6 +450,9 @@ int main(int argc, char* argv[])
 
     }
 
+    // add contorl number to seed differently
+    SEED += control_number + (control_number + 1) * world_rank;
+
     // calculate the cut off
     double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
 
@@ -505,7 +529,7 @@ int main(int argc, char* argv[])
                 double instant_pressure = integrator->npt_get_instant_pressure();
                 double pressure = integrator->npt_get_pressure();
                 print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-                               control_number);
+                               control_number + (control_number + 1) * world_rank);
 
                 // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
 
@@ -513,7 +537,7 @@ int main(int argc, char* argv[])
                 double instant_temperature = integrator->npt_get_instant_temperature();
                 double temperature = integrator->npt_get_temperature();
                 print_temperature(instant_temperature, temperature, time_stamp,
-                                  "temperature", control_number);
+                                  "temperature", control_number + (control_number + 1) * world_rank);
 
                 // //print the density
                 // double volume = integrator->get_instant_npt_volume();
@@ -544,4 +568,8 @@ int main(int argc, char* argv[])
         }
     }
 }
+
+    // Finalize the MPI environment.
+    MPI_Finalize();
+
 } // end main
