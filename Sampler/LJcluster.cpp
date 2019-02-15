@@ -2,7 +2,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
-// #include <mpi.h>
+#include <mpi.h>
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
@@ -280,51 +280,36 @@ void print_final_box_size(const std::vector<double> box, const std::vector<doubl
 int main(int argc, char* argv[])
 {
     // Initialize the MPI environment
-    //MPI_Init(NULL, NULL);
+    MPI_Init(NULL, NULL);
 
     // Get the number of processes
-    //int world_size;
-    // MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // Get the rank of the process
-    int world_rank = 0;
-    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-    // Get the name of the processor
-    // char processor_name[MPI_MAX_PROCESSOR_NAME];
-    // int name_len;
-    // MPI_Get_processor_name(processor_name, &name_len);
-    //
-    // // Print off a hello world message
-    // printf("Hello world from processor %s, rank %d out of %d processors\n",
-    //        processor_name, world_rank, world_size);
+    // parameters
+    int SEED = 1234;
+    unsigned dimension = 2;
+    unsigned number_of_particles = 25*25;
+    double temp = 0.2;
 
-    // print GPU information
-    // printf("Number of devices detected: %.d\n",  omp_get_num_devices());
-    // omp_set_default_device(1);
-    // printf("The Default device is: %.d\n", omp_get_default_device());
+    double sigma = 0.5;
+    double epsilon = 0.01;
 
-//     std::cout << omp_get_num_devices() << " number of devices\n";
-  // parameters
-  int SEED = 1234;
-  unsigned dimension = 2;
-  unsigned number_of_particles = 25*25;
-  double temp = 0.2;
+    double a_x = 30.0;
+    double b_x = 0.0;
+    double b_y = 30.0;
 
-  double sigma = 0.5;
-  double epsilon = 0.01;
+    double time_step = 0.001;
+    double gamma = 1.0;
+    double gamma_rot = 1.0;
 
-  double a_x = 30.0;
-  double b_x = 0.0;
-  double b_y = 30.0;
+    double target_pressure = 0.1;
 
-  double time_step = 0.001;
-  double gamma = 1.0;
-  double gamma_rot = 1.0;
-
-  double target_pressure = 0.1;
-
-  unsigned write_frequency = 100;
+    unsigned write_frequency = 100;
 
   double box_mass = 100.0;
   double npt_langevin_friction = 1.42;
@@ -494,14 +479,14 @@ int main(int argc, char* argv[])
     for(unsigned i=0; i<number_of_steps; i++)
     {
         // integrate forward one step
-        double before = 0.0;
-        before = omp_get_wtime();
+        // double before = 0.0;
+        // before = omp_get_wtime();
 
         integrator->integrate(cluster);
 
-        double after = omp_get_wtime();
-        // fprintf(output, "%f\n", after-before);
-        printf("%f\n", after-before);
+        // double after = omp_get_wtime();
+        // // fprintf(output, "%f\n", after-before);
+        // printf("%f\n", after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
@@ -528,6 +513,6 @@ int main(int argc, char* argv[])
     }
 
     // Finalize the MPI environment.
-    // MPI_Finalize();
+    MPI_Finalize();
 
 } // end main

@@ -8,8 +8,8 @@ DEPDIR = ../.d
 $(shell mkdir -p $(OBJDIR) >/dev/null)
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
-CXX = g++-7 # XPS
-#CXX = mpicxx # XPS - mpi wrapper
+#CXX = g++-7 # XPS
+CXX = mpicxx # XPS - mpi wrapper
 #CXX = g++ # Compute servers
 #CXX = cc # Archer
 
