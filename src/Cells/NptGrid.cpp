@@ -108,16 +108,9 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       // force but we need the gradient!
       //
       // These are the virials
-        //#pragma omp atomic
-            // box_grad_potential[0] += r_tilde[0] * f_ij[0];
-    box_grad_zero += r_tilde[0] * f_ij[0];
-
-        //#pragma omp atomic
-            // box_grad_potential[1] += r_tilde[1] * f_ij[0];
-            box_grad_one += r_tilde[1] * f_ij[0];
-        //#pragma omp atomic
-            // box_grad_potential[2] += r_tilde[1] * f_ij[1];
-            box_grad_two += r_tilde[1] * f_ij[1];
+      box_grad_zero += r_tilde[0] * f_ij[0];
+      box_grad_one  += r_tilde[1] * f_ij[0];
+      box_grad_two  += r_tilde[1] * f_ij[1];
   }
 }
 
@@ -494,33 +487,16 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
     box_grad_two = 0.0;
 
     // loop over all the boxes to calculate the forces
-    // #pragma omp parallel for firstprivate(number_of_cells_x)
-#pragma omp parallel for reduction(+:box_grad_zero, box_grad_one, box_grad_two) schedule(static) collapse(3) \
-        firstprivate(number_of_cells_x, number_of_neighbours)
+#pragma omp parallel for \
+        reduction(+:box_grad_zero, box_grad_one, box_grad_two) \
+        schedule(dynamic) collapse(3) \
+        firstprivate(number_of_cells_x, number_of_neighbours, system_pt)
      for(int j=0; j<number_of_cells_y; j++)
      {
        for(int i=0; i<number_of_cells_x; i++)
        {
          for(unsigned n=0; n<number_of_neighbours; n++)
          {
-             // parameters for cell loops
-             // Cell* current_cell = NULL;
-             // Cell* neighbour_cell = NULL;
-
-             // ListNode* current_conductor = NULL;
-             // ListNode* neighbour_conductor = NULL;
-
-             // Particle* current_particle = NULL;
-             // Particle* neighbour_particle = NULL;
-
-             // make iterators to do Newton iteration
-             // forces are equal and opposite
-             // unsigned current_newton_iterator = 0;
-             // unsigned neighbour_newton_iterator = 0;
-
-             // vector for holding distance
-             // std::vector<double> distance(3, 0.0);
-
              // get the current cell
              Cell* current_cell = get_cell(i,j);
 
@@ -598,6 +574,7 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
      } // end of loop over i, x-direction
  } // end of loop over j, y-direction
 
+ // set the reduction variables
  box_grad_potential[0] = box_grad_zero;
  box_grad_potential[1] = box_grad_one;
  box_grad_potential[2] = box_grad_two;

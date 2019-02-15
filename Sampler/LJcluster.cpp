@@ -491,85 +491,41 @@ int main(int argc, char* argv[])
                                     "Init/initial_momentum.csv",
                                     "Init/initial_volume.csv");
 
-    // char filename[50];
-    // sprintf(filename, "timing_0.csv");
-    // FILE* output = fopen(filename, "w");
-
-    // Integration loop
-// #pragma omp parallel shared(integrator, cluster) firstprivate(lennard_jones)
-{
     for(unsigned i=0; i<number_of_steps; i++)
     {
         // integrate forward one step
         double before = 0.0;
-        // #pragma omp master
         before = omp_get_wtime();
 
         integrator->integrate(cluster);
 
-        // #pragma omp master
+        double after = omp_get_wtime();
+        // fprintf(output, "%f\n", after-before);
+        printf("%f\n", after-before);
+
+        if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
-            double after = omp_get_wtime();
-            // fprintf(output, "%f\n", after-before);
-            printf("%f\n", after-before);
-        }
+            double time_stamp = TIME * double(i) / double(number_of_steps);
 
+            // update the pressure and temperature
+            integrator->npt_update_pressure_temperature();
+            // integrator->update_temperature();
 
+            // print the pressure
+            double instant_pressure = integrator->npt_get_instant_pressure();
+            double pressure = integrator->npt_get_pressure();
+            print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+                           control_number + (control_number + 1) * world_rank);
 
-        // print the position
-// #pragma omp single
-        {
-            if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
-            {
-                double time_stamp = TIME * double(i) / double(number_of_steps);
+            // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
 
-                // update the pressure and temperature
-                integrator->npt_update_pressure_temperature();
-                // integrator->update_temperature();
-
-                // print the pressure
-                double instant_pressure = integrator->npt_get_instant_pressure();
-                double pressure = integrator->npt_get_pressure();
-                print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-                               control_number + (control_number + 1) * world_rank);
-
-                // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
-
-                // print temperature
-                double instant_temperature = integrator->npt_get_instant_temperature();
-                double temperature = integrator->npt_get_temperature();
-                print_temperature(instant_temperature, temperature, time_stamp,
-                                  "temperature", control_number + (control_number + 1) * world_rank);
-
-                // //print the density
-                // double volume = integrator->get_instant_npt_volume();
-                // print_density(volume, number_of_particles, time_stamp, control_number);
-                //
-                // //double volume = integrator->get_npt_volume();
-                // std::vector<double> box_coordinate = integrator->get_npt_box_coord();
-                // print_volume(volume, box_coordinate, time_stamp);
-
-                // print the positions
-                // print_positions(cluster, i / write_frequency);
-            }
-
-            // only print on the last step
-            // if(i == number_of_steps-1)
-            // {
-            //     // get box size and momentum
-            //     std::vector<double> box_coordinate = integrator->get_npt_box_coord();
-            //     std::vector<double> box_momentum = integrator->get_npt_box_momentum();
-            //     print_final_box_size(box_coordinate, box_momentum, number_of_particles);
-            //
-            //     // print the position of all the particles
-            //     print_final_positions(cluster);
-            //
-            //     // print the momentum of all the particles
-            //     print_final_momentum(cluster);
-            // }
+            // print temperature
+            double instant_temperature = integrator->npt_get_instant_temperature();
+            double temperature = integrator->npt_get_temperature();
+            print_temperature(instant_temperature, temperature, time_stamp,
+                              "temperature", control_number + (control_number + 1) * world_rank);
         }
     }
-}
 
     // Finalize the MPI environment.
     // MPI_Finalize();
