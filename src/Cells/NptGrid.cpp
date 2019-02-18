@@ -467,8 +467,8 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       if(rebuild_grid_check())
       {
         rebuild_periodic_grid(molecule_pt);
-        printf("\tfinished rebuilding %d x %d grid\n",
-               number_of_cells_x, number_of_cells_y);
+        // printf("\tfinished rebuilding %d x %d grid\n",
+        //        number_of_cells_x, number_of_cells_y);
       }
       else
         update_particles_on_grid();
