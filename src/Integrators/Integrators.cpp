@@ -82,59 +82,48 @@ void Langevin::A(Particle* particle_pt, const double& h)
 // Langevin based position step, constant pressure
 void Langevin::A_1_NPT(const double& h)
 {
-    // #pragma omp barrier
-    // #pragma omp single
+    // make references
+    double* L = NULL;
+    double Lp = 0.0;
+    double mass = NptGrid_pt->get_mass();
+    unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
+
+    // old position needed for rescaling
+    vector<double> L_old(3, 0.0);
+
+    for(unsigned i=0; i<number_of_grid_coordinates; i++)
     {
-        // make references
-        double* L = NULL;
-        double Lp = 0.0;
-        double mass = NptGrid_pt->get_mass();
-        unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
-
-        // old position needed for rescaling
-        vector<double> L_old(3, 0.0);
-
-        for(unsigned i=0; i<number_of_grid_coordinates; i++)
-        {
-            // derefernce the grid coordinates
-            L = NptGrid_pt->L_pt(i);
-            Lp = *NptGrid_pt->Lp_pt(i);
-
-            // save the old position
-            L_old[i] = *L;
-
-            // update the coorinate
-            *L += h * Lp / mass;
-        }
-
-        // need to rescale the particles such that they are
-        // in the same position with repsect to the cell
-        NptGrid_pt->enforce_constant_relative_particle_pos(L_old);
+        // derefernce the grid coordinates
+        L = NptGrid_pt->L_pt(i);
+        Lp = *NptGrid_pt->Lp_pt(i);
+        // save the old position
+        L_old[i] = *L;
+        // update the coorinate
+        *L += h * Lp / mass;
     }
+
+    // need to rescale the particles such that they are
+    // in the same position with repsect to the cell
+    NptGrid_pt->enforce_constant_relative_particle_pos(L_old);
 }
 
 // Langevin based position step, constant pressure
 void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 {
-    // #pragma omp barrier
-    // #pragma omp single
+    // helper dereference
+    unsigned number_of_particles = molecule_pt->nparticle();
+    Particle* particle_pt = NULL;
+
+    // particle integration
+    #pragma omp parallel for simd
+    for(unsigned i=0; i<number_of_particles; i++)
     {
-        // helper dereference
-        unsigned number_of_particles = molecule_pt->nparticle();
-        Particle* particle_pt = NULL;
-
-        // particle integration
-        #pragma omp parallel for simd
-        for(unsigned i=0; i<number_of_particles; i++)
-        {
-            particle_pt = molecule_pt->particle_pt(i);
-
-            A_NPT_2_part(particle_pt, h);
-        }
-
-        // box integration
-        A_NPT_2_box(h);
+        particle_pt = molecule_pt->particle_pt(i);
+        A_NPT_2_part(particle_pt, h);
     }
+
+    // box integration
+    A_NPT_2_box(h);
 }
 
 // Langevin based position step, constant pressure, partilce
@@ -564,29 +553,44 @@ void Langevin::A_rot(Particle* particle_pt, const double& h)
         I = *particle_pt->I_pt(i);
         alpha = h * pi / I;
 
+        printf("ERROR: NEED TO CHECK THAT THIS IS CORRECT -- ARE THEY SPINNING IN THE RIGHT DIRECTION\n");
+        exit(-1);
+
+        RotMatrix R(alpha);
+
+        // clockwise spinning:
+        // R^T * Q
+        // anti-clockwise spinning:
+        // R * Q
+
+
+        // multiply matrices together
+        Matrix Q_np1 = R.T() * particle_pt->Q();
+        particle_pt->Q() = Q_np1;
+
         // R = [  Cos(alpha) Sin(alpha)
         //       -Sin(alpha) Cos(alpha) ]
-        R_00 = cos(alpha);
-        R_01 = -sin(alpha);
-        R_10 = sin(alpha);
-        R_11 = cos(alpha);
+        // R_00 = cos(alpha);
+        // R_01 = -sin(alpha);
+        // R_10 = sin(alpha);
+        // R_11 = cos(alpha);
 
-        // Update the rotation matrix
+        // Update the rotatin matrix
         //     Q = QR^T
-        double Q_00 = *particle_pt->Q_pt(0,0) * R_00
-                    + *particle_pt->Q_pt(0,1) * R_01;
-        double Q_01 = *particle_pt->Q_pt(0,0) * R_10
-                    + *particle_pt->Q_pt(0,1) * R_11;
-        double Q_10 = *particle_pt->Q_pt(1,0) * R_00
-                    + *particle_pt->Q_pt(1,1) * R_01;
-        double Q_11 = *particle_pt->Q_pt(1,0) * R_10
-                    + *particle_pt->Q_pt(1,1) * R_11;
-
-        // Asign the new matrix
-        *particle_pt->Q_pt(0,0) = Q_00;
-        *particle_pt->Q_pt(0,1) = Q_01;
-        *particle_pt->Q_pt(1,0) = Q_10;
-        *particle_pt->Q_pt(1,1) = Q_11;
+        // double Q_00 = *particle_pt->Q_pt(0,0) * R_00
+        //             + *particle_pt->Q_pt(0,1) * R_01;
+        // double Q_01 = *particle_pt->Q_pt(0,0) * R_10
+        //             + *particle_pt->Q_pt(0,1) * R_11;
+        // double Q_10 = *particle_pt->Q_pt(1,0) * R_00
+        //             + *particle_pt->Q_pt(1,1) * R_01;
+        // double Q_11 = *particle_pt->Q_pt(1,0) * R_10
+        //             + *particle_pt->Q_pt(1,1) * R_11;
+        //
+        // // Asign the new matrix
+        // *particle_pt->Q_pt(0,0) = Q_00;
+        // *particle_pt->Q_pt(0,1) = Q_01;
+        // *particle_pt->Q_pt(1,0) = Q_10;
+        // *particle_pt->Q_pt(1,1) = Q_11;
     }
 }
 
@@ -637,174 +641,3 @@ void Langevin::O_rot(Particle* particle_pt)
         *pi = OstepCphi * (*pi) + OstepZphi * sqrt(I) * normal_gen();
     }
 }
-// #include <vector>
-// #include <math.h>
-// #include <gsl/gsl_rng.h>
-// #include <gsl/gsl_randist.h>
-// #include <sys/time.h>
-//
-// #include "Integrators.hpp"
-//
-// // function for calculating beta bar in ISST -- only Harmonic Oscillator
-// double fBetaBarNumerator(double beta, void* params)
-// {
-//   // upcast to Beta-struct
-//   struct BetaParams * p = (struct BetaParams *)params;
-//
-//   // dereference and make function
-//   double V = (p->potential);
-//   double D = (p->dimension);
-//   double f = pow(beta,(double)D*0.5 - 1.0)*exp(-beta * V);
-//
-//   return f;
-// }
-//
-// // function for calculating beta bar in ISST -- only Harmonic Oscillator
-// double fBetaBarDeNumerator(double beta, void* params)
-// {
-//   // upcast to Beta-struct
-//   struct BetaParams * p = (struct BetaParams *)params;
-//
-//   // dereference and make function
-//   double V = (p->potential);
-//   double D = (p->dimension);
-//   double f = pow(beta,(double)D*0.5 - 2.0)*exp(-beta * V);
-//
-//   return f;
-// }
-//
-// // function that is used in the simulated tempering approach
-// // void simulated_tempering_switch(std::vector<Molecule*>& Molecules,
-// // 				const std::vector<double>& beta,
-// // 				const std::vector<double>& weight,
-// // 				const std::vector<double>& Z_beta)
-// // {
-// //   // determine the number of molecules
-// //   unsigned N=Molecules.size();
-// //   unsigned nBeta=beta.size();
-//
-// //   // initialise the holder for current molecule pointer
-// //   Molecule* Mol_pt=NULL;
-//
-// //   // initialise the holder for the current temperature index
-// //   unsigned index=0;
-//
-// //   // initialise flag for avoiding double updating
-// //   bool SwitchFlag=false;
-//
-// //   // initialise random number generator
-// //   gsl_rng* r;
-//
-// //   // Generate a random seed based on system variables
-// //   long unsigned seed;
-// //   struct timeval tv;
-// //   gettimeofday(&tv,0);
-// //   seed = tv.tv_sec + tv.tv_usec;
-//
-// //   // Select and seed the random number generator
-// //   r = gsl_rng_alloc (gsl_rng_mt19937);
-// //   gsl_rng_set(r,seed);
-//
-// //   // Accept and Reject variables
-// //   double AcceptReject=0.0;
-// //   double Uniform=0.0;
-//
-// //   // loop over all the molecules
-// //   for(unsigned i=0;i<N;i++)
-// //     {
-// //       // dereference the molecule pointer
-// //       Mol_pt=Molecules[i];
-//
-// //       // dereference the temperature index
-// //       index=*Mol_pt->temperature_index_pt();
-//
-// //       // set flag
-// //       SwitchFlag=false;
-//
-// //       // generate uniform number
-// //       Uniform=gsl_rng_uniform(r);
-//
-// //       if(index != nBeta-1 && index != 0)
-// // 	{
-// // 	  if(Uniform >= 0.5) // k -> k+1
-// // 	    {
-// // 	      // Calculate the accept reject up
-// // 	      AcceptReject=Z_beta[index]/Z_beta[index+1]
-// // 		*exp((beta[index]-beta[index+1])
-// // 		     *(*Mol_pt->potential_pt()));
-//
-// // 	      // Metropolis step
-// // 	      if(Uniform < AcceptReject)
-// // 		{
-// // 		  index+=1;
-// // 		  SwitchFlag=true;
-// // 		}
-// // 	    }
-// // 	  else // k -> k-1
-// // 	    {
-// // 	      // Calculate the accept reject down
-// // 	      AcceptReject=Z_beta[index]/Z_beta[index-1]
-// // 		*exp((beta[index]-beta[index-1])
-// // 		     *(*Mol_pt->potential_pt()));
-//
-// // 	      // Metropolis step
-// // 	      if(Uniform < AcceptReject)
-// // 		{
-// // 		  index-=1;
-// // 		  SwitchFlag=true;
-// // 		}
-// // 	    }
-// // 	}
-// //       else if(index == 0)
-// // 	{
-// // 	  if(Uniform >= 0.5) // k -> k+1
-// // 	    {
-// // 	      // Calculate the accept reject up
-// // 	      AcceptReject=Z_beta[index]/Z_beta[index+1]
-// // 		*exp((beta[index]-beta[index+1])
-// // 		     *(*Mol_pt->potential_pt()));
-//
-// // 	      // Metropolis step
-// // 	      if(Uniform < AcceptReject)
-// // 		{
-// // 		  index+=1;
-// // 		  SwitchFlag=true;
-// // 		}
-// // 	    }
-// // 	}
-// //       else if(index == nBeta-1)
-// // 	{
-// // 	  if(Uniform < 0.5) // k -> k-1
-// // 	    {
-// // 	      // Calculate the accept reject down
-// // 	      AcceptReject=Z_beta[index]/Z_beta[index-1]
-// // 		*exp((beta[index]-beta[index-1])
-// // 		     *(*Mol_pt->potential_pt()));
-//
-// // 	      // Metropolis step
-// // 	      if(Uniform < AcceptReject)
-// // 		{
-// // 		  index-=1;
-// // 		  SwitchFlag=true;
-// // 		}
-// // 	    }
-// // 	}
-//
-// //       // make the correction based on if statements
-// //       if(SwitchFlag)
-// // 	{
-// // 	  // set new index
-// // 	  *Mol_pt->temperature_index_pt()=index;
-//
-// // 	  // scale momentum
-// // 	  for(unsigned j=0;j<*Mol_pt->dim_pt();j++)
-// // 	    {
-// // 	      *Mol_pt->particle_pt(0)->p_pt(j)
-// // 		*=sqrt(1/((Mol_pt->kt())*beta[index]));
-// // 	    }
-//
-// // 	  // set new temperature
-// // 	  *Mol_pt->beta_pt()=beta[index];
-// // 	}
-// //     }// end loop over number of particles
-// // };

@@ -135,10 +135,12 @@ vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
                 if(k<2)
                 {
                     // particle_icle i
-                    Q_i[k][l] = *particle_i->Q_pt(k, l);
+                    //Q_i[k][l] = *particle_i->Q_pt(k, l);
+                    Q_i[k][l] = particle_i->Q(k, l);
 
                     // particle_icle j
-                    Q_j[k][l] = *particle_j->Q_pt(k, l);
+                //    Q_j[k][l] = *particle_j->Q_pt(k, l);
+                    Q_j[k][l] = particle_j->Q(k, l);
                 }
 
                 // read in particle_icle i

@@ -5,6 +5,8 @@
 #include <math.h>
 #include <vector>
 
+#include "Matrix.hpp"
+
 using namespace::std;
 
 
@@ -33,7 +35,12 @@ public:
     double* m_pt(const unsigned i);
 
     // access to the pointer of the i,j element of the rotation matrix
-    double* Q_pt(const unsigned& i, const unsigned& j);
+    //double* Q_pt(const unsigned& i, const unsigned& j);
+    double Q(const int& i, const int& j) const;
+    double& Q(const int& i, const int& j);
+
+    Matrix Q() const;
+    Matrix& Q();
 
     // access to the pointer of the ith arm
     double arm(const unsigned& i, const unsigned& j);
@@ -66,7 +73,7 @@ private:
     // mass
     std::vector<double> m;
     // rotation matrix
-    std::vector<double> Q;
+    Matrix Qmat;
     // vector of arms
     std::vector<double> arms;
     // anglular momentum

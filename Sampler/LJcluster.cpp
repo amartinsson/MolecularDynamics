@@ -7,6 +7,7 @@
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
 #include "LennardJones.hpp"
+#include "Matrix.hpp"
 
 using namespace::std;
 
@@ -67,8 +68,8 @@ void print_positions(Molecule* molecule_pt, const unsigned& time_stamp)
   	{
       // print the rotation matrix to the file
       fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
-              *particle_k->Q_pt(0,0), *particle_k->Q_pt(0,1),
-  		        *particle_k->Q_pt(1,0), *particle_k->Q_pt(1,1));
+              particle_k->Q(0,0), particle_k->Q(0,1),
+  		       particle_k->Q(1,0), particle_k->Q(1,1));
   	}
     else
     {
@@ -117,8 +118,8 @@ void print_final_positions(Molecule* molecule_pt)
   	{
       // print the rotation matrix to the file
       fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
-              *particle_k->Q_pt(0,0), *particle_k->Q_pt(0,1),
-  		        *particle_k->Q_pt(1,0), *particle_k->Q_pt(1,1));
+              particle_k->Q(0,0), particle_k->Q(0,1),
+  		        particle_k->Q(1,0), particle_k->Q(1,1));
   	}
     else
     {
@@ -445,7 +446,7 @@ int main(int argc, char* argv[])
     unsigned number_of_steps = TIME / time_step;
 
     // calculate the number of burn in steps
-    unsigned burn_in_steps = floor(burn_in_fraction * number_of_steps);
+    unsigned burn_in_steps = floor(burn_in_fraction * 1e3);
 
     // make particle standard values
     vector<double> q_0(dimension, 0.0); // Initial position

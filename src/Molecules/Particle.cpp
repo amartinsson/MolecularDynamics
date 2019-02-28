@@ -5,7 +5,7 @@ using namespace::std;
 /******************************************************************************
                            Generic Particle Class
  *****************************************************************************/
-Particle::Particle(const unsigned& dim)
+Particle::Particle(const unsigned& dim) : Qmat(2, 2)
 {
     // initialise all the vectors
     q.resize(dim, 0.0);
@@ -61,9 +61,27 @@ double* Particle::m_pt(const unsigned i)
 }
 
 // access pointer to the i,j element of the rotation matrix
-double* Particle::Q_pt(const unsigned& i, const unsigned& j)
+double Particle::Q(const int& i, const int& j) const
 {
-  return &Q[j + i * DIM];
+    return Qmat(i, j);
+}
+
+// access for updating the matrix
+double& Particle::Q(const int& i, const int& j)
+{
+    return Qmat(i,j);
+}
+
+// access to the matrix
+Matrix Particle::Q() const
+{
+    return Qmat;
+}
+
+// access to the entire rotation matrix
+Matrix& Particle::Q()
+{
+    return Qmat;
 }
 
 // access to the jth component of the ith arm
@@ -116,7 +134,8 @@ void Particle::set_eqidistant_arms(const unsigned& narms)
     rigid_body_state = true;
 
     // resize the vectors and matrices
-    Q.resize(DIM*DIM, 0.0);
+    // Q = Matrix(2,2);
+    // Q.resize(DIM*DIM, 0.0);
     arms.resize(3*DIM, 0.0); // senare only 3 arms in particles
 
     if(DIM == 2)

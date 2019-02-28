@@ -2,6 +2,7 @@
 #define MERCEDESBENZ_HPP
 
 #include "LennardJones.hpp"
+#include "Matrix.hpp"
 
 using namespace::std;
 

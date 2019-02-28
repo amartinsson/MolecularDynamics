@@ -18,8 +18,9 @@ Grid::Grid(const double& a_x, const double& b_x, const double& b_y,
     L[2] = b_y;
 
     // initialise the box momentum to zero
-    for(unsigned i=0; i<3; i++)
-    Lp[i] = 0.0;
+    for(unsigned i=0; i<3; i++) {
+        Lp[i] = 0.0;
+    }
 
     // set the square of the cut off
     cut_off_sq = cut_off * cut_off;
@@ -105,8 +106,12 @@ void Grid::build_periodic_grid()
 {
     // build a new cell list
     for(int j=0; j<number_of_cells_y; j++)
-    for(int i=0; i<number_of_cells_x; i++)
-    cell_list.push_back(new Cell);
+    {
+        for(int i=0; i<number_of_cells_x; i++)
+        {
+            cell_list.push_back(new Cell);
+        }
+    }
 
     // set the boundary condition of the grid to be periodic
     set_periodic_boundary_conditions();
@@ -372,7 +377,7 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
   // double separation_in_y = L[2] / (particles_in_dir + 1);
 
   // hexagonal separation
-  double separation_in_x = 2.0 * L[0] / (3.0 *(particles_in_dir + 1.0));
+  double separation_in_x = 2.0 * L[0] / (3.0 * (particles_in_dir + 1.0));
   double separation_in_y = L[2] / (particles_in_dir + 1);
 
 
@@ -424,10 +429,10 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
         // if particle rotates set all the rotations
         if(particle_k->rigid_body() != false)
         {
-            double* Q_00 = particle_k->Q_pt(0, 0);
-            double* Q_01 = particle_k->Q_pt(0, 1);
-            double* Q_10 = particle_k->Q_pt(1, 0);
-            double* Q_11 = particle_k->Q_pt(1, 1);
+            // double* Q_00 = particle_k->Q_pt(0, 0);
+            // double* Q_01 = particle_k->Q_pt(0, 1);
+            // double* Q_10 = particle_k->Q_pt(1, 0);
+            // double* Q_11 = particle_k->Q_pt(1, 1);
 
             // momentum
             //double* pi = particle_k->pi_pt(0);
@@ -455,10 +460,16 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
 
 
             // set the rotation matrix
-            *Q_00 = cos(alpha);
-            *Q_01 = -sin(alpha);
-            *Q_10 = sin(alpha);
-            *Q_11 = cos(alpha);
+            // *Q_00 = cos(alpha);
+            // *Q_01 = -sin(alpha);
+            // *Q_10 = sin(alpha);
+            // *Q_11 = cos(alpha);
+            // particle_k->Q(0, 0) = cos(alpha);
+            // particle_k->Q(0, 1) = -sin(alpha);
+            // particle_k->Q(1, 0) = sin(alpha);
+            // particle_k->Q(1, 1) = cos(alpha);
+            RotMatrix Rot(alpha);
+            particle_k->Q() = Rot;
 
             // double I = *particle_k->I_pt(0);
 
@@ -840,11 +851,10 @@ void Grid::read_position_initial(Molecule* molecule_pt,
       // if we rotates
       if(particle_k->rigid_body())
       {
-          *particle_k->Q_pt(0, 0) = parsed_row[2];
-          *particle_k->Q_pt(0, 1) = parsed_row[3];
-
-          *particle_k->Q_pt(1, 0) = parsed_row[4];
-          *particle_k->Q_pt(1, 1) = parsed_row[5];
+          particle_k->Q(0, 0) = parsed_row[2];
+          particle_k->Q(0, 1) = parsed_row[3];
+          particle_k->Q(1, 0) = parsed_row[4];
+          particle_k->Q(1, 1) = parsed_row[5];
       }
 
       // increment particle counter
