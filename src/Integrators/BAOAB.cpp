@@ -78,21 +78,23 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
 {
     // helper dereference
     unsigned number_of_particles = molecule_pt->nparticle();
-    Particle* particle_pt = NULL;
+    Particle* particle = NULL;
 
     // preforce integration
     // #pragma omp barrier
     // #pragma omp single
     #pragma omp parallel for simd
     for(unsigned i=0; i<number_of_particles; i++)
+    // for(auto& particle = molecule_pt->Particles.begin();
+    //     particle != molecule_pt->Particles.end(); particle++)
     {
-        particle_pt = molecule_pt->particle_pt(i);
+        particle = &molecule_pt->particle(i);
 
         // integrate forward
-        Langevin::B(particle_pt, 0.5 * Time_Step);
-        Langevin::A(particle_pt, 0.5 * Time_Step);
-        Langevin::O(particle_pt);
-        Langevin::A(particle_pt, 0.5 * Time_Step);
+        Langevin::B(*particle, 0.5 * Time_Step);
+        Langevin::A(*particle, 0.5 * Time_Step);
+        Langevin::O(*particle);
+        Langevin::A(*particle, 0.5 * Time_Step);
     }
 
     // force solve
@@ -103,10 +105,10 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
     #pragma omp parallel for simd
     for(unsigned i=0; i<number_of_particles; i++)
     {
-        particle_pt = molecule_pt->particle_pt(i);
+        particle = &molecule_pt->particle(i);
 
         // integrate forward
-        Langevin::B(particle_pt, 0.5 * Time_Step);
+        Langevin::B(*particle, 0.5 * Time_Step);
     }
 }
 

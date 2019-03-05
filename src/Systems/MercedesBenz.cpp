@@ -57,7 +57,7 @@ vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
       forces[1] += lj_forces[1];
 
     #pragma omp atomic
-      *molecule_pt->potential_pt() += LennardJones::get_potential(r);
+      molecule_pt->potential() += LennardJones::get_potential(r);
 
       // ------------------------------ HYDROGEN BOND ----------------------------------- //
 
@@ -337,7 +337,7 @@ vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
 
             // ---------------- HYDROGEN POTENTIAL --------------- //
         #pragma omp atomic
-            *molecule_pt->potential_pt() += Epsilon_HB * G_r_rHB * G_hi_m1[k] * sum_G_hj_p1;
+            molecule_pt->potential() += Epsilon_HB * G_r_rHB * G_hi_m1[k] * sum_G_hj_p1;
 
          //   for(unsigned l=0;l<3;l++)
     	 // {
@@ -444,17 +444,17 @@ vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
 
        // add force for particle_icle I
     #pragma omp atomic
-        *particle_i->f_pt(0) -= Epsilon_HB * dphiHB_dx;
+        particle_i->f(0) -= Epsilon_HB * dphiHB_dx;
 
     #pragma omp atomic
-        *particle_i->f_pt(1) -= Epsilon_HB * dphiHB_dy;
+        particle_i->f(1) -= Epsilon_HB * dphiHB_dy;
 
        // add force for particle_icle J
     #pragma omp atomic
-        *particle_j->f_pt(0) += Epsilon_HB * dphiHB_dx;
+        particle_j->f(0) += Epsilon_HB * dphiHB_dx;
 
     #pragma omp atomic
-        *particle_j->f_pt(1) += Epsilon_HB * dphiHB_dy;
+        particle_j->f(1) += Epsilon_HB * dphiHB_dy;
 
     // add up the forces between particle_icles
     forces[0] -= Epsilon_HB * dphiHB_dx;
@@ -472,13 +472,13 @@ vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
     //      *particle_j->Q_pt(0,1) * dphiHB_dQ_j_00 + *particle_j->Q_pt(1,1) * dphiHB_dQ_j_10
     //      - *particle_j->Q_pt(0,0) * dphiHB_dQ_j_01 - *particle_j->Q_pt(1,0) * dphiHB_dQ_j_11;
     #pragma omp atomic
-       *particle_i->tau_pt(0) += Epsilon_HB * G_r_rHB * ( Q_i[0][1] * dphiHB_dQ_i_00
+       particle_i->tau(0,0) += Epsilon_HB * G_r_rHB * ( Q_i[0][1] * dphiHB_dQ_i_00
                                                    + Q_i[1][1] * dphiHB_dQ_i_10
                                                    - Q_i[0][0] * dphiHB_dQ_i_01
                                                    - Q_i[1][0] * dphiHB_dQ_i_11);
 
     #pragma omp atomic
-       *particle_j->tau_pt(0) += Epsilon_HB * G_r_rHB * ( Q_j[0][1] * dphiHB_dQ_j_00
+       particle_j->tau(0,0) += Epsilon_HB * G_r_rHB * ( Q_j[0][1] * dphiHB_dQ_j_00
                                                    + Q_j[1][1] * dphiHB_dQ_j_10
                                                    - Q_j[0][0] * dphiHB_dQ_j_01
                                                    - Q_j[1][0] * dphiHB_dQ_j_11);

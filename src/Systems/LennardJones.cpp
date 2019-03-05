@@ -33,7 +33,6 @@ vector<double> LennardJones::compute_pair_force(Molecule* molecule_pt,
 {
     // tracker of the pair force
      vector<double> forces(2, 0.0);
-     double* V = molecule_pt->potential_pt();
 
      // ------------ LENNARD JONES FORCE
      //
@@ -57,16 +56,16 @@ vector<double> LennardJones::compute_pair_force(Molecule* molecule_pt,
    //   *PartJ->f_pt(1) -= 2.0 * (dphidr * r_y / r);
 
    #pragma omp atomic
-     *particle_i->f_pt(0) += dphidr * r_x / r;
+     particle_i->f(0) += dphidr * r_x / r;
 
    #pragma omp atomic
-     *particle_i->f_pt(1) += dphidr * r_y / r;
+     particle_i->f(1) += dphidr * r_y / r;
 
    #pragma omp atomic
-     *particle_j->f_pt(0) -= dphidr * r_x / r;
+     particle_j->f(0) -= dphidr * r_x / r;
 
    #pragma omp atomic
-     *particle_j->f_pt(1) -= dphidr * r_y / r;
+     particle_j->f(1) -= dphidr * r_y / r;
 
      // add and return the pair force
      forces[0] = dphidr * r_x / r;
@@ -74,7 +73,7 @@ vector<double> LennardJones::compute_pair_force(Molecule* molecule_pt,
 
      // add to the potential
    #pragma omp atomic
-     *V += LennardJones::get_potential(r);
+     molecule_pt->potential() += LennardJones::get_potential(r);
 
      return forces;
 }

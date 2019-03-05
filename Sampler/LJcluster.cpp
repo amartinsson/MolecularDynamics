@@ -7,7 +7,7 @@
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
 #include "LennardJones.hpp"
-#include "Matrix.hpp"
+#include "Array.hpp"
 
 using namespace::std;
 
@@ -477,41 +477,58 @@ int main(int argc, char* argv[])
                                     "Init/initial_momentum.csv",
                                     "Init/initial_volume.csv");
 
-    for(unsigned i=0; i<number_of_steps; i++)
-    {
-        // integrate forward one step
-        // double before = 0.0;
-        // before = omp_get_wtime();
 
-        integrator->integrate(cluster);
+    Matrix P(2,2);
+    P(0,0) = 1.0;
+    P(0,1) = 2.0;
+    P(1,0) = 3.0;
+    P(1,1) = 4.0;
 
-        // double after = omp_get_wtime();
-        // // fprintf(output, "%f\n", after-before);
-        // printf("%f\n", after-before);
+    Vector V(2);
+    V(0) = 5.0;
+    V(1) = 6.0;
 
-        if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
-        {
-            double time_stamp = TIME * double(i) / double(number_of_steps);
+    // Vector Res = V.T() * V;
+    Vector res = P * V;
 
-            // update the pressure and temperature
-            integrator->npt_update_pressure_temperature();
-            // integrator->update_temperature();
+    // printf("Resulting vector is %f %f\n",Res(0), Res(1));
+    printf("Outer product is \t%f\n \t\t\t%f\n",res(0), res(1));
 
-            // print the pressure
-            double instant_pressure = integrator->npt_get_instant_pressure();
-            double pressure = integrator->npt_get_pressure();
-            print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-                           control_number + (control_number + 1) * world_rank);
-
-            // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
-
-            // print temperature
-            double instant_temperature = integrator->npt_get_instant_temperature();
-            double temperature = integrator->npt_get_temperature();
-            print_temperature(instant_temperature, temperature, time_stamp,
-                              "temperature", control_number + (control_number + 1) * world_rank);
-        }
-    }
+    // for(unsigned i=0; i<number_of_steps; i++)
+    // {
+    //     // integrate forward one step
+    //     // double before = 0.0;
+    //     // before = omp_get_wtime();
+    //
+    //     integrator->integrate(cluster);
+    //
+    //     // double after = omp_get_wtime();
+    //     // // fprintf(output, "%f\n", after-before);
+    //     // printf("%f\n", after-before);
+    //
+    //     if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
+    //     {
+    //         double time_stamp = TIME * double(i) / double(number_of_steps);
+    //
+    //         // update the pressure and temperature
+    //         integrator->npt_update_pressure_temperature();
+    //         // integrator->update_temperature();
+    //
+    //         // print the pressure
+    //         double instant_pressure = integrator->npt_get_instant_pressure();
+    //         double pressure = integrator->npt_get_pressure();
+    //         print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+    //                        control_number + (control_number + 1) * world_rank);
+    //
+    //         // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
+    //
+    //         // print temperature
+    //         double instant_temperature = integrator->npt_get_instant_temperature();
+    //         double temperature = integrator->npt_get_temperature();
+    //         print_temperature(instant_temperature, temperature, time_stamp,
+    //                           "temperature", control_number + (control_number + 1) * world_rank);
+    //     }
+    // }
 
     // Finalize the MPI environment.
     MPI_Finalize();

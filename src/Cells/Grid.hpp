@@ -10,6 +10,7 @@
 #include "Cells.hpp"
 #include "Molecules.hpp"
 #include "System.hpp"
+#include "Array.hpp"
 
 using namespace::std;
 
@@ -24,10 +25,6 @@ public:
          const double& cut_off, Molecule* molecule_pt);
     // destructor
     ~Grid();
-    // access for grid dimensions
-    double* L_pt(const unsigned& i);
-    // access for grid dimension momentum
-    double* Lp_pt(const unsigned& i);
     // function which calculates and returns the instant temperature
     double get_instant_temperature();
     // returns the number of grid coordinates
@@ -47,6 +44,10 @@ public:
                                     const char* initial_pos_filename,
                                     const char* initial_mom_filename,
                                     const char* initial_box_filename);
+    // access for grid dimensions
+    Matrix S;
+    Matrix Sp;
+    
 protected:
     // holder of the cut cut cut_off
     double cut_off_sq;
@@ -70,15 +71,17 @@ protected:
     // update the position of all the particles on the grid
     void update_particles_on_grid();
     // returns the distance square between two particles
-    vector<double> get_distance_square(Particle* current_particle,
-                                       Particle* neighbour_particle);
+    vector<double> get_distance_square(const Particle& current_particle,
+                                       const Particle& neighbour_particle);
     // calculates and returns the momentum temperature
     double calculate_momentum_temp();
+    // calulate and return the minimum image convention
+    void calculate_min_image(Vector& r);
 
 private:
     // controls the dimension of the grid
-    vector<double> L;
-    vector<double> Lp;
+    // vector<double> L;
+    // vector<double> Lp;
     // list of cells pointers
     vector<Cell*> cell_list;
     // tracking for average observables
@@ -89,12 +92,12 @@ private:
     // build a periodic grid
     void build_periodic_grid();
     // enforce the periodic boundary condition of the particle
-    void enforce_periodic_particle_boundary_condition(Particle* part_pt);
+    void enforce_periodic_particle_boundary_condition(Particle& particle);
     // delete and clear the grid
     void grid_clear();
     // returns the position in the grid of a particles based on
     // the particles position
-    vector<int> get_cell_coordinate(Particle* particle_pt);
+    vector<int> get_cell_coordinate(Particle& particle_pt);
     // calculates the translational shift of the box
     // as a function of y which is the position of a
     // particle

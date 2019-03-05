@@ -14,7 +14,9 @@ class Molecule
 {
 public:
     // constructor
-    Molecule();
+    Molecule(const double& kt, const unsigned& nparts, const unsigned& dim)
+        : DIM(dim), number_of_particles(nparts), kT(kt), Beta(1.0 / kt),
+          V(0.0) {Particles.resize(number_of_particles);}
 
     // destructor
     ~Molecule();
@@ -28,13 +30,15 @@ public:
     // return inverse temperature
     double beta();
     // return pointer to the i-th particle
-    Particle* particle_pt(const unsigned& i);
+    Particle& particle(const unsigned& i);
     // return pointer to the potential
-    double* potential_pt();
+    double& potential();
     // set temperature
     void set_temperature(const double& temperature);
     // set the beta
     void set_beta(const double& beta);
+    // vector of pointers to particles
+    vector<Particle*> Particles;
 
 protected:
     // Dimension
@@ -46,8 +50,6 @@ protected:
     double Beta;
     //potential
     double V;
-    // vector of pointers to particles
-    std::vector<Particle*> Particle_pt;
 };
 
 /******************************************************************************
@@ -56,9 +58,8 @@ protected:
 class Singelton : public Molecule
 {
 public:
-    Singelton(const std::vector<double>& q_0, const std::vector<double>& p_0,
-	          const std::vector<double>& m, const double& kt,
-	          const unsigned& dim);
+    Singelton(const Vector& q_0, const Vector& p_0, const Matrix& m,
+              const double& kt, const unsigned& dim);
 };
 
 
@@ -68,32 +69,21 @@ public:
 class Collection : public Molecule
 {
 public:
-    Collection(const std::vector<double>& q_0, const std::vector<double>& p_0,
-	     const std::vector<double>& M, const unsigned& nparticles,
-	     const double& kt);
+    Collection(const Vector& q_0, const Vector& p_0, const Matrix& m,
+               const double& kt, const unsigned& nparts, const unsigned& dim);
 };
 
 /******************************************************************************
-                          Crystal Molecule Class
+                   Anisotropic Collection Molecule Class
  *****************************************************************************/
-class Crystal : public Molecule
+class AniCollection : public Molecule
 {
 public:
-    Crystal(const std::vector<double>& q_0, const std::vector<double>& p_0,
-	        const std::vector<double>& M, const unsigned& nparticles,
-	        const double& kt);
-};
-
-/******************************************************************************
-                   Anisotropic Crystal Molecule Class
- *****************************************************************************/
-class AniCrystal : public Molecule
-{
-public:
-    AniCrystal(const std::vector<double>& q_0, const std::vector<double>& p_0,
-	           const std::vector<double>& M, const double& pi, const double& I,
-	           const unsigned& nArms, const unsigned& nparticles,
-               const double& kt);
+    AniCollection(const Vector& q_0, const Vector& p_0,
+                  const Matrix& Q_0, const Matrix& pi_0,
+                  const Matrix& m_0, const Matrix& I_0,
+                  const unsigned& narms, const double& kt,
+                  const unsigned& nparts, const unsigned& dim);
 };
 
 #endif

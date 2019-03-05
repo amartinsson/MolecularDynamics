@@ -22,20 +22,20 @@ public:
     void update_pressure_temperature();
     // This function returns the non dimensional coordinate w.r.t the box
     // of a particle in the box.
-    vector<double> get_box_coordinate(Particle* particle_pt);
+    Vector get_box_coordinate(const Particle& particle);
     // This function takes in a 2 dimensional vector and returns the
     // box normalised vector r_tilde
-    vector<double> get_box_min_image_sep(Particle* current_particle,
-                                         Particle* neighbour_particle);
+    Vector get_box_min_image_sep(const Particle& current_particle,
+                                 const Particle& neighbour_particle);
     // function which sets the position of a particle to the invariant
     // position given by q tilde
-    void set_box_coordinate(vector<double>& q_tilde, Particle* particle_pt);
+    void set_box_coordinate(const Vector& q_tilde, Particle& particle);
     // This function calculates the non dimensional momentum coordinate w.r.t
     // to the box of the particle given
-    vector<double> get_box_momentum(Particle* particle_pt);
+    Vector get_box_momentum(const Particle& particle);
     // function which sets the position of a particle to the invariant
     // position given by q tilde
-    void set_box_momentum(std::vector<double>& p_tilde, Particle* particle_pt);
+    void set_box_momentum(const Vector& p_tilde, Particle& particle);
     // get the mass of the grid
     double get_mass();
     // function which calculates and returns the
@@ -49,13 +49,13 @@ public:
     // returns the currently held pressure
     double get_pressure();
     // enforces the relaative positoon of the particles
-    void enforce_constant_relative_particle_pos(const vector<double>& L_old);
+    void enforce_constant_relative_particle_pos(const Matrix& Sold);
     // returns the box force in direction i
-    double get_accumulated_momentum(const unsigned& i){return momentum_sq[i];}
+    double get_accumulated_momentum(const unsigned& i){return momentum_sq(i);}
     // updates the accumulated momentum
     void update_accumulted_momentum();
     // returns the virial for the ith direction
-    double get_virial(const unsigned& i){return box_grad_potential[i];}
+    // double get_virial(const unsigned& i){return box_grad_potential[i];}
     // fuction which updates the particle forces. It automatically checks if the
     // grid has changed sufficently to have to rebuild the grid. It then contineous
     // updateing the forces of all the particles using the linked lists from above,
@@ -63,6 +63,8 @@ public:
     // the temperature by calculating the dot product of q and f for all the
     // particles
     void update_particle_forces(System* system_pt, Molecule* molecule_pt);
+
+    Matrix virial;
 
 private:
     // tracking for average observables
@@ -74,12 +76,12 @@ private:
     // this is needed for NPT integration
     double box_mass;
     // holder for box force
-    std::vector<double> box_grad_potential;
+    // std::vector<double> box_grad_potential;
     double box_grad_zero;
     double box_grad_one;
     double box_grad_two;
     //double* box_grad_potential;
-    std::vector<double> momentum_sq;
+    Vector momentum_sq;
     // reducto helpers for caluclating the force
     double red_help_grad_ax;
     double red_help_grad_bx;
@@ -97,7 +99,7 @@ private:
     void update_volume();
     // enforce the constraint that the relative distances
     // of the particle position and momentum cannot change.
-    void enforce_relative_particle(const vector<double> L_old);
+    void enforce_relative_particle(const Matrix& Sold);
     // function which calculates the pressure
     double calculate_pressure();
 };

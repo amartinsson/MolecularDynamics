@@ -4,6 +4,7 @@
 #include <math.h>
 
 #include "System.hpp"
+#include "Array.hpp"
 
 using namespace::std;
 

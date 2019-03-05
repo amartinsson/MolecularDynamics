@@ -12,7 +12,7 @@
 #include "Particle.hpp"
 #include "SimulatedTempering.hpp"
 #include "System.hpp"
-#include "Matrix.hpp"
+#include "Array.hpp"
 
 using namespace::std;
 
@@ -66,9 +66,9 @@ public:
 
 
 protected:
-    void A(Particle* particle_pt, const double& h);
-    void B(Particle* particle_pt, const double& h);
-    void O(Particle* particle_pt);
+    void A(Particle& particle, const double& h);
+    void B(Particle& particle, const double& h);
+    void O(Particle& particle);
 
     void A_1_NPT(const double& h);
     void A_2_NPT(Molecule* molecule_pt, const double& h);
@@ -125,15 +125,15 @@ private:
     SimulatedTempering* St_pt;
 
     // rotation steps
-    void A_rot(Particle* particle_pt, const double& h);
-    void B_rot(Particle* particle_pt, const double& h);
-    void O_rot(Particle* particle_pt);
+    void A_rot(Particle& particle, const double& h);
+    void B_rot(Particle& particle, const double& h);
+    void O_rot(Particle& particle);
 
     // NPT helper steps
-    void A_NPT_2_part(Particle* particle_pt, const double& h);
+    void A_NPT_2_part(Particle& particle, const double& h);
     void A_NPT_2_box(const double& h);
 
-    void B_NPT_part(Particle* particle_pt, const double& h);
+    void B_NPT_part(Particle& particle, const double& h);
     void B_NPT_box(const double& h);
 
     void O_NPT_box();

@@ -88,19 +88,17 @@ void InfiniteSwitchSimulatedTempering::apply_force_rescaling(
 	// dereference
 	unsigned number_of_particles = molecule_pt->nparticle();
 	unsigned dimension = molecule_pt->dim();
-    Particle* particle_pt = NULL;
+    Particle* particle = NULL;
 
-	#pragma omp simd
+#pragma omp simd collapse(1)
 	for(unsigned j=0; j<number_of_particles; j++)
     {
-        particle_pt = molecule_pt->particle_pt(j);
-        // rescale the forces
-        for(unsigned i=0; i<dimension; i++)
-            *particle_pt->f_pt(i) *= thermal_force_scaling;
+        particle = &molecule_pt->particle(j);
+        particle->f *= thermal_force_scaling;
 
         // rescale the torque
-        if(particle_pt->rigid_body() == true)
-            *particle_pt->tau_pt(0) *= thermal_force_scaling;
+        if(particle->rigid_body() == true)
+            particle->tau(0,0) *= thermal_force_scaling;
     }
 
 }
@@ -116,7 +114,7 @@ vector<double> InfiniteSwitchSimulatedTempering::get_observable_weights(
                                                         Molecule* molecule_pt)
 {
 	// parameters
-  	double V = *molecule_pt->potential_pt();
+  	double V = molecule_pt->potential();
 	vector<double> Weights(number_of_interpolation_points, 0.0);
 
 	// loop over integration point to find
@@ -167,7 +165,7 @@ void InfiniteSwitchSimulatedTempering::calculate_force_rescaling(
                                                         Molecule* molecule_pt)
 {
 	// dereference
-	double V = *molecule_pt->potential_pt();
+	double V = molecule_pt->potential();
 	double InvTemp = molecule_pt->beta();
 
 	double BarNumSum = 0.0;
@@ -190,12 +188,11 @@ void InfiniteSwitchSimulatedTempering::calculate_force_rescaling(
 // initialise the force
 void InfiniteSwitchSimulatedTempering::init_force(Molecule* molecule_pt)
 {
-  unsigned nParticle = molecule_pt->nparticle();
-  unsigned Dim = molecule_pt->dim();
+    unsigned nParticle = molecule_pt->nparticle();
+    unsigned Dim = molecule_pt->dim();
 
-  for(unsigned j=0;j<nParticle;j++)
-    for(unsigned i=0;i<Dim;i++)
-      *molecule_pt->particle_pt(j)->f_pt(i) *= thermal_force_scaling;
+    for(unsigned j=0;j<nParticle;j++)
+        molecule_pt->particle(j).f *= thermal_force_scaling;
 };
 
 // learn the beta weights
@@ -203,7 +200,7 @@ void InfiniteSwitchSimulatedTempering::learn_beta_weights(Molecule* molecule_pt)
 {
 	// dereference
 	double h = time_step;
-	double V = *molecule_pt->potential_pt();
+	double V = molecule_pt->potential();
 	double BarDeNumSum = 0.0;
 
 	for(unsigned i=0; i<number_of_interpolation_points; i++)

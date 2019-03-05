@@ -121,7 +121,7 @@ void SimulatedTempering::update_temperature(Molecule* molecule_pt,
 	if(step % switch_frequency == 0)
 	{
 		// make proposed index
-		double V = *molecule_pt->potential_pt();
+		double V = molecule_pt->potential();
 		double U = 0.0;
 		int shift = 0;
 
@@ -195,11 +195,8 @@ void SimulatedTempering::rescale_momentum(Molecule* molecule_pt, const int& shif
 	Particle* particle_i = NULL;
 
 	for(unsigned i=0; i<number_of_particles; i++)
-		for(unsigned j=0; j<dim; j++)
-		{
-			particle_i = molecule_pt->particle_pt(i);
-			p = particle_i->p_pt(j);
-
-			(*p) *= scale;
-		}
+	{
+		particle_i = &molecule_pt->particle(i);
+		particle_i->p *= scale;
+	}
 }

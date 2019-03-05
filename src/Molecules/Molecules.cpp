@@ -3,24 +3,11 @@
 /******************************************************************************
                            Generic Molecule Class
  *****************************************************************************/
-Molecule::Molecule()
-{
-    // dimesnion
-    DIM = 0;
-    // number of particle
-    number_of_particles = 0;
-    // temperatures
-    Beta = 0.0;
-    kT = 0.0;
-    // potential
-    V = 0.0;
-}
-
 Molecule::~Molecule()
 {
     for(unsigned i=0; i<number_of_particles; i++)
-        delete[] Particle_pt[i];
-    Particle_pt.clear();
+        delete[] Particles[i];
+    Particles.clear();
 }
 
 // return dimension
@@ -36,10 +23,10 @@ double Molecule::kt() {return kT;}
 double Molecule::beta() {return Beta;}
 
 // return pointer to the i-th particle
-Particle* Molecule::particle_pt(const unsigned& i) {return Particle_pt[i];}
+Particle& Molecule::particle(const unsigned& i) {return *Particles[i];}
 
 // return pointer to the potential
-double* Molecule::potential_pt(){return &V;}
+double& Molecule::potential() {return V;}
 
 // set temperature
 void Molecule::set_temperature(const double& temperature)
@@ -59,138 +46,43 @@ void Molecule::set_beta(const double& beta)
                            Singelton Molecule Class
  *****************************************************************************/
 // constructor
-Singelton::Singelton(const std::vector<double>& q_0,
-                     const std::vector<double>& p_0,
-                     const std::vector<double>& M,
-		             const double& kt,
-		             const unsigned& dim)
+Singelton::Singelton(const Vector& q_0, const Vector& p_0, const Matrix& m,
+                     const double& kt, const unsigned& dim) :
+                        Molecule(kt, 1, dim)
 {
-    // dimesnion
-    DIM = dim;
-    // number of particle
-    number_of_particles = 1;
-    // temperatures
-    Beta = 1.0/kt;
-    kT = kt;
     // create one instance of a particle
-    Particle_pt.resize(1, new Particle(dim));
-    // pass the initial conditions and the mass given to the particle
-    for(unsigned i=0; i<DIM; i++)
-    {
-        *Particle_pt[0]->q_pt(i) = q_0[i];
-        *Particle_pt[0]->p_pt(i) = p_0[i];
-        *Particle_pt[0]->m_pt(i) = M[i];
-    }
+    Particles[0] = new Particle(q_0, p_0, m, dim);
 }
 
 /******************************************************************************
                            Collection Molecule Class
  *****************************************************************************/
 // class for a cluster of non-interactring particles
-Collection::Collection(const std::vector<double>& q_0,
-                       const std::vector<double>& p_0,
-		               const std::vector<double>& M,
-		               const unsigned& nparticles,
-		               const double& kt)
-
+Collection::Collection(const Vector& q_0, const Vector& p_0, const Matrix& m,
+                       const double& kt, const unsigned& nparts,
+                       const unsigned& dim) :
+                         Molecule(kt, nparts, dim)
 {
-    // dimesnion
-    DIM = q_0.size();
-    // number of particle
-    number_of_particles = nparticles;
-    // temperatures
-    Beta = 1.0/kt;
-    kT = kt;
     // create all the particles instance of a particle
     for(unsigned i=0; i<number_of_particles; i++)
-    {
-        Particle_pt.push_back(new Particle(DIM));
-
-        // pass the initial conditions and the mass given to the particle
-        for(unsigned j=0; j<DIM; j++)
-	    {
-            *Particle_pt[i]->q_pt(j) = q_0[j];
-	        *Particle_pt[i]->p_pt(j) = p_0[j];
-	        *Particle_pt[i]->m_pt(j) = M[j];
-	    }
-    }
+        Particles[i] = new Particle(q_0, p_0, m, dim);
 }
 
 /******************************************************************************
-                          Crystal Molecule Class
+                   Anisotropic Collection Molecule Class
  *****************************************************************************/
-// constructor
-Crystal::Crystal(const std::vector<double>& q_0, const std::vector<double>& p_0,
-		         const std::vector<double>& M, const unsigned& nparticles,
-		         const double& kt)
+ AniCollection::AniCollection(const Vector& q_0, const Vector& p_0,
+                              const Matrix& Q_0, const Matrix& pi_0,
+                              const Matrix& m_0, const Matrix& I_0,
+                              const unsigned& narms, const double& kt,
+                              const unsigned& nparts, const unsigned& dim) :
+                                Molecule(kt, nparts, dim)
 {
-    // dimesnion
-    DIM = q_0.size();
-    // number of particle
-    number_of_particles = nparticles;
-    // temperatures
-    Beta = 1.0/kt;
-    kT = kt;
-
     // create all the particles instance of a particle
     for(unsigned i=0; i<number_of_particles; i++)
-    {
-        // make new particle
-        Particle_pt.push_back(new Particle(DIM));
-
-        // pass the initial conditions and the mass given to the particle
-        for(unsigned j=0; j<DIM; j++)
-        {
-            *Particle_pt[i]->q_pt(j) = q_0[j];
-	        *Particle_pt[i]->p_pt(j) = p_0[j];
-            *Particle_pt[i]->m_pt(j) = M[j];
-	    }
-    }
+        Particles[i] = new Particle(q_0, p_0, Q_0, pi_0, m_0, I_0,
+                                      narms, dim);
 }
-
-
-/******************************************************************************
-                   Anisotropic Crystal Molecule Class
- *****************************************************************************/
-// constructor
-AniCrystal::AniCrystal(const std::vector<double>& q_0,
-		               const std::vector<double>& p_0,
-		               const std::vector<double>& M,
-		               const double& pi, const double& I, const unsigned& nArms,
-		               const unsigned& nparticles, const double& kt)
-{
-    // dimesnion
-    DIM = q_0.size();
-    // number of particle
-    number_of_particles = nparticles;
-    // temperatures
-    Beta = 1.0/kt;
-    kT = kt;
-
-    // create all the particles instance of a particle
-    for(unsigned i=0; i<number_of_particles; i++)
-    {
-        Particle_pt.push_back(new Particle(DIM));
-
-        // needs to be called before setting I and pi
-        Particle_pt[i]->set_eqidistant_arms(nArms);
-
-        *Particle_pt[i]->I_pt(0)  = I;
-        *Particle_pt[i]->pi_pt(0) = pi;
-
-        // pass the initial conditions and the mass given to the particle
-        for(unsigned j=0;j<DIM;j++)
-	    {
-            *Particle_pt[i]->q_pt(j) = q_0[j];
-	        *Particle_pt[i]->p_pt(j) = p_0[j];
-	        *Particle_pt[i]->m_pt(j) = M[j];
-	    }
-    }
-}
-
-
-
-
 
 //
 // // return the pointer to the laplacian of the potential

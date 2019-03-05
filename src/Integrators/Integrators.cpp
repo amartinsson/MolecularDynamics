@@ -58,53 +58,26 @@ Langevin::~Langevin()
 }
 
 // Langevin based position step
-void Langevin::A(Particle* particle_pt, const double& h)
+void Langevin::A(Particle& particle, const double& h)
 {
-    // dereference helpers
-    unsigned DIM = particle_pt->dim();
-    double* q = NULL;
-    double  p = 0.0;
-    double  m = 0.0;
+    particle.q += (particle.p * particle.m.inv()) * h;
 
-    for(unsigned j=0; j<DIM; j++)
-    {
-        q = particle_pt->q_pt(j);
-	    p = *particle_pt->p_pt(j);
-	    m = *particle_pt->m_pt(j);
-
-        *q += h * p / m;
-    }
-
-    if(particle_pt->rigid_body() == true)
-        A_rot(particle_pt, h);
+    if(particle.rigid_body())
+        A_rot(particle, h);
 }
 
 // Langevin based position step, constant pressure
 void Langevin::A_1_NPT(const double& h)
 {
     // make references
-    double* L = NULL;
-    double Lp = 0.0;
     double mass = NptGrid_pt->get_mass();
-    unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
+    Matrix Sold = NptGrid_pt->S;
 
-    // old position needed for rescaling
-    vector<double> L_old(3, 0.0);
-
-    for(unsigned i=0; i<number_of_grid_coordinates; i++)
-    {
-        // derefernce the grid coordinates
-        L = NptGrid_pt->L_pt(i);
-        Lp = *NptGrid_pt->Lp_pt(i);
-        // save the old position
-        L_old[i] = *L;
-        // update the coorinate
-        *L += h * Lp / mass;
-    }
+    NptGrid_pt->S += NptGrid_pt->Sp * (h / mass);
 
     // need to rescale the particles such that they are
     // in the same position with repsect to the cell
-    NptGrid_pt->enforce_constant_relative_particle_pos(L_old);
+    NptGrid_pt->enforce_constant_relative_particle_pos(Sold);
 }
 
 // Langevin based position step, constant pressure
@@ -112,194 +85,102 @@ void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 {
     // helper dereference
     unsigned number_of_particles = molecule_pt->nparticle();
-    Particle* particle_pt = NULL;
 
     // particle integration
-    #pragma omp parallel for simd
+#pragma omp simd
     for(unsigned i=0; i<number_of_particles; i++)
-    {
-        particle_pt = molecule_pt->particle_pt(i);
-        A_NPT_2_part(particle_pt, h);
-    }
+        A_NPT_2_part(molecule_pt->particle(i), h);
 
     // box integration
     A_NPT_2_box(h);
 }
 
 // Langevin based position step, constant pressure, partilce
-void Langevin::A_NPT_2_part(Particle* particle_pt, const double& h)
+void Langevin::A_NPT_2_part(Particle& particle, const double& h)
 {
-    // holder for particle positon
-    double* q = NULL;
-    unsigned DIM = particle_pt->dim();
+    // update particle position
+    particle.q += NptGrid_pt->S * NptGrid_pt->S.inv().T() * particle.m.inv()
+                * particle.p;
 
-    // dereference the box size
-    double lx1 = *NptGrid_pt->L_pt(0);
-    double ly1 = *NptGrid_pt->L_pt(1);
-    double ly2 = *NptGrid_pt->L_pt(2);
-
-    // get the momentum of the particle
-    double px = *particle_pt->p_pt(0);
-    double py = *particle_pt->p_pt(1);
-
-    // get the momentum of the particle
-    double mx = *particle_pt->m_pt(0);
-    double my = *particle_pt->m_pt(1);
-
-    // loop over the number of dimensions
-    for(unsigned j=0; j<DIM; j++)
-    {
-        // dereference the particle position
-        q = particle_pt->q_pt(j);
-
-        if(j==0)
-        {
-            (*q) += h *((1.0 - ly1*ly1/(lx1*ly2)) * px/mx
-            + ly1/ly2 * py/my);
-        }
-        else if(j==1)
-        {
-            (*q) += h *(py/my - ly1/lx1 * px/mx);
-        }
-    }
-
-    if(particle_pt->rigid_body() == true)
-        A_rot(particle_pt, h);
+    if(particle.rigid_body())
+        A_rot(particle, h);
 }
 
 // Langevin based position step, constant pressure, box
 void Langevin::A_NPT_2_box(const double& h)
 {
-    // dereference the box size
-    double lx1 = *NptGrid_pt->L_pt(0);
-    double ly1 = *NptGrid_pt->L_pt(1);
-    double ly2 = *NptGrid_pt->L_pt(2);
 
-    // update the accumulated momentum in the box
-    NptGrid_pt->update_accumulted_momentum();
-    double acc_mom = 0.0;
-    double* Lp = NULL;
-    unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
-
-    // loop over all the box coordinates
-    for(unsigned i=0; i<number_of_grid_coordinates;i++)
-    {
-        acc_mom = NptGrid_pt->get_accumulated_momentum(i);
-        Lp = NptGrid_pt->Lp_pt(i);
-
-        if(i != 2)
-            (*Lp) += h * (acc_mom / lx1);
-        else
-        {
-            double acc_mom_xy = NptGrid_pt->get_accumulated_momentum(1);
-            (*Lp) += h * (acc_mom / ly2 - ly1/(ly2*lx1) * acc_mom_xy);
-        }
-    }
+    // // dereference the box size
+    // double lx1 = *NptGrid_pt->L_pt(0);
+    // double ly1 = *NptGrid_pt->L_pt(1);
+    // double ly2 = *NptGrid_pt->L_pt(2);
+    //
+    // // update the accumulated momentum in the box
+    // NptGrid_pt->update_accumulted_momentum();
+    // double acc_mom = 0.0;
+    // double* Lp = NULL;
+    // unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
+    //
+    // // loop over all the box coordinates
+    // for(unsigned i=0; i<number_of_grid_coordinates;i++)
+    // {
+    //     acc_mom = NptGrid_pt->get_accumulated_momentum(i);
+    //     Lp = NptGrid_pt->Lp_pt(i);
+    //
+    //     if(i != 2)
+    //         (*Lp) += h * (acc_mom / lx1);
+    //     else
+    //     {
+    //         double acc_mom_xy = NptGrid_pt->get_accumulated_momentum(1);
+    //         (*Lp) += h * (acc_mom / ly2 - ly1/(ly2*lx1) * acc_mom_xy);
+    //     }
+    // }
 }
 
 // Langevin Momentum based update
-void Langevin::B(Particle* particle_pt, const double& h)
+void Langevin::B(Particle& particle, const double& h)
 {
-    // dereference helpers
-    unsigned DIM = particle_pt->dim();
-    double* p = NULL;
-    double f = 0.0;
+    // update momentum
+    particle.p += particle.f * h;
 
-    // loop over the number of dimensions
-    for(unsigned j=0; j<DIM; j++)
-    {
-        p = particle_pt->p_pt(j);
-	    f = *particle_pt->f_pt(j);
-
-        *p += h * f;
-    }
-
-    if(particle_pt->rigid_body() == true)
-        B_rot(particle_pt, h);
+    if(particle.rigid_body())
+        B_rot(particle, h);
 }
 
 // Langevin Momentum based update, constant pressure
 void Langevin::B_NPT(Molecule* molecule_pt, const double& h)
 {
-    // #pragma omp barrier
-    // #pragma omp single
-    {
-        // helper dereference
-        unsigned number_of_particles = molecule_pt->nparticle();
-        Particle* particle_pt = NULL;
+    // helper dereference
+    unsigned number_of_particles = molecule_pt->nparticle();
 
-        // particle integration
-        #pragma omp parallel for simd
-        for(unsigned i=0; i<number_of_particles; i++)
-        {
-            particle_pt = molecule_pt->particle_pt(i);
+    // particle integration
+#pragma omp simd
+    for(unsigned i=0; i<number_of_particles; i++)
+        B_NPT_part(molecule_pt->particle(i), h);
 
-            B_NPT_part(particle_pt, h);
-        }
-
-        // box integration
-        B_NPT_box(h);
-    }
+    // box integration
+    B_NPT_box(h);
 }
 
-void Langevin::B_NPT_part(Particle* particle_pt, const double& h)
+void Langevin::B_NPT_part(Particle& particle, const double& h)
 {
-    // holder for particle momentum
-    double* p = NULL;
-    unsigned DIM = particle_pt->dim();
+    particle.p += NptGrid_pt->S.inv() * NptGrid_pt->S.T() * particle.f * h;
 
-    // dereference the box size
-    double lx1 = *NptGrid_pt->L_pt(0);
-    double ly1 = *NptGrid_pt->L_pt(1);
-    double ly2 = *NptGrid_pt->L_pt(2);
-
-    // get the forces on the particle
-    double fx = *particle_pt->f_pt(0);
-    double fy = *particle_pt->f_pt(1);
-
-    for(unsigned j=0; j<DIM; j++)
-    {
-        // derefernce the particle momentum
-        p = particle_pt->p_pt(j);
-
-        if(j==0)
-        {
-            (*p) += h * ((1.0 - ly1*ly1/(lx1*ly2)) * fx - ly1/lx1 * fy);
-        }
-        else if(j==1)
-        {
-            (*p) += h * (fy + ly1/ly2 * fx);
-        }
-    }
-
-    if(particle_pt->rigid_body() == true)
-        B_rot(particle_pt, h);
+    if(particle.rigid_body())
+        B_rot(particle, h);
 }
 
 
 void Langevin::B_NPT_box(const double& h)
 {
-    // dereference the box size
-    double lx1 = *NptGrid_pt->L_pt(0);
-    double ly1 = *NptGrid_pt->L_pt(1);
-    double ly2 = *NptGrid_pt->L_pt(2);
+    // make diagonal matrix
+    Matrix Sd = NptGrid_pt->S;
+    double det = NptGrid_pt->S.det();
 
-    double* Lp = NULL;
-    double virial = 0.0;
-    unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
+    Sd(0,1) = 0.0;
+    Sd = Sd.inv();
 
-    for(unsigned i=0; i<number_of_grid_coordinates; i++)
-    {
-        Lp = NptGrid_pt->Lp_pt(i);
-        virial = NptGrid_pt->get_virial(i);
-
-        if(i == 0)
-            *Lp -= h * (virial + Target_pressure * ly2);
-        else if(i == 1)
-            *Lp -= h * virial;
-        else if(i == 2)
-            *Lp -= h * (virial + Target_pressure * lx1);
-    }
+    NptGrid_pt->Sp -= NptGrid_pt->virial - Sd * (det * Target_pressure / h);
 }
 
 // update the pressure and temperature reading
@@ -369,66 +250,51 @@ void Langevin::compute_force(Molecule* molecule_pt)
 }
 
 // Langevin Stochastic Momentum based update
-void Langevin::O(Particle* particle_pt)
+void Langevin::O(Particle& particle)
 {
-    // dereference helpers
-    unsigned DIM = particle_pt->dim();
-    double* p = NULL;
-    double m  = 0.0;
+    // generate random numbers
+    Vector N(particle.p.size(), normal_gen);
 
-    // loop over the number of dimensions
-    for(unsigned j=0; j<DIM; j++)
-    {
-        p = particle_pt->p_pt(j);
-	    m = *particle_pt->m_pt(j);
+    // find new momentum
+    particle.p = particle.p * OstepC + particle.m.sqrt() * N * OstepZ;
 
-        *p = OstepC * (*p) + OstepZ * sqrt(m) * normal_gen();
-    }
-
-    if(particle_pt->rigid_body() == true)
-        O_rot(particle_pt);
+    if(particle.rigid_body())
+        O_rot(particle);
 }
 
 // Langevin Stochastic Momentum based update, constant pressure
 void Langevin::O_NPT(Molecule* molecule_pt)
 {
-    // #pragma omp barrier
-    // #pragma omp single
-    {
-        // helper dereference
-        unsigned number_of_particles = molecule_pt->nparticle();
-        Particle* particle_pt = NULL;
+    // helper dereference
+    unsigned number_of_particles = molecule_pt->nparticle();
 
-        // particle integration
-        #pragma omp parallel for simd
-        for(unsigned i=0; i<number_of_particles; i++)
-        {
-            particle_pt = molecule_pt->particle_pt(i);
+    // particle integration
+    #pragma omp parallel for simd
+    for(unsigned i=0; i<number_of_particles; i++)
+        O(molecule_pt->particle(i));
 
-            O(particle_pt);
-        }
-
-        // box integration
-        O_NPT_box();
-    }
+    // box integration
+    O_NPT_box();
 }
 
 void Langevin::O_NPT_box()
 {
-    // dereference the box coordinates
-    double* Lp;
-    double box_mass = NptGrid_pt->get_mass();
-    unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
-
-    // loop over the box coordinates
-    for(unsigned i=0; i<number_of_grid_coordinates; i++)
-    {
-        // dereference
-        Lp = NptGrid_pt->Lp_pt(i);
-
-        // update
-        *Lp = OstepCbox * (*Lp) + OstepZbox * sqrt(box_mass) * normal_gen();
-    }
+    // NptGrid_pt->Sp = NptGrid_pt->Sp * OstepCbox
+    //
+    // // dereference the box coordinates
+    // double* Lp;
+    // double box_mass = NptGrid_pt->get_mass();
+    // unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
+    //
+    // // loop over the box coordinates
+    // for(unsigned i=0; i<number_of_grid_coordinates; i++)
+    // {
+    //     // dereference
+    //     Lp = NptGrid_pt->Lp_pt(i);
+    //
+    //     // update
+    //     *Lp = OstepCbox * (*Lp) + OstepZbox * sqrt(box_mass) * normal_gen();
+    // }
 }
 
 // Integrator function
@@ -524,11 +390,10 @@ void Langevin::update_simulated_tempering(Molecule* molecule_pt,
     }
 }
 
-
-void Langevin::A_rot(Particle* particle_pt, const double& h)
+void Langevin::A_rot(Particle &particle, const double& h)
 {
     // dereference helpers
-    unsigned DIM = particle_pt->dim();
+    unsigned DIM = particle.dim();
 
     if(DIM > 2)
     {
@@ -541,103 +406,33 @@ void Langevin::A_rot(Particle* particle_pt, const double& h)
     double I = 0.0;
     double alpha = 0.0;
 
-    // rotation matrix
-    double R_00 = 0.0;
-    double R_01 = 0.0;
-    double R_10 = 0.0;
-    double R_11 = 0.0;
+    pi = particle.pi(0,0);
+    I = particle.I(0,0);
+    alpha = h * pi / I;
 
-    for(unsigned i=0; i<1; i++)
-    {
-        pi = *particle_pt->pi_pt(i);
-        I = *particle_pt->I_pt(i);
-        alpha = h * pi / I;
+    printf("ERROR: NEED TO CHECK THAT THIS IS CORRECT -- ARE THEY SPINNING IN THE RIGHT DIRECTION\n");
+    exit(-1);
 
-        printf("ERROR: NEED TO CHECK THAT THIS IS CORRECT -- ARE THEY SPINNING IN THE RIGHT DIRECTION\n");
-        exit(-1);
+    RotMatrix R(alpha);
 
-        RotMatrix R(alpha);
+    // clockwise spinning:
+    // R^T * Q
+    // anti-clockwise spinning:
+    // R * Q
 
-        // clockwise spinning:
-        // R^T * Q
-        // anti-clockwise spinning:
-        // R * Q
-
-
-        // multiply matrices together
-        Matrix Q_np1 = R.T() * particle_pt->Q();
-        particle_pt->Q() = Q_np1;
-
-        // R = [  Cos(alpha) Sin(alpha)
-        //       -Sin(alpha) Cos(alpha) ]
-        // R_00 = cos(alpha);
-        // R_01 = -sin(alpha);
-        // R_10 = sin(alpha);
-        // R_11 = cos(alpha);
-
-        // Update the rotatin matrix
-        //     Q = QR^T
-        // double Q_00 = *particle_pt->Q_pt(0,0) * R_00
-        //             + *particle_pt->Q_pt(0,1) * R_01;
-        // double Q_01 = *particle_pt->Q_pt(0,0) * R_10
-        //             + *particle_pt->Q_pt(0,1) * R_11;
-        // double Q_10 = *particle_pt->Q_pt(1,0) * R_00
-        //             + *particle_pt->Q_pt(1,1) * R_01;
-        // double Q_11 = *particle_pt->Q_pt(1,0) * R_10
-        //             + *particle_pt->Q_pt(1,1) * R_11;
-        //
-        // // Asign the new matrix
-        // *particle_pt->Q_pt(0,0) = Q_00;
-        // *particle_pt->Q_pt(0,1) = Q_01;
-        // *particle_pt->Q_pt(1,0) = Q_10;
-        // *particle_pt->Q_pt(1,1) = Q_11;
-    }
+    // multiply matrices together
+    Matrix Q_np1 = R.T() * particle.Q;
+    particle.Q = Q_np1;
 }
 
-void Langevin::B_rot(Particle* particle_pt, const double& h)
+void Langevin::B_rot(Particle& particle, const double& h)
 {
-    // dereference helpers
-    unsigned DIM = particle_pt->dim();
-
-    if(DIM > 2)
-    {
-        std::cout << "Error: Rotation can only be used in 2D\n";
-        exit(-1);
-    }
-
-    // dereference helpers
-    double* pi = NULL;
-    double tau = 0.0;
-
-    for(unsigned j=0; j<1; j++)
-    {
-        pi = particle_pt->pi_pt(j);
-        tau = *particle_pt->tau_pt(j);
-
-        *pi += h * tau;
-    }
+    // update momentum
+    particle.pi += particle.tau * h;
 }
 
-void Langevin::O_rot(Particle* particle_pt)
+void Langevin::O_rot(Particle& particle)
 {
-    // dereference helpers
-    unsigned DIM = particle_pt->dim();
-
-    if(DIM > 2)
-    {
-        std::cout << "Error: Rotation can only be used in 2D\n";
-        exit(-1);
-    }
-
-    // dereference helpers
-    double* pi = NULL;
-    double I = 0.0;
-
-    for(unsigned j=0; j<DIM; j++)
-    {
-        pi = particle_pt->pi_pt(j);
-        I = *particle_pt->I_pt(j);
-
-        *pi = OstepCphi * (*pi) + OstepZphi * sqrt(I) * normal_gen();
-    }
+    particle.pi(0,0) = OstepCphi * particle.pi(0,0)
+                     + OstepZphi * sqrt(particle.I(0,0)) * normal_gen();
 }

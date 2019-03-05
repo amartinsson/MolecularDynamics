@@ -6,28 +6,19 @@ using namespace::std;
 //                                GRID CLASS
 // ------------------------------------------------------------------------- //
 Grid::Grid(const double& a_x, const double& b_x, const double& b_y,
-           const double& cut_off, Molecule* molecule_pt)
+           const double& cut_off, Molecule* molecule_pt) : S(2, 2), Sp(2, 2)
 {
-    // initialise the box vector;
-    L.resize(3);
-    Lp.resize(3);
-
     // initialise the box dimensions
-    L[0] = a_x;
-    L[1] = b_x;
-    L[2] = b_y;
-
-    // initialise the box momentum to zero
-    for(unsigned i=0; i<3; i++) {
-        Lp[i] = 0.0;
-    }
+    S(0, 0) = a_x;
+    S(0, 1) = b_x;
+    S(1, 1) = b_y;
 
     // set the square of the cut off
     cut_off_sq = cut_off * cut_off;
 
     // calculate the number of boxes in each direction
-    number_of_cells_x = (int)floor(L[0] / (2.0 * cut_off));
-    number_of_cells_y = (int)floor(L[2] / (2.0 * cut_off));
+    number_of_cells_x = (int)floor(S(0,0) / (2.0 * cut_off));
+    number_of_cells_y = (int)floor(S(1,1) / (2.0 * cut_off));
 
     // build a periodic grid
     build_periodic_grid();
@@ -50,8 +41,8 @@ Grid::~Grid()
     grid_clear();
 
     // clear the memory of the vectors
-    L.clear();
-    Lp.clear();
+    // L.clear();
+    //Lp.clear();
 
     // delete all the average observables
     delete Temperature_pt;
@@ -87,17 +78,17 @@ void Grid::add_particles_to_grid(Molecule* molecule_pt)
     for(unsigned k=0; k<number_of_particles; k++)
     {
         // get the particle
-        particle_k = molecule_pt->particle_pt(k);
+        particle_k = &molecule_pt->particle(k);
 
         // enforce the periodc boundary condition on the particle
-        enforce_periodic_particle_boundary_condition(particle_k);
+        enforce_periodic_particle_boundary_condition(*particle_k);
 
         // get the box coordinate based on particle positon
-        cell_coordinate = get_cell_coordinate(particle_k);
+        cell_coordinate = get_cell_coordinate(*particle_k);
 
         // assign this particle to the correct cell
-        get_cell(cell_coordinate[0], cell_coordinate[1])->
-                                                assign_particle(particle_k);
+        get_cell(cell_coordinate[0],
+                 cell_coordinate[1])->assign_particle(particle_k);
     }
 }
 
@@ -120,58 +111,37 @@ void Grid::build_periodic_grid()
 // clear the forces and the potential of the molecule
 void Grid::clear_particle_forces(Molecule* molecule_pt)
 {
-    // dereference the number of particles
-    unsigned dim = molecule_pt->dim();
-
-    // make a holder for particle k
-    Particle* particle_k = NULL;
-
     // loop over all the particles
     for(unsigned k=0; k<number_of_particles; k++)
     {
-        // dereference tha particle
-        particle_k = molecule_pt->particle_pt(k);
+        // zero particle forces
+        molecule_pt->particle(k).f.zero();
 
-        // loop over the dimensions
-        for(unsigned j=0; j<dim; j++)
-        {
-            *particle_k->f_pt(j) = 0.0;
-        }
-
-        // if the particle rotates - reset torque
-        if(particle_k->rigid_body() != false)
-        *particle_k->tau_pt(0) = 0.0;
+        if(molecule_pt->particle(k).rigid_body())
+            molecule_pt->particle(k).tau.zero();
     }
 
     // clear the potential
-    *molecule_pt->potential_pt() = 0.0;
+    molecule_pt->potential() = 0.0;
 }
 
 // enforce the periodic boundary condition of the particle
-void Grid::enforce_periodic_particle_boundary_condition(Particle* part_pt)
+void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
 {
-    // dereference the position
-    double x = *part_pt->q_pt(0);
-    double y = *part_pt->q_pt(1);
-
     // enforce periodicity in y direction
-    if(y < 0.0)
-    y += L[2];
-    else if(y > L[2])
-    y -= L[2];
+    if(particle.q(1) < 0.0)
+        particle.q(1) += S(1,1);
+    else if(particle.q(1) > S(1,1))
+        particle.q(1) -= S(1,1);
 
     // get the translational shift of this particle
-    double trans_shift = get_translational_shift(y);
+    double trans_shift = get_translational_shift(particle.q(1));
 
     // enforce periodicity in x direction
-    if(x < trans_shift)
-    x += L[0];
-    else if (x > L[0] + trans_shift)
-    x -= L[0];
-
-    // set the new values
-    *part_pt->q_pt(0) = x;
-    *part_pt->q_pt(1) = y;
+    if(particle.q(0) < trans_shift)
+        particle.q(0) += S(0,0);
+    else if (particle.q(0) > S(0,0) + trans_shift)
+        particle.q(0) -= S(0,0);
 }
 
 // delete and clear the grid
@@ -197,23 +167,23 @@ Cell* Grid::get_cell(const int& i, const int& j)
 // returns the number of grid coordinates
 unsigned Grid::get_ncoord()
 {
-    return L.size();
+    return 3;
 }
 
 // returns the position in the grid of a particles based on
 // the particles position
-std::vector<int> Grid::get_cell_coordinate(Particle* particle_pt)
+std::vector<int> Grid::get_cell_coordinate(Particle& particle)
 {
     // dereference the particle positon
-    double y = *particle_pt->q_pt(1);
-    double x = *particle_pt->q_pt(0) - get_translational_shift(y);
+    double y = particle.q(1);
+    double x = particle.q(0) - get_translational_shift(y);
 
     // make a vector of coordinates
     std::vector<int> cell_coordinate(2, 0);
 
     // get the position of the particle in the grid
-    int pos_x = (int)floor(x / L[0] * number_of_cells_x);
-    int pos_y = (int)floor(y / L[2] * number_of_cells_y);
+    int pos_x = (int)floor(x / S(0,0) * number_of_cells_x);
+    int pos_y = (int)floor(y / S(1,1) * number_of_cells_y);
 
     // assign the cell coordinate
     //cell_coordinate[0] = mod(pos_x, number_of_cells_x);
@@ -226,37 +196,40 @@ std::vector<int> Grid::get_cell_coordinate(Particle* particle_pt)
 }
 
 // returns the distance square between two particles
-std::vector<double> Grid::get_distance_square(Particle* current_particle,
-                                              Particle* neighbour_particle)
+vector<double> Grid::get_distance_square(const Particle& current_particle,
+                                         const Particle& neighbour_particle)
 {
     // make vector for all the values
     std::vector<double> distances(3, 0.0);
 
-    // calculate x separation
-    double r_x = *neighbour_particle->q_pt(0) - *current_particle->q_pt(0);
+    Vector r = neighbour_particle.q - current_particle.q;
 
-    // enforce minimum image convention
-    if(r_x > 0.5 * L[0])
-        r_x -= L[0];
-    else if(r_x <= -0.5 * L[0])
-        r_x += L[0];
-
-    // calculate y separation
-    double r_y = *neighbour_particle->q_pt(1) - *current_particle->q_pt(1);
-
-    // enforce minimum image convention
-    if(r_y > 0.5 * L[2])
-        r_y -= L[2];
-    else if(r_y <= -0.5 * L[2])
-        r_y += L[2];
+    // update difference so that follows mini image
+    calculate_min_image(r);
 
     // set the values
-    distances[0] = r_x * r_x + r_y * r_y;
-    distances[1] = r_x;
-    distances[2] = r_y;
+    distances[0] = r(0) * r(0) + r(1) * r(1);
+    distances[1] = r(0);
+    distances[2] = r(1);
 
     // return the square of the distance
     return distances;
+}
+
+// calulate and return the minimum image convention
+void Grid::calculate_min_image(Vector& r)
+{
+    // enforce minimum image convention
+    if(r(0) > 0.5 * S(0,0))
+        r(0) -= S(0,0);
+    else if(r(0) <= -0.5 * S(0,0))
+        r(0) += S(0,0);
+
+    // enforce minimum image convention
+    if(r(1) > 0.5 * S(1,1))
+        r(1) -= S(1,1);
+    else if(r(1) <= -0.5 * S(1,1))
+        r(1) += S(1,1);
 }
 
 // calculates the translational shift of the box
@@ -264,7 +237,7 @@ std::vector<double> Grid::get_distance_square(Particle* current_particle,
 // particle
 double Grid::get_translational_shift(const double& y)
 {
-    return y * L[1] / L[2];
+    return y * S(0, 1) / S(1, 1);
 }
 
 // initialise the particles from the molecule on the grid
@@ -285,8 +258,8 @@ void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
 bool Grid::rebuild_grid_check()
 {
     // calculate the correct number of cells
-    int new_number_of_cells_x = (int)floor(L[0] / (2.0 * sqrt(cut_off_sq)));
-    int new_number_of_cells_y = (int)floor(L[2] / (2.0 * sqrt(cut_off_sq)));
+    int new_number_of_cells_x = (int)floor(S(0,0) / (2.0 * sqrt(cut_off_sq)));
+    int new_number_of_cells_y = (int)floor(S(1,1) / (2.0 * sqrt(cut_off_sq)));
 
     // boolean if the grid needs to change
     bool need_to_change_grid = false;
@@ -373,12 +346,12 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
   int particles_in_dir = (int)ceil(sqrt(number_of_particles));
 
   // grid separation
-  // double separation_in_x = L[0] / (particles_in_dir + 1);
-  // double separation_in_y = L[2] / (particles_in_dir + 1);
+  // double separation_in_x = S(0,0) / (particles_in_dir + 1);
+  // double separation_in_y = S(1,1) / (particles_in_dir + 1);
 
   // hexagonal separation
-  double separation_in_x = 2.0 * L[0] / (3.0 * (particles_in_dir + 1.0));
-  double separation_in_y = L[2] / (particles_in_dir + 1);
+  double separation_in_x = 2.0 * S(0,0) / (3.0 * (particles_in_dir + 1.0));
+  double separation_in_y = S(1,1) / (particles_in_dir + 1);
 
 
   // particle counter
@@ -391,11 +364,11 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
         if(k < number_of_particles)
         {
             // derefernce the particle
-            particle_k = molecule_pt->particle_pt(k);
+            particle_k = &molecule_pt->particle(k);
 
             // get pointers to the partilce position
-            x = particle_k->q_pt(0);
-            y = particle_k->q_pt(1);
+            x = &particle_k->q(0);
+            y = &particle_k->q(1);
 
             // set the particle position grid
             // *y = (j+1) * separation_in_y;
@@ -413,12 +386,12 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
             // printf("%.0d mapping to %.0d\n",i, (i+1) + (i % 2 != 0 && i != 0) * (i+1)/2 + (i % 2 == 0 && i > 1) * (i) / 2);
 
             // get pointers to the particle momentum
-            p_x = particle_k->p_pt(0);
-            p_y = particle_k->p_pt(1);
+            p_x = &particle_k->p(0);
+            p_y = &particle_k->p(1);
 
             // get the mass of the particles
-            mx = *particle_k->m_pt(0);
-            mx = *particle_k->m_pt(1);
+            mx = particle_k->m(0, 0);
+            mx = particle_k->m(1, 1);
 
             // set the momentum of the particle
             // *p_x = sqrt(mx / beta) * gsl_ran_gaussian(generator, 1.0);
@@ -469,7 +442,7 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
             // particle_k->Q(1, 0) = sin(alpha);
             // particle_k->Q(1, 1) = cos(alpha);
             RotMatrix Rot(alpha);
-            particle_k->Q() = Rot;
+            particle_k->Q = Rot;
 
             // double I = *particle_k->I_pt(0);
 
@@ -513,12 +486,12 @@ void Grid::update_particles_on_grid()
         // if we are in boundary cell then enforce the
         // periodic boundary condition
         if(i == 0 or i == number_of_cells_y-1)
-          enforce_periodic_particle_boundary_condition(particle_k);
+          enforce_periodic_particle_boundary_condition(*particle_k);
         else if(j == 0 or j == number_of_cells_x-1)
-          enforce_periodic_particle_boundary_condition(particle_k);
+          enforce_periodic_particle_boundary_condition(*particle_k);
 
         // get the potentially new cell cordinates
-        cell_coordinate = get_cell_coordinate(particle_k);
+        cell_coordinate = get_cell_coordinate(*particle_k);
 
         // check if particle has moved cell
         if(cell_coordinate[0] != i or cell_coordinate[1] != j)
@@ -536,18 +509,6 @@ void Grid::update_particles_on_grid()
         cell_conductor = cell_next;
       }
     }
-}
-
-// access for grid dimensions
-double* Grid::L_pt(const unsigned& i)
-{
-  return &L[i];
-}
-
-// access for grid dimension momentum
-double* Grid::Lp_pt(const unsigned& i)
-{
-  return &Lp[i];
 }
 
 // function which calculates and returns the
@@ -581,16 +542,8 @@ double Grid::calculate_momentum_temp()
     double temperature = 0.0;
     double rot_temperature = 0.0;
 
-    // mass and momentum for particle k
-    std::vector<double> momentum(2, 0.0); // senare might break for higher dim
-    double massx = 0.0;
-    double massy = 0.0;
-
-    double pi = 0.0;
-    double I = 0.0;
-
     // helpers
-    Particle* particle_k = NULL;
+    Particle* particle = NULL;
     ListNode* cell_conductor = NULL;
 
     double N = 1.0;
@@ -606,26 +559,16 @@ double Grid::calculate_momentum_temp()
           while(cell_conductor != NULL)
           {
               // dereference the partilce
-              particle_k = cell_conductor->particle;
+              particle = cell_conductor->particle;
 
-              //momentum = get_box_momentum(particle_k);
-              momentum[0] = *particle_k->p_pt(0);
-              momentum[1] = *particle_k->p_pt(1);
-
-              // mass in both directions#pragma omp for
-              massx = *particle_k->m_pt(0);
-              massy = *particle_k->m_pt(1);
-
-              // add to the temperature
-              temperature = momentum[0] * momentum[0] / (massx * N)
-                          + momentum[1] * momentum[1] / (massy * N)
-                          + (N-1.0)/N * temperature;
+              temperature = particle->p.dot(particle->m * particle->p) / N
+                            + (N - 1.0) / N * temperature;
 
               //if particle rotates add to rotational temperature
-              if(particle_k->rigid_body())
+              if(particle->rigid_body())
               {
-                  pi = *particle_k->pi_pt(0);
-                  I =  *particle_k->I_pt(0);
+                  double pi = particle->pi(0,0);
+                  double I =  particle->I(0,0);
 
                   rot_temperature = pi * pi / (I * N)
                                   + (N-1.0)/N * rot_temperature;
@@ -663,7 +606,7 @@ void Grid::compute_force(System* system_pt, Molecule* molecule_pt,
   std::vector<double> distance(3, 0.0);
 
   // calculate the square of the distance between particles
-  distance = get_distance_square(current_particle, neighbour_particle);
+  distance = get_distance_square(*current_particle, *neighbour_particle);
 
   // chcek the cutoff criterion
   if(distance[0] < cut_off_sq)
@@ -811,9 +754,23 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
        for(unsigned i=0; i<parsed_row.size();i++)
        {
            if(i<3)
-               L[i] = parsed_row[i];
+           {
+               if(i == 0)
+                    S(0,0) = parsed_row[i];
+                else if(i == 1)
+                    S(0,1) = parsed_row[i];
+                else
+                    S(1,1) = parsed_row[i];
+           }
            else
-               Lp[i-3] = parsed_row[i];
+           {
+               if(i == 0)
+                    Sp(0,0) = parsed_row[i];
+                else if(i == 1)
+                    S(0,1) = parsed_row[i];
+                else
+                    S(1,1) = parsed_row[i];
+           }
        }
     }
 }
@@ -842,11 +799,11 @@ void Grid::read_position_initial(Molecule* molecule_pt,
           parsed_row.push_back(test);
       }
 
-      particle_k = molecule_pt->particle_pt(k);
+      particle_k = &molecule_pt->particle(k);
 
       // set position
-      *particle_k->q_pt(0) = parsed_row[0];
-      *particle_k->q_pt(1) = parsed_row[1];
+      particle_k->q(0) = parsed_row[0];
+      particle_k->q(1) = parsed_row[1];
 
       // if we rotates
       if(particle_k->rigid_body())
@@ -887,16 +844,16 @@ void Grid::read_momentum_initial(Molecule* molecule_pt,
            parsed_row.push_back(test);
        }
 
-       particle_k = molecule_pt->particle_pt(k);
+       particle_k = &molecule_pt->particle(k);
 
        // set momentum
-       *particle_k->p_pt(0) = parsed_row[0];
-       *particle_k->p_pt(1) = parsed_row[1];
+       particle_k->p(0) = parsed_row[0];
+       particle_k->p(1) = parsed_row[1];
 
        // if we rotates
        if(particle_k->rigid_body())
        {
-           *particle_k->pi_pt(0) = parsed_row[2];
+           particle_k->pi(0,0) = parsed_row[2];
        }
 
        // increment particle counter

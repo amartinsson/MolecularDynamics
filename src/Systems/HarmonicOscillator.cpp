@@ -14,28 +14,22 @@ void HarmonicOscillator::compute_force(Molecule* molecule_pt)
 {
     // dereference helpers
     double DIM = molecule_pt->dim();
-    double* f = NULL;
     unsigned nparticles = molecule_pt->nparticle();
-    double q = 0;
     Particle* particle_i = NULL;
 
-    double* V = molecule_pt->potential_pt();
-    *V = 0.0;
+    double V = 0.0;
 
-    #pragma omp for schedule(static)
+#pragma omp parallel for schedule(static) reduction(+:V)
     for(unsigned i=0; i<nparticles; i++)
     {
-        particle_i = molecule_pt->particle_pt(i);
+        particle_i = &molecule_pt->particle(i);
+        particle_i->f.zero();
 
-        for(unsigned j=0; j<DIM; j++)
-        {
-            f = particle_i->f_pt(j);
-            q = *particle_i->q_pt(j);
-
-            *f = -q;
-            *V += q * q;
-        }
+        particle_i->f -= particle_i->q;
+        V += particle_i->q.dot(particle_i->q);
     }
+
+    molecule_pt->potential() = V;
 }
 
 // compute the pair force
@@ -47,26 +41,25 @@ vector<double> HarmonicOscillator::compute_pair_force(Molecule* molecule_pt,
                                                       const double& r_y)
 {
     // dereference helpers
-    double* V = molecule_pt->potential_pt();
     vector<double> forces(2, 0.0);
 
     forces[0] = -r_x;
     forces[1] = -r_y;
 
     // calculate the force
-    #pragma omp atomic
-    *particle_i->f_pt(0) -= forces[0];
-    #pragma omp atomic
-    *particle_i->f_pt(1) -= forces[1];
+#pragma omp atomic
+    particle_i->f(0) -= forces[0];
+#pragma omp atomic
+    particle_i->f(1) -= forces[1];
 
-    #pragma omp atomic
-    *particle_j->f_pt(0) += forces[0];
-    #pragma omp atomic
-    *particle_j->f_pt(1) += forces[1];
+#pragma omp atomic
+    particle_j->f(0) += forces[0];
+#pragma omp atomic
+    particle_j->f(1) += forces[1];
 
     // assign the potential
-    #pragma omp atomic
-    *V += r_x*r_x + r_y*r_y;
+#pragma omp atomic
+    molecule_pt->potential() += r_x*r_x + r_y*r_y;
 
     return forces;
 }
