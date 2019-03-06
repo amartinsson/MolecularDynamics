@@ -60,7 +60,7 @@ Langevin::~Langevin()
 // Langevin based position step
 void Langevin::A(Particle& particle, const double& h)
 {
-    particle.q += (particle.p * particle.m.inv()) * h;
+    particle.q += (particle.p.T() * particle.m.inv()) * h;
 
     if(particle.rigid_body())
         A_rot(particle, h);
@@ -83,13 +83,10 @@ void Langevin::A_1_NPT(const double& h)
 // Langevin based position step, constant pressure
 void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 {
-    // helper dereference
-    unsigned number_of_particles = molecule_pt->nparticle();
-
     // particle integration
-#pragma omp simd
-    for(unsigned i=0; i<number_of_particles; i++)
-        A_NPT_2_part(molecule_pt->particle(i), h);
+// #pragma omp simd
+    for (auto& particle : molecule_pt->Particles)
+        A_NPT_2_part(*particle, h);
 
     // box integration
     A_NPT_2_box(h);

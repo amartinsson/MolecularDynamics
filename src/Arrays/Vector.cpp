@@ -7,13 +7,13 @@ Vector::Vector(const int& dim) : dimx(dim), transpose(false)
 }
 
 // second constructor
-Vector::Vector(const int& dim, const double& val) : dimx(dim)
+Vector::Vector(const int& dim, const double& val) : dimx(dim), transpose(false)
 {
     vec.resize(dim, val);
 }
 
 // third constructor
-Vector::Vector(const int& dim, NormalGenerator& norm) : dimx(dim)
+Vector::Vector(const int& dim, NormalGenerator& norm) : dimx(dim), transpose(false)
 {
     vec.resize(dimx);
 
@@ -244,9 +244,20 @@ void Vector::operator-= (const Vector& other)
             vec[i] -= other(i);
 }
 
+// return copy of transposed Matrix
+Vector Vector::T() const
+{
+    Vector retVec(dimx);
+
+#pragma omp simd collapse(1)
+    for(unsigned i=0; i<dimx; i++)
+        retVec(i) = vec[i];
+
+    return retVec._T();
+}
 
 // set transpose to true for vector
-Vector& Vector::T()
+Vector& Vector::_T()
 {
     if(!transpose)
         transpose = true;

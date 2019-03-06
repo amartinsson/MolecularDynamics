@@ -10,28 +10,28 @@
 #include "Array.hpp"
 
 using namespace::std;
-
-double box_temp(std::vector<double>& Lp, double mass)
-{
-  unsigned dim = 3.0;
-
-  // mass and momentum for particle k
-  double momentum = 0.0;
-
-  // Temperature
-  double temperature = 0.0;
-
-  // loop over all the particles
-  for(unsigned j=0; j<dim; j++)
-  {
-      // dereference the momentum and mass
-	  momentum = Lp[j];
-	  temperature += momentum * momentum / mass;
-  }
-
-  // return the temperature
-  return 1.0 / dim * temperature;
-};
+//
+// double box_temp(std::vector<double>& Lp, double mass)
+// {
+//   unsigned dim = 3.0;
+//
+//   // mass and momentum for particle k
+//   double momentum = 0.0;
+//
+//   // Temperature
+//   double temperature = 0.0;
+//
+//   // loop over all the particles
+//   for(unsigned j=0; j<dim; j++)
+//   {
+//       // dereference the momentum and mass
+// 	  momentum = Lp[j];
+// 	  temperature += momentum * momentum / mass;
+//   }
+//
+//   // return the temperature
+//   return 1.0 / dim * temperature;
+// };
 
 void print_positions(Molecule* molecule_pt, const unsigned& time_stamp)
 {
@@ -45,31 +45,32 @@ void print_positions(Molecule* molecule_pt, const unsigned& time_stamp)
   unsigned number_of_particles = molecule_pt->nparticle();
 
   // make a particle pointer
-  Particle* particle_k = NULL;
+//  Particle* particle_k = NULL;
 
   // print the correct stuff
-  for(unsigned k=0; k<number_of_particles; k++)
+  //for(unsigned k=0; k<number_of_particles; k++)
+  for(auto& part : molecule_pt->Particles)
   {
     // dereference the particle
-    particle_k = molecule_pt->particle_pt(k);
+    //particle_k = molecule_pt->particle_pt(k);
 
-    // loop over the the number of dimensions
-    for(unsigned j=0; j<dim; j++)
-    {
-      // print to file
-      if(j == dim-1)
-        fprintf(configuration_file, "%.4f", *particle_k->q_pt(j));
-      else
-        fprintf(configuration_file, "%.4f, ", *particle_k->q_pt(j));
-    }
+        // loop over the the number of dimensions
+        for(unsigned j=0; j<dim; j++)
+        {
+            // print to file
+            if(j == dim-1)
+                fprintf(configuration_file, "%.4f", part->q(j));
+            else
+                fprintf(configuration_file, "%.4f, ", part->q(j));
+        }
 
   	// dependedn on rigid body or not print different things
-  	if(particle_k->rigid_body() != false)
+  	if(part->rigid_body())
   	{
       // print the rotation matrix to the file
       fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
-              particle_k->Q(0,0), particle_k->Q(0,1),
-  		       particle_k->Q(1,0), particle_k->Q(1,1));
+              part->Q(0,0), part->Q(0,1),
+  		       part->Q(1,0), part->Q(1,1));
   	}
     else
     {
@@ -95,31 +96,32 @@ void print_final_positions(Molecule* molecule_pt)
   FILE* configuration_file = fopen(filename, "w");
 
   // make a particle pointer
-  Particle* particle_k = NULL;
+  //Particle* particle_k = NULL;
 
   // print the correct stuff
-  for(unsigned k=0; k<number_of_particles; k++)
+  //for(unsigned k=0; k<number_of_particles; k++)
+  for(auto& part : molecule_pt->Particles)
   {
     // dereference the particle
-    particle_k = molecule_pt->particle_pt(k);
+    //particle_k = molecule_pt->particle_pt(k);
 
     // loop over the the number of dimensions
     for(unsigned j=0; j<dim; j++)
     {
       // print to file
       if(j == dim-1)
-        fprintf(configuration_file, "%.10f", *particle_k->q_pt(j));
+        fprintf(configuration_file, "%.10f", part->q(j));
       else
-        fprintf(configuration_file, "%.10f, ", *particle_k->q_pt(j));
+        fprintf(configuration_file, "%.10f, ", part->q(j));
     }
 
   	// dependedn on rigid body or not print different things
-  	if(particle_k->rigid_body() != false)
+  	if(part->rigid_body())
   	{
       // print the rotation matrix to the file
       fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
-              particle_k->Q(0,0), particle_k->Q(0,1),
-  		        particle_k->Q(1,0), particle_k->Q(1,1));
+              part->Q(0,0), part->Q(0,1),
+  		        part->Q(1,0), part->Q(1,1));
   	}
     else
     {
@@ -145,29 +147,30 @@ void print_final_momentum(Molecule* molecule_pt)
   FILE* configuration_file = fopen(filename, "w");
 
   // make a particle pointer
-  Particle* particle_k = NULL;
+  //Particle* particle_k = NULL;
 
   // print the correct stuff
-  for(unsigned k=0; k<number_of_particles; k++)
+  //for(unsigned k=0; k<number_of_particles; k++)
+  for(auto& part : molecule_pt->Particles)
   {
     // dereference the particle
-    particle_k = molecule_pt->particle_pt(k);
+    //particle_k = molecule_pt->particle_pt(k);
 
     // loop over the the number of dimensions
     for(unsigned j=0; j<dim; j++)
     {
       // print to file
       if(j == dim-1)
-        fprintf(configuration_file, "%.10f", *particle_k->p_pt(j));
+        fprintf(configuration_file, "%.10f", part->p(j));
       else
-        fprintf(configuration_file, "%.10f, ", *particle_k->p_pt(j));
+        fprintf(configuration_file, "%.10f, ", part->p(j));
     }
 
   	// dependedn on rigid body or not print different things
-  	if(particle_k->rigid_body() != false)
+  	if(part->rigid_body())
   	{
       // print the rotation matrix to the file
-      fprintf(configuration_file, ", %.10f\n", *particle_k->pi_pt(0));
+      fprintf(configuration_file, ", %.10f\n", part->pi(0,0));
   	}
     else
     {
@@ -449,13 +452,14 @@ int main(int argc, char* argv[])
     unsigned burn_in_steps = floor(burn_in_fraction * 1e3);
 
     // make particle standard values
-    vector<double> q_0(dimension, 0.0); // Initial position
-    vector<double> p_0(dimension, 0.0); // Initial momentum
-    vector<double> f_0(dimension, 0.0); // Initial Force
-    vector<double> M(dimension, 1.0);   // Mass
+    Vector q_0(dimension);
+    Vector p_0(dimension);
+    Matrix m_0(dimension, dimension);
+    m_0.diag(1.0); // set mass to be one
 
     // make crystal molecule with number_of_particles
-    Molecule* cluster = new Crystal(q_0, p_0, M, number_of_particles, temp);
+    Molecule* cluster = new Collection(q_0, p_0, m_0, temp,
+                                       number_of_particles, dimension);
 
     // Make a Lennard Jones Force solver
     System* lennard_jones = new LennardJones(epsilon, sigma);
@@ -465,12 +469,13 @@ int main(int argc, char* argv[])
                                      lennard_jones, SEED);
 
     // set to evaluate with grid
-    integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
-                                        box_mass, target_pressure,
-                                        npt_langevin_friction);
+    integrator->integrate_with_grid(a_x, b_x, b_y, cut_off, cluster);
+    // integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
+    //                                     box_mass, target_pressure,
+    //                                     npt_langevin_friction);
 
     // set the integrator scheme
-    integrator->set_npt_integrator_version(npt_scheme_nr);
+    //integrator->set_npt_integrator_version(npt_scheme_nr);
 
     if(rebuild_bool)
         integrator->npt_set_initial(cluster, "Init/initial_position.csv",
@@ -478,57 +483,57 @@ int main(int argc, char* argv[])
                                     "Init/initial_volume.csv");
 
 
-    Matrix P(2,2);
-    P(0,0) = 1.0;
-    P(0,1) = 2.0;
-    P(1,0) = 3.0;
-    P(1,1) = 4.0;
+    // Matrix P(2,2);
+    // P(0,0) = 1.0;
+    // P(0,1) = 2.0;
+    // P(1,0) = 3.0;
+    // P(1,1) = 4.0;
+    //
+    // Vector V(2);
+    // V(0) = 5.0;
+    // V(1) = 6.0;
+    //
+    // // Vector Res = V.T() * V;
+    // Vector res = P * V;
+    //
+    // // printf("Resulting vector is %f %f\n",Res(0), Res(1));
+    // printf("Outer product is \t%f\n \t\t\t%f\n",res(0), res(1));
 
-    Vector V(2);
-    V(0) = 5.0;
-    V(1) = 6.0;
+    for(unsigned i=0; i<number_of_steps; i++)
+    {
+        // integrate forward one step
+        // double before = 0.0;
+        // before = omp_get_wtime();
+        integrator->integrate(cluster);
+        
+        // double after = omp_get_wtime();
+        // // fprintf(output, "%f\n", after-before);
+        // printf("%f\n", after-before);
 
-    // Vector Res = V.T() * V;
-    Vector res = P * V;
+        if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
+        {
+            double time_stamp = TIME * double(i) / double(number_of_steps);
+            // print positions
+             print_positions(cluster, time_stamp);
+            // update the pressure and temperature
+            // integrator->npt_update_pressure_temperature();
+            //integrator->update_temperature();
 
-    // printf("Resulting vector is %f %f\n",Res(0), Res(1));
-    printf("Outer product is \t%f\n \t\t\t%f\n",res(0), res(1));
+            // print the pressure
+            // double instant_pressure = integrator->npt_get_instant_pressure();
+            // double pressure = integrator->npt_get_pressure();
+            // print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+            //                control_number + (control_number + 1) * world_rank);
 
-    // for(unsigned i=0; i<number_of_steps; i++)
-    // {
-    //     // integrate forward one step
-    //     // double before = 0.0;
-    //     // before = omp_get_wtime();
-    //
-    //     integrator->integrate(cluster);
-    //
-    //     // double after = omp_get_wtime();
-    //     // // fprintf(output, "%f\n", after-before);
-    //     // printf("%f\n", after-before);
-    //
-    //     if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
-    //     {
-    //         double time_stamp = TIME * double(i) / double(number_of_steps);
-    //
-    //         // update the pressure and temperature
-    //         integrator->npt_update_pressure_temperature();
-    //         // integrator->update_temperature();
-    //
-    //         // print the pressure
-    //         double instant_pressure = integrator->npt_get_instant_pressure();
-    //         double pressure = integrator->npt_get_pressure();
-    //         print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-    //                        control_number + (control_number + 1) * world_rank);
-    //
-    //         // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
-    //
-    //         // print temperature
-    //         double instant_temperature = integrator->npt_get_instant_temperature();
-    //         double temperature = integrator->npt_get_temperature();
-    //         print_temperature(instant_temperature, temperature, time_stamp,
-    //                           "temperature", control_number + (control_number + 1) * world_rank);
-    //     }
-    // }
+            // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
+
+            // print temperature
+            // double instant_temperature = integrator->npt_get_instant_temperature();
+            // double temperature = integrator->npt_get_temperature();
+            // print_temperature(instant_temperature, temperature, time_stamp,
+            //                   "temperature", control_number + (control_number + 1) * world_rank);
+        }
+    }
 
     // Finalize the MPI environment.
     MPI_Finalize();

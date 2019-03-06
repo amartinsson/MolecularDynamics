@@ -22,7 +22,16 @@ public:
     explicit Matrix(const int& n, const int& m);
     explicit Matrix(vector<double> m);
     //explicit Matrix(const Matrix& m);
-    ~Matrix(){};
+    ~Matrix()
+    {
+        // for(unsigned i=0; i < M.size(); i++)
+        // {
+        //     delete &M[i];
+        // }
+        // M.clear();
+        // delete &dimx;
+        // delete &dimy;
+    };
 
     // returns the size of the matrix
     vector<int> size() const;
@@ -61,6 +70,7 @@ public:
     // zero matrix
     Matrix sqrt() const;
     void zero();
+    void diag(const double& value);
 
 protected:
     vector<double> M;
@@ -116,7 +126,8 @@ public:
     Vector operator* (const Matrix& Mat);
 
     // transpose vector
-    Vector& T();
+    Vector T() const;
+    Vector& _T();
 
     // zero entire vector
     void zero();

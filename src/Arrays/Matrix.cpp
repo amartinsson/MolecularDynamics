@@ -151,6 +151,14 @@ Matrix Matrix::sqrt() const
     return Mret;
 }
 
+
+// set the diagonal of matrix
+void Matrix::diag(const double& value)
+{
+    for(unsigned i=0; i<dimx; i++)
+        this->get(i,i) = value;
+}
+
 // Matrix Matrix multiplication
 Matrix Matrix::operator* (const Matrix& m)
 {
