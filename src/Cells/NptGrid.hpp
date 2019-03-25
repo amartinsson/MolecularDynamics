@@ -64,7 +64,14 @@ public:
     // particles
     void update_particle_forces(System* system_pt, Molecule* molecule_pt);
 
+    // Stores the virial function
     Matrix virial;
+
+    // gradient matrices for updating box momentum
+    void update_gradient_matrices();
+    Matrix nablaSa;
+    Matrix nablaSb;
+    Matrix nablaSd;
 
 private:
     // tracking for average observables

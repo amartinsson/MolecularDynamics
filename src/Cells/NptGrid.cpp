@@ -9,7 +9,7 @@ NptGrid::NptGrid(const double& a_x, const double& b_x, const double& b_y,
                  const double& cut_off, Molecule* molecule_pt,
                  const double& mass, const double& target_press) :
                  Grid(a_x, b_x, b_y, cut_off, molecule_pt), momentum_sq(3),
-                 virial(2,2)
+                 virial(2,2), nablaSa(2,2), nablaSb(2,2), nablaSd(2,2)
 {
     // set up tracking object to track the average
     // of the temperature
@@ -46,17 +46,6 @@ NptGrid::~NptGrid()
     delete &box_grad_zero;
     delete &box_grad_one;
     delete &box_grad_two;
-
-    // remove all the box force variables
-    for(unsigned i=0; i<momentum_sq.size(); i++)
-    {
-    //    delete &box_grad_potential[i];
-        //delete &momentum_sq[i];
-    }
-
-    // clear all the vectors
-    //box_grad_potential.clear();
-    //momentum_sq.clear();
 }
 
 // computes the force in and respects the cut off radius. This is
@@ -106,9 +95,12 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       // force but we need the gradient!
       //
       // These are the virials
-      box_grad_zero += r_tilde(0) * f_ij[0];
-      box_grad_one  += r_tilde(1) * f_ij[0];
-      box_grad_two  += r_tilde(1) * f_ij[1];
+      // box_grad_zero += r_tilde(0) * f_ij[0];
+      // box_grad_one  += r_tilde(1) * f_ij[0];
+      // box_grad_two  += r_tilde(1) * f_ij[1];
+      box_grad_zero -= r_tilde(0) * f_ij[0];
+      box_grad_one  -= r_tilde(1) * f_ij[0];
+      box_grad_two  -= r_tilde(1) * f_ij[1];
   }
 }
 
@@ -147,11 +139,14 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
   // function which updates the pressure
   void NptGrid::update_pressure()
   {
-    // calculate the macroscopic pressure
-    double pressure = calculate_pressure();
+      // updatae the accumulated momentum
+      update_accumulted_momentum();
 
-    // add to the observables
-    Pressure_pt->observe(pressure);
+      // calculate the macroscopic pressure
+      double pressure = calculate_pressure();
+
+      // add to the observables
+      Pressure_pt->observe(pressure);
   }
 
   // enforces the relaative positoon of the particles
@@ -264,26 +259,50 @@ Vector NptGrid::get_box_momentum(const Particle& particle)
     update_pressure();
   }
 
+  // this function update the gradient matrices that are used for finding the
+  // momentum of the box
+  void NptGrid::update_gradient_matrices()
+  {
+      // update all three matrices
+      nablaSa(0,0) = -1.0 / Grid::S(0,0);
+
+      nablaSb(0,1) = - 0.5 / Grid::S(0,0);
+      nablaSb(1,0) = - 0.5 / Grid::S(0,0);
+
+      nablaSd(0,1) = 0.5 * Grid::S(0,1) / (Grid::S(0,0) * Grid::S(1,1));
+      nablaSd(1,0) = 0.5 * Grid::S(0,1) / (Grid::S(0,0) * Grid::S(1,1));
+      nablaSd(1,1) = - 1.0 / Grid::S(1,1);
+  }
 
   // function which calculates the pressure
   double NptGrid::calculate_pressure()
   {
-      // dereference the box
-      // double lx1 = *L_pt(0);
-      // double ly1 = *L_pt(1);
-      // double ly2 = *L_pt(2);
-      double lx1 = Sp(0, 0);
-      double ly1 = Sp(0, 1);
-      double ly2 = Sp(1, 1);
+      // // dereference the box
+      // double lx1 = S(0, 0);
+      // double ly1 = S(0, 1);
+      // double ly2 = S(1, 1);
+      //
+      // double pressure = 1.0/(lx1*ly2) * momentum_sq(0)
+      //                   - 1.0/(ly2) * virial(0,0)
+      //                   + 1.0/(lx1*ly2) * momentum_sq(2)
+      //                   - ly1/(ly2*lx1*lx1) * momentum_sq(1)
+      //                   - 1.0/(lx1) * virial(1,1);
+      //
+      // // return the calulcated pressure
+      // return 0.5 * pressure;
 
-      double pressure = 1.0/(lx1*ly2) * momentum_sq(0)
-                        - 1.0/(ly2) * virial(0,0)
-                        + 1.0/(lx1*ly2) * momentum_sq(2)
-                        - ly1/(ly2*lx1*lx1) * momentum_sq(1)
-                        - 1.0/(lx1) * virial(1,1);
+      // double pressure = -1.0/S(1,1) * (momentum_sq(0) + virial(0,0) + target_pressure * S(1,1))
+      //                    -1.0/S(0,0) * (momentum_sq(1) + virial(1,1) + target_pressure * S(0,0));
+      // return pressure;
+    double pressure = -0.5/S(1,1) * (momentum_sq(0) + virial(0,0))
+                      -0.5/S(0,0) * (momentum_sq(1) + virial(1,1));
+    if(pressure > 10.0 * target_pressure)
+    {
+        printf("\n ERROR: Target pressure is: %1.3f breaking!\n\n", pressure);
+        exit(-1);
+    }
 
-      // return the calulcated pressure
-      return 0.5 * pressure;
+    return pressure;
   }
 
 // enforce the constraint that the relative distances
@@ -318,7 +337,7 @@ void NptGrid::enforce_relative_particle(const Matrix& Sold)
                  particle_k = cell_conductor->particle;
 
                  qnew = qScale * (*particle_k).q;
-                 pnew = pScale * (*particle_k).q;
+                 pnew = pScale * (*particle_k).p;
 
                  (*particle_k).q = qnew;
                  (*particle_k).p = pnew;
@@ -338,7 +357,7 @@ void NptGrid::update_accumulted_momentum()
 
     // reference pointers
     ListNode* cell_conductor = NULL;
-    Particle particle;
+    Particle* particle;
 
     // loop over all the particles
 #pragma omp simd collapse(2)
@@ -352,11 +371,25 @@ void NptGrid::update_accumulted_momentum()
             while(cell_conductor != NULL)
             {
                 // dereference the partilce
-                particle = *cell_conductor->particle;
+                particle = cell_conductor->particle;
 
-                printf("ERROR: NptGrid::update_accumulated_momentum() need to implement correctly");
-                exit(-1);
-                // momentum_sq += (particle.p.T() * particle.m).dot(particle.p);
+                Matrix Ka = this->nablaSa / particle->m(0,0);
+                Matrix Kd = this->nablaSd;
+
+                // divide by the correct mass
+                Kd(0,1) /= particle->m(0,0);
+                Kd(1,0) /= particle->m(0,0);
+                Kd(1,1) /= particle->m(1,1);
+
+                momentum_sq(0) += (particle->p.T() * Ka).dot(particle->p);
+                momentum_sq(1) += (particle->p.T() * Kd).dot(particle->p);
+
+                // momentum_sq(0) += particle->p(0) * particle->p(0)
+                //                 / particle->m(0,0);
+                // momentum_sq(1) += particle->p(0) * particle->p(1)
+                //                 / particle->m(0,0);
+                // momentum_sq(2) += particle->p(1) * particle->p(1)
+                //                 / particle->m(1,1);
 
                 // increment the conductor
                 cell_conductor = cell_conductor->next;
@@ -400,7 +433,7 @@ void NptGrid::update_accumulted_momentum()
     box_grad_two = 0.0;
 
     // loop over all the boxes to calculate the forces
-#pragma omp parallel for \
+#pragma omp parallel for default(shared)\
         reduction(+:box_grad_zero, box_grad_one, box_grad_two) \
         schedule(dynamic) collapse(3) \
         firstprivate(number_of_cells_x, number_of_neighbours, system_pt)

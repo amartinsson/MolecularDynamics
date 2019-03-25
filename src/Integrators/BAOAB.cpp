@@ -130,6 +130,13 @@ void BAOAB::npt_integration(Molecule* molecule_pt)
 
         // integrate forward
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+
+        // for(unsigned i=0; i<molecule_pt->nparticle(); i++)
+        // {
+        //     printf("\tParticle %d q %f %f\n",i,molecule_pt->particle(0).q(0),molecule_pt->particle(0).q(1) );
+        //     printf("\tParticle %d p %f %f\n",i,molecule_pt->particle(0).p(0),molecule_pt->particle(0).p(1) );
+        //     printf("\tParticle %d f %f %f\n",i,molecule_pt->particle(0).f(0),molecule_pt->particle(0).f(1) );
+        // }
     }
     else if(Npt_version == 2)
     {

@@ -28,6 +28,17 @@ Matrix::Matrix(vector<double> m)
     dimy = M.size() / 2;
 }
 
+Matrix::Matrix(const int& n, const int& m, NormalGenerator& norm) :
+        dimx(n), dimy(m)
+{
+    M.resize(dimx * dimy, 0.0);
+
+    //#pragma omp simd collapse(2)
+    for(unsigned i=0; i<dimx; i++)
+        for(unsigned j=i; j<dimy; j++)
+            this->get(i,j) = norm();
+}
+
 // Matrix::Matrix(const Matrix& m)
 // {
 //     dimx = m.size()[0];
@@ -74,7 +85,7 @@ void Matrix::operator= (const Matrix& m)
 {
     if(m.size()[0] != dimx or m.size()[1] != dimy)
     {
-        printf("Error cannot set matrices equal!\n");
+        printf("Error: Dimension do not agree for operator=!\n");
         exit(-1);
     }
 
@@ -89,7 +100,7 @@ void Matrix::operator+= (const Matrix& m)
 {
     if(m.size()[0] != dimx or m.size()[1] != dimy)
     {
-        printf("Error cannot set matrices equal!\n");
+        printf("Error: Dimension do not agree for operator+=!\n");
         exit(-1);
     }
 
@@ -104,7 +115,7 @@ void Matrix::operator-= (const Matrix& m)
 {
     if(m.size()[0] != dimx or m.size()[1] != dimy)
     {
-        printf("Error cannot set matrices equal!\n");
+        printf("Error: Dimension do not agree for operator-=!\n");
         exit(-1);
     }
 
@@ -119,7 +130,7 @@ Matrix Matrix::operator- (const Matrix& m)
 {
     if(m.size()[0] != dimx or m.size()[1] != dimy)
     {
-        printf("Error cannot set matrices equal!\n");
+        printf("Error: Dimension do not agree for operator-!\n");
         exit(-1);
     }
 
@@ -132,6 +143,26 @@ Matrix Matrix::operator- (const Matrix& m)
 
     return Mret;
 }
+
+// adding two matrices
+Matrix Matrix::operator+ (const Matrix& m)
+{
+    if(m.size()[0] != dimx or m.size()[1] != dimy)
+    {
+        printf("Error cannot set matrices equal!\n");
+        exit(-1);
+    }
+
+    Matrix Mret(dimx, dimy);
+
+#pragma omp simd collapse(2)
+    for(unsigned i=0; i<dimx; i++)
+        for(unsigned j=0; j<dimy; j++)
+            Mret(i,j) = this->get(i,j) + m(i, j);
+
+    return Mret;
+}
+
 
 // subtracting two matrices
 Matrix Matrix::sqrt() const
@@ -147,6 +178,62 @@ Matrix Matrix::sqrt() const
 #pragma omp simd collapse(1)
     for(unsigned i=0; i<dimx; i++)
             Mret(i,i) = std::sqrt(this->get(i,i));
+
+    return Mret;
+}
+
+// Symmetrix matrix square root
+Matrix Matrix::symsqrt() const
+{
+    // assumes that the matrix is of the form
+    //   a b
+    //   b c
+    ////////////
+
+    if(dimy != dimx)
+    {
+        printf("Error cannot calculate sym sqrt of non square Matrix!\n");
+        exit(-1);
+    }
+
+    if(dimx != 2 or dimy != 2)
+    {
+        printf("Error: sym sqrt only works for 2x2 matrix!\n");
+        exit(-1);
+    }
+
+    // cache the values
+    double a = this->get(0,0);
+    double b = this->get(0,1);
+    double c = this->get(1,1);
+
+    //  make the two matrices
+    Matrix D(dimx, dimy);
+    Matrix V(dimx, dimy);
+    Matrix Mret(dimx, dimy);
+
+    if(b * b > 0.0)
+    {
+        // calculate the root
+        double root = std::sqrt( pow((a - c), 2.0) + 4.0 * pow(b, 2.0));
+
+        // assign the diagonal values of D
+        D(0,0) = std::sqrt(0.5 * (a + c - root));
+        D(1,1) = std::sqrt(0.5 * (a + c + root));
+
+        // assign the values of V
+        V(0,0) = 0.5 * (a - c - root) / b;
+        V(0,1) = 0.5 * (a - c + root) / b;
+        V(1,0) = 1.0;
+        V(1,1) = 1.0;
+
+        Mret = V * D * V.inv();
+    }
+    else
+    {
+        Mret(0,0) = std::sqrt(a);
+        Mret(1,1) = std::sqrt(c);
+    }
 
     return Mret;
 }
@@ -239,7 +326,19 @@ Matrix Matrix::operator* (const double& value)
 #pragma omp simd collapse(2)
     for(unsigned i=0; i<dimx; i++)
         for(unsigned j=0; j<dimy; j++)
-            Mret(j, i) = value * this->get(i, j);
+            Mret(i, j) = value * this->get(i, j);
+
+    return Mret;
+}
+
+Matrix Matrix::operator/ (const double& value)
+{
+    Matrix Mret(dimx, dimy);
+
+#pragma omp simd collapse(2)
+    for(unsigned i=0; i<dimx; i++)
+        for(unsigned j=0; j<dimy; j++)
+            Mret(i, j) = this->get(i, j) / value;
 
     return Mret;
 }
@@ -260,7 +359,7 @@ Matrix Matrix::T() const
 
 double Matrix::det() const
 {
-    if(dimx > 2 or dimy > 2)
+    if(dimx != 2 or dimy != 2)
     {
         printf("Error: determinatn only works for 2x2 matrix!\n");
         exit(-1);
@@ -278,7 +377,7 @@ double Matrix::det() const
 // calculate the invers of a 2x2 matrix
 Matrix Matrix::inv() const
 {
-    if(dimx > 2 or dimy > 2)
+    if(dimx != 2 or dimy != 2)
     {
         printf("Error: Inverse only works for 2x2 matrix!\n");
         exit(-1);

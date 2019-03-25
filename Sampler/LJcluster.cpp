@@ -300,8 +300,8 @@ int main(int argc, char* argv[])
     unsigned number_of_particles = 25*25;
     double temp = 0.2;
 
-    double sigma = 0.5;
-    double epsilon = 0.01;
+    double sigma = 1.0;
+    double epsilon = 1.0;
 
     double a_x = 30.0;
     double b_x = 0.0;
@@ -469,10 +469,10 @@ int main(int argc, char* argv[])
                                      lennard_jones, SEED);
 
     // set to evaluate with grid
-    integrator->integrate_with_grid(a_x, b_x, b_y, cut_off, cluster);
-    // integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
-    //                                     box_mass, target_pressure,
-    //                                     npt_langevin_friction);
+    // integrator->integrate_with_grid(a_x, b_x, b_y, cut_off, cluster);
+    integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
+                                        box_mass, target_pressure,
+                                        npt_langevin_friction);
 
     // set the integrator scheme
     //integrator->set_npt_integrator_version(npt_scheme_nr);
@@ -486,9 +486,13 @@ int main(int argc, char* argv[])
     // Matrix P(2,2);
     // P(0,0) = 1.0;
     // P(0,1) = 2.0;
-    // P(1,0) = 3.0;
+    // P(1,0) = 2.0;
     // P(1,1) = 4.0;
     //
+    // printf("P\n%f %f\n %f %f\n\n", P(0,0), P(0,1), P(1,0), P(1,1));
+    //
+    // P.symsqrt();
+
     // Vector V(2);
     // V(0) = 5.0;
     // V(1) = 6.0;
@@ -505,33 +509,34 @@ int main(int argc, char* argv[])
         // double before = 0.0;
         // before = omp_get_wtime();
         integrator->integrate(cluster);
-        
+
         // double after = omp_get_wtime();
-        // // fprintf(output, "%f\n", after-before);
+        // fprintf(output, "%f\n", after-before);
         // printf("%f\n", after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // print positions
-             print_positions(cluster, time_stamp);
+            // print_positions(cluster, time_stamp);
             // update the pressure and temperature
-            // integrator->npt_update_pressure_temperature();
-            //integrator->update_temperature();
+            integrator->npt_update_pressure_temperature();
+            // integrator->update_temperature();
 
             // print the pressure
-            // double instant_pressure = integrator->npt_get_instant_pressure();
-            // double pressure = integrator->npt_get_pressure();
-            // print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-            //                control_number + (control_number + 1) * world_rank);
+            double instant_pressure = integrator->npt_get_instant_pressure();
+            double pressure = integrator->npt_get_pressure();
+            print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+                           control_number + (control_number + 1) * world_rank);
 
-            // printf("Pressure on step %.0d is %1.3f\n", i, pressure);
+            // printf("Pressure %.0d\t %1.5f\n", i, pressure);
 
-            // print temperature
-            // double instant_temperature = integrator->npt_get_instant_temperature();
-            // double temperature = integrator->npt_get_temperature();
-            // print_temperature(instant_temperature, temperature, time_stamp,
-            //                   "temperature", control_number + (control_number + 1) * world_rank);
+            //print temperature
+            double instant_temperature = integrator->npt_get_instant_temperature();
+            double temperature = integrator->npt_get_temperature();
+            print_temperature(instant_temperature, temperature, time_stamp,
+                              "temperature", control_number + (control_number + 1) * world_rank);
+            // printf("Temperature \t %1.5f\n", temperature);
         }
     }
 

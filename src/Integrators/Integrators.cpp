@@ -70,26 +70,31 @@ void Langevin::A(Particle& particle, const double& h)
 void Langevin::A_1_NPT(const double& h)
 {
     // make references
-    double mass = NptGrid_pt->get_mass();
     Matrix Sold = NptGrid_pt->S;
 
-    NptGrid_pt->S += NptGrid_pt->Sp * (h / mass);
+    NptGrid_pt->S += NptGrid_pt->Sp * (h / Npt_mass);
 
     // need to rescale the particles such that they are
     // in the same position with repsect to the cell
     NptGrid_pt->enforce_constant_relative_particle_pos(Sold);
+
+    // update the gradient matrices
+    NptGrid_pt->update_gradient_matrices();
 }
 
 // Langevin based position step, constant pressure
 void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 {
     // particle integration
-// #pragma omp simd
-    for (auto& particle : molecule_pt->Particles)
-        A_NPT_2_part(*particle, h);
+    #pragma omp simd
+    for(unsigned i=0; i<molecule_pt->nparticle(); i++)
+    {
+        // position dependent part
+        A_NPT_2_part(molecule_pt->particle(i), h);
 
-    // box integration
-    A_NPT_2_box(h);
+        // particle add contribution to box
+        A_NPT_2_box(molecule_pt->particle(i), h);
+    }
 }
 
 // Langevin based position step, constant pressure, partilce
@@ -97,41 +102,29 @@ void Langevin::A_NPT_2_part(Particle& particle, const double& h)
 {
     // update particle position
     particle.q += NptGrid_pt->S * NptGrid_pt->S.inv().T() * particle.m.inv()
-                * particle.p;
+                * particle.p * h;
 
     if(particle.rigid_body())
         A_rot(particle, h);
 }
 
 // Langevin based position step, constant pressure, box
-void Langevin::A_NPT_2_box(const double& h)
+void Langevin::A_NPT_2_box(Particle& particle, const double& h)
 {
+    // copy matrices
+    Matrix Ka = NptGrid_pt->nablaSa / particle.m(0,0);
+    Matrix Kb = NptGrid_pt->nablaSb / particle.m(0,0);
+    Matrix Kd = NptGrid_pt->nablaSd;
 
-    // // dereference the box size
-    // double lx1 = *NptGrid_pt->L_pt(0);
-    // double ly1 = *NptGrid_pt->L_pt(1);
-    // double ly2 = *NptGrid_pt->L_pt(2);
-    //
-    // // update the accumulated momentum in the box
-    // NptGrid_pt->update_accumulted_momentum();
-    // double acc_mom = 0.0;
-    // double* Lp = NULL;
-    // unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
-    //
-    // // loop over all the box coordinates
-    // for(unsigned i=0; i<number_of_grid_coordinates;i++)
-    // {
-    //     acc_mom = NptGrid_pt->get_accumulated_momentum(i);
-    //     Lp = NptGrid_pt->Lp_pt(i);
-    //
-    //     if(i != 2)
-    //         (*Lp) += h * (acc_mom / lx1);
-    //     else
-    //     {
-    //         double acc_mom_xy = NptGrid_pt->get_accumulated_momentum(1);
-    //         (*Lp) += h * (acc_mom / ly2 - ly1/(ly2*lx1) * acc_mom_xy);
-    //     }
-    // }
+    // divide by the correct mass
+    Kd(0,1) /= particle.m(0,0);
+    Kd(1,0) /= particle.m(0,0);
+    Kd(1,1) /= particle.m(1,1);
+
+    // update the box momentum correctly
+    NptGrid_pt->Sp(0,0) -= h * (particle.p.T() * Ka).dot(particle.p);
+    NptGrid_pt->Sp(0,1) -= h * (particle.p.T() * Kb).dot(particle.p);
+    NptGrid_pt->Sp(1,1) -= h * (particle.p.T() * Kd).dot(particle.p);
 }
 
 // Langevin Momentum based update
@@ -151,7 +144,7 @@ void Langevin::B_NPT(Molecule* molecule_pt, const double& h)
     unsigned number_of_particles = molecule_pt->nparticle();
 
     // particle integration
-#pragma omp simd
+    #pragma omp simd
     for(unsigned i=0; i<number_of_particles; i++)
         B_NPT_part(molecule_pt->particle(i), h);
 
@@ -174,10 +167,10 @@ void Langevin::B_NPT_box(const double& h)
     Matrix Sd = NptGrid_pt->S;
     double det = NptGrid_pt->S.det();
 
-    Sd(0,1) = 0.0;
     Sd = Sd.inv();
+    Sd(0,1) = 0.0;
 
-    NptGrid_pt->Sp -= NptGrid_pt->virial - Sd * (det * Target_pressure / h);
+    NptGrid_pt->Sp -= (NptGrid_pt->virial + Sd * det * Target_pressure) * h;
 }
 
 // update the pressure and temperature reading
@@ -265,33 +258,44 @@ void Langevin::O_NPT(Molecule* molecule_pt)
     // helper dereference
     unsigned number_of_particles = molecule_pt->nparticle();
 
+    // WARNING
+    // Warning this is bad and assumes that all the particles
+    // have the same mass!!!!
+    // WARNING
+
+    // varying mass
+    Matrix MassMatrix = NptGrid_pt->S.inv()
+                * (NptGrid_pt->S * molecule_pt->particle(0).m
+                    * NptGrid_pt->S.T()).symsqrt();
+
     // particle integration
-    #pragma omp parallel for simd
+    #pragma omp simd
     for(unsigned i=0; i<number_of_particles; i++)
-        O(molecule_pt->particle(i));
+        O_NPT_part(molecule_pt->particle(i), MassMatrix);
 
     // box integration
     O_NPT_box();
 }
 
+void Langevin::O_NPT_part(Particle& particle, Matrix& MassMatrix)
+{
+    // generate random numbers
+    Vector N(particle.p.size(), normal_gen);
+
+    // find new momentum
+    particle.p = particle.p * OstepC + MassMatrix * N * OstepZ;
+
+    if(particle.rigid_body())
+        O_rot(particle);
+}
+
 void Langevin::O_NPT_box()
 {
-    // NptGrid_pt->Sp = NptGrid_pt->Sp * OstepCbox
-    //
-    // // dereference the box coordinates
-    // double* Lp;
-    // double box_mass = NptGrid_pt->get_mass();
-    // unsigned number_of_grid_coordinates = NptGrid_pt->get_ncoord();
-    //
-    // // loop over the box coordinates
-    // for(unsigned i=0; i<number_of_grid_coordinates; i++)
-    // {
-    //     // dereference
-    //     Lp = NptGrid_pt->Lp_pt(i);
-    //
-    //     // update
-    //     *Lp = OstepCbox * (*Lp) + OstepZbox * sqrt(box_mass) * normal_gen();
-    // }
+    // make an upper triangular random matrix
+    Matrix N(2, 2, normal_gen);
+
+    NptGrid_pt->Sp = NptGrid_pt->Sp * OstepCbox
+                    + N * OstepZbox * sqrt(Npt_mass);
 }
 
 // Integrator function

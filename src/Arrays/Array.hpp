@@ -21,6 +21,8 @@ public:
     // make matrix with vector
     explicit Matrix(const int& n, const int& m);
     explicit Matrix(vector<double> m);
+    // initialises an upper triangular matrix of random numbers
+    explicit Matrix(const int& n, const int& m, NormalGenerator& gen);
     //explicit Matrix(const Matrix& m);
     ~Matrix()
     {
@@ -40,6 +42,7 @@ public:
     void operator= (const Matrix& m);
     void operator*= (const double& value);
     Matrix operator* (const double& value);
+    Matrix operator/ (const double& value);
 
     // operators for getting elements
     double operator() (const int& i, const int& j) const;
@@ -62,6 +65,7 @@ public:
     void operator-= (const Matrix& m);
 
     // subtracting Matrix
+    Matrix operator+ (const Matrix& m);
     Matrix operator- (const Matrix& m);
 
     // vector operations
@@ -69,11 +73,15 @@ public:
 
     // zero matrix
     Matrix sqrt() const;
+    // Symmetrix matrix square root
+    Matrix symsqrt() const;
+
     void zero();
     void diag(const double& value);
 
 protected:
     vector<double> M;
+    vector<double> Minv;
     int dimx;
     int dimy;
 
