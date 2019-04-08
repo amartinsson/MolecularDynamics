@@ -39,6 +39,30 @@ int Vector::size() const
     return size;
 }
 
+// return the l2 length of vector
+double Vector::l2() const
+{
+    double length = 0.0;
+
+    #pragma omp simd collapse(1)
+        for(unsigned i=0; i<dimx; i++)
+            length += vec[i] * vec[i];
+
+    return std::sqrt(length);
+}
+
+// return the l2 square length of vector
+double Vector::l22() const
+{
+    double length = 0.0;
+
+    #pragma omp simd collapse(1)
+        for(unsigned i=0; i<dimx; i++)
+            length += vec[i] * vec[i];
+
+    return length;
+}
+
 // getting vector
 double Vector::operator() (const int& i) const
 {
@@ -219,7 +243,7 @@ void Vector::operator*= (const double& value)
 }
 
 // set vectors to be equal
-Vector Vector::operator* (const double& value)
+Vector Vector::operator* (const double& value) const
 {
     Vector retVec(dimx);
 

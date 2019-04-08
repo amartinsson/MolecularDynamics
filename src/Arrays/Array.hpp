@@ -108,6 +108,10 @@ public:
     // return the size
     int size() const;
 
+    // get the l2 length of vector
+    double l2() const;
+    double l22() const;
+
     // setting two matrices equal to eachother
     //Vector* operator*();
     // void operator= (const Vector& other) {*this = other;}
@@ -116,7 +120,7 @@ public:
     void operator-= (const Vector& other);
 
     void operator*= (const double& value);
-    Vector operator* (const double& value);
+    Vector operator* (const double& value) const;
 
     // addition and subtraction
     Vector operator+ (const Vector& other) const;

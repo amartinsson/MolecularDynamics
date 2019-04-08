@@ -23,63 +23,51 @@ void LennardJones::compute_force(Molecule* molecule_pt)
     exit(-1);
 }
 
-// compute the pair force
-vector<double> LennardJones::compute_pair_force(Molecule* molecule_pt,
-                                                Particle* particle_i,
-                                                Particle* particle_j,
-                                                const double& r,
-                                                const double& r_x,
-                                                const double& r_y)
+Vector LennardJones::compute_force(Molecule* molecule_pt,
+                                   Particle* particle_i,
+                                   Particle* particle_j,
+                                   const double& r,
+                                   const Vector& dr)
 {
-    // tracker of the pair force
-     vector<double> forces(2, 0.0);
+    double dphidr = get_force_scalar(r);
 
-     // ------------ LENNARD JONES FORCE
-     //
-     //    F_x = - 24 * eps * (2 * sigma^12 * r^-13 - sigma^6 r^-7) * x/r;
-     //    F_y = - 24 * eps * (2 * sigma^12 * r^-13 - sigma^6 r^-7) * y/r;
-     //
+    Vector F = dr * (-dphidr / r);
 
-     double dphidr = -24.* Epsilon * pow(Sigma, 6.0) *
-                    (2 * pow(Sigma, 6.0) * pow(r, -14.0) - pow(r, -8.0)) * r;
+    #pragma omp atomic
+    particle_i->f(0) += F(0);
 
-   // #pragma omp atomic
-   //   *PartI->f_pt(0) += 2.0 * (dphidr * r_x / r);
-   //
-   // #pragma omp atomic
-   //   *PartI->f_pt(1) += 2.0 * (dphidr * r_y / r);
-   //
-   // #pragma omp atomic
-   //   *PartJ->f_pt(0) -= 2.0 * (dphidr * r_x / r);
-   //
-   // #pragma omp atomic
-   //   *PartJ->f_pt(1) -= 2.0 * (dphidr * r_y / r);
+    #pragma omp atomic
+    particle_i->f(1) += F(1);
 
-   #pragma omp atomic
-     particle_i->f(0) += dphidr * r_x / r;
+    if(molecule_pt->dim() > 2)
+        #pragma omp atomic
+        particle_i->f(2) += F(2);
 
-   #pragma omp atomic
-     particle_i->f(1) += dphidr * r_y / r;
+    #pragma omp atomic
+    particle_i->f(0) -= F(0);
 
-   #pragma omp atomic
-     particle_j->f(0) -= dphidr * r_x / r;
+    #pragma omp atomic
+    particle_i->f(1) -= F(1);
 
-   #pragma omp atomic
-     particle_j->f(1) -= dphidr * r_y / r;
+    if(molecule_pt->dim() > 2)
+        #pragma omp atomic
+        particle_i->f(2) -= F(2);
 
-     // add and return the pair force
-     forces[0] = dphidr * r_x / r;
-     forces[1] = dphidr * r_y / r;
+    // add to the potential
+    #pragma omp atomic
+    molecule_pt->potential() += LennardJones::get_potential(r);
 
-     // add to the potential
-   #pragma omp atomic
-     molecule_pt->potential() += LennardJones::get_potential(r);
-
-     return forces;
+    return F;
 }
 
 // function for the Lennard Jones potential
 double LennardJones::get_potential(const double& r)
 {
-    return 4 * Epsilon * (pow(Sigma / r, 12) - pow(Sigma / r, 6));
+    return 4.0 * Epsilon * (pow(Sigma / r, 12.0) - pow(Sigma / r, 6.0));
+}
+
+// function whcih returns the force scalar
+double LennardJones::get_force_scalar(const double& r)
+{
+    return 24.0 * Epsilon * ((Sigma / r, 6.0) - 2.0 * pow(Sigma / r, 12.0)) / r;
 }

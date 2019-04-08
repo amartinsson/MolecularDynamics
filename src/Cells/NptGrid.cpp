@@ -55,52 +55,31 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
                             Particle* current_particle,
                             Particle* neighbour_particle)
 {
-    // int test = 0;
-    // #pragma omp target data map(to:test)
-    // {
-    //     printf("This is GPU\n");
-    //     while(test != 2)
-    //     {
-    //         if(test == 0)
-    //             test += 1;
-    //         else
-    //             test -= 1;
-    //     }
-    // }
-  // vector for holding distance
-  std::vector<double> distance(3, 0.0);
+    // calculate the square of the distance between particles
+    Vector r = get_separation(*current_particle, *neighbour_particle);
 
-  // calculate the square of the distance between particles
-  distance = get_distance_square(*current_particle, *neighbour_particle);
+    double rsq = r.l22();
 
-  // chcek the cutoff criterion
-  if(distance[0] < cut_off_sq)
-  {
-      // holder for the pair force
-      vector<double> f_ij(2, 0.0);
-      Vector r_tilde(2);
+    // chcek the cutoff criterion
+    if(rsq < cut_off_sq)
+    {
+        // Calculate force and potential
+        Vector f_ij = system_pt->compute_force(molecule_pt,
+                                               current_particle,
+                                               neighbour_particle,
+                                               std::sqrt(rsq), r);
 
-      // calculate the actual distance
-      distance[0] = sqrt(distance[0]);
+        // rescale the separation into box invariant coordinates
+        Vector r_tilde = get_box_min_image_sep(*current_particle,
+                                               *neighbour_particle);
 
-      // Calculate force and potential
-      f_ij = system_pt->compute_pair_force(molecule_pt, current_particle,
-                                           neighbour_particle, distance[0],
-                                           distance[1], distance[2]);
-
-      // rescale the separation into box invariant coordinates
-      r_tilde = get_box_min_image_sep(*current_particle, *neighbour_particle);
-
-      // these need to be minus additive as we are calculating the
-      // force but we need the gradient!
-      //
-      // These are the virials
-      // box_grad_zero += r_tilde(0) * f_ij[0];
-      // box_grad_one  += r_tilde(1) * f_ij[0];
-      // box_grad_two  += r_tilde(1) * f_ij[1];
-      box_grad_zero -= r_tilde(0) * f_ij[0];
-      box_grad_one  -= r_tilde(1) * f_ij[0];
-      box_grad_two  -= r_tilde(1) * f_ij[1];
+        // these need to be minus additive as we are calculating the
+        // force but we need the gradient!
+        //
+        // These are the virials
+        box_grad_zero -= r_tilde(0) * f_ij(0);
+        box_grad_one  -= r_tilde(1) * f_ij(0);
+        box_grad_two  -= r_tilde(1) * f_ij(1);
   }
 }
 

@@ -37,24 +37,25 @@ void MercedesBenz::compute_force(Molecule* molecule_pt)
 }
 
 // compute the pair force
-vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
-                                                Particle* particle_i,
-                                                Particle* particle_j,
-                                                const double& r,
-                                                const double& r_x,
-                                                const double& r_y)
+Vector MercedesBenz::compute_force(Molecule* molecule_pt,
+                                           Particle* particle_i,
+                                           Particle* particle_j,
+                                           const double& r,
+                                           const Vector& dr)
 {
       // holders for computing the forces
       // between the particle_icles
-      std::vector<double> lj_forces(2, 0.0);
-      std::vector<double> forces(2, 0.0);
+      // std::vector<double> lj_forces(2, 0.0);
+      Vector forces(2, 0.0);
+      double r_x = dr(0);
+      double r_y = dr(1);
 
       // Lennard Jones Force and Potential
-      lj_forces = LennardJones::compute_pair_force(molecule_pt, particle_i,
-                                                   particle_j, r, r_x, r_y);
+      Vector lj_forces = LennardJones::compute_force(molecule_pt, particle_i,
+                                                     particle_j, r, dr);
 
-      forces[0] += lj_forces[0];
-      forces[1] += lj_forces[1];
+      forces(0) += lj_forces(0);
+      forces(1) += lj_forces(1);
 
     #pragma omp atomic
       molecule_pt->potential() += LennardJones::get_potential(r);
@@ -457,8 +458,8 @@ vector<double> MercedesBenz::compute_pair_force(Molecule* molecule_pt,
         particle_j->f(1) += Epsilon_HB * dphiHB_dy;
 
     // add up the forces between particle_icles
-    forces[0] -= Epsilon_HB * dphiHB_dx;
-    forces[1] -= Epsilon_HB * dphiHB_dy;
+    forces(0) -= Epsilon_HB * dphiHB_dx;
+    forces(1) -= Epsilon_HB * dphiHB_dy;
 
 
        // add torque to overall torque

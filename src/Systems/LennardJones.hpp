@@ -4,7 +4,6 @@
 #include <math.h>
 
 #include "System.hpp"
-#include "Array.hpp"
 
 using namespace::std;
 
@@ -16,12 +15,12 @@ public:
     ~LennardJones();
     // compute the force
     void compute_force(Molecule* molecule_pt);
-    // compute the pair force
-    vector<double> compute_pair_force(Molecule* molecule_pt,
-                                      Particle* particle_i,
-                                      Particle* particle_j,
-                                      const double& r, const double& r_x,
-                                      const double& r_y);
+
+    Vector compute_force(Molecule* molecule_pt,
+                         Particle* particle_i,
+                         Particle* particle_j,
+                         const double& r,
+                         const Vector& dr);
 protected:
     // force parameters
     double Epsilon;
@@ -29,6 +28,8 @@ protected:
 
     // function for the Lennard Jones potential
     double get_potential(const double& r);
+    // function which returns the force scalar
+    double get_force_scalar(const double& r);
 };
 
 #endif

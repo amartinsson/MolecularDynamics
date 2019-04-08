@@ -3,6 +3,7 @@
 
 #include <omp.h>
 #include <fstream>
+#include <math.h>
 #include <sstream>
 
 #include "Generator.hpp"
@@ -47,7 +48,7 @@ public:
     // access for grid dimensions
     Matrix S;
     Matrix Sp;
-    
+
 protected:
     // holder of the cut cut cut_off
     double cut_off_sq;
@@ -71,8 +72,8 @@ protected:
     // update the position of all the particles on the grid
     void update_particles_on_grid();
     // returns the distance square between two particles
-    vector<double> get_distance_square(const Particle& current_particle,
-                                       const Particle& neighbour_particle);
+    Vector get_separation(const Particle& current_particle,
+                          const Particle& neighbour_particle);
     // calculates and returns the momentum temperature
     double calculate_momentum_temp();
     // calulate and return the minimum image convention

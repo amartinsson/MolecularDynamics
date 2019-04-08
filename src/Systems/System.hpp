@@ -11,7 +11,8 @@
 // #include<gsl/gsl_rng.h>
 // #include<gsl/gsl_randist.h>
 
-#include"Molecules.hpp"
+#include "Molecules.hpp"
+#include "Array.hpp"
 
 using namespace::std;
 
@@ -22,12 +23,11 @@ public:
 	// calculate the force
 	virtual void compute_force(Molecule* molecule_pt) = 0;
 	// calculate the pair force
-	virtual vector<double> compute_pair_force(Molecule* molecule_pt,
+	virtual Vector compute_force(Molecule* molecule_pt,
 										   		   Particle* particle_i,
 				                           		   Particle* particle_j,
 										   		   const double& r,
-												   const double& r_x,
-                                           		   const double& r_y) = 0;
+												   const Vector& dr) = 0;
 };
 
 // class Systems

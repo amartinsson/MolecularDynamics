@@ -196,24 +196,17 @@ std::vector<int> Grid::get_cell_coordinate(Particle& particle)
 }
 
 // returns the distance square between two particles
-vector<double> Grid::get_distance_square(const Particle& current_particle,
-                                         const Particle& neighbour_particle)
+Vector Grid::get_separation(const Particle& current_particle,
+                            const Particle& neighbour_particle)
 {
-    // make vector for all the values
-    std::vector<double> distances(3, 0.0);
-
+   // Calculate separation
     Vector r = neighbour_particle.q - current_particle.q;
 
     // update difference so that follows mini image
     calculate_min_image(r);
 
-    // set the values
-    distances[0] = r(0) * r(0) + r(1) * r(1);
-    distances[1] = r(0);
-    distances[2] = r(1);
-
-    // return the square of the distance
-    return distances;
+    // return the separation
+    return r;
 }
 
 // calulate and return the minimum image convention
@@ -602,23 +595,16 @@ void Grid::compute_force(System* system_pt, Molecule* molecule_pt,
                          Particle* current_particle,
                          Particle* neighbour_particle)
 {
-  // vector for holding distance
-  std::vector<double> distance(3, 0.0);
+    // calculate the square of the distance between particles
+    Vector r = get_separation(*current_particle, *neighbour_particle);
 
-  // calculate the square of the distance between particles
-  distance = get_distance_square(*current_particle, *neighbour_particle);
+    double rsq = r.l22();
 
-  // chcek the cutoff criterion
-  if(distance[0] < cut_off_sq)
-  {
-    // calculate the actual distance
-    distance[0] = sqrt(distance[0]);
-
-    // Calculate force and potential
-    system_pt->compute_pair_force(molecule_pt, current_particle,
-                                  neighbour_particle, distance[0], distance[1],
-                                  distance[2]);
-  }
+    // chcek the cutoff criterion
+    if(rsq < cut_off_sq)
+        // Calculate force and potential
+        system_pt->compute_force(molecule_pt, current_particle,
+                                 neighbour_particle, std::sqrt(rsq), r);
 }
 
 // fuction which updates the partice forces. It updates the forces of all

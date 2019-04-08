@@ -529,14 +529,14 @@ int main(int argc, char* argv[])
             print_pressure(instant_pressure, pressure, time_stamp, "pressure",
                            control_number + (control_number + 1) * world_rank);
 
-            // printf("Pressure %.0d\t %1.5f\n", i, pressure);
+            printf("Pressure %.0d\t %1.5f\n", i, pressure);
 
             //print temperature
             double instant_temperature = integrator->npt_get_instant_temperature();
             double temperature = integrator->npt_get_temperature();
             print_temperature(instant_temperature, temperature, time_stamp,
                               "temperature", control_number + (control_number + 1) * world_rank);
-            // printf("Temperature \t %1.5f\n", temperature);
+            printf("Temperature \t %1.5f\n", temperature);
         }
     }
 
