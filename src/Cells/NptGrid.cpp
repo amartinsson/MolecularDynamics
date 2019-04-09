@@ -5,10 +5,10 @@ using namespace::std;
 // ------------------------------------------------------------------------- //
 //                               NPT GRID CLASS
 // ------------------------------------------------------------------------- //
-NptGrid::NptGrid(const double& a_x, const double& b_x, const double& b_y,
-                 const double& cut_off, Molecule* molecule_pt,
-                 const double& mass, const double& target_press) :
-                 Grid(a_x, b_x, b_y, cut_off, molecule_pt), momentum_sq(3),
+NptGrid::NptGrid(const Matrix& Szero, const double& cut_off,
+                 Molecule* molecule_pt, const double& mass,
+                 const double& target_press) :
+                 Grid(Szero, cut_off, molecule_pt), momentum_sq(3),
                  virial(2,2), nablaSa(2,2), nablaSb(2,2), nablaSd(2,2)
 {
     // set up tracking object to track the average
@@ -155,20 +155,6 @@ Vector NptGrid::get_box_min_image_sep(const Particle& current_particle,
       return r;
   }
 
-  // This function returns the non dimensional coordinate w.r.t the box
-  // of a particle in the box.
-  Vector NptGrid::get_box_coordinate(const Particle& particle)
-  {
-    // make coordinate vector
-    // Vector q_tilde(2);
-
-    // rescale the coordiinate
-    Vector q_tilde = S.inv() * particle.q;
-
-    // return the coordinates
-    return q_tilde;
-  }
-
   // function which sets the position of a particle to the invariant
   // position given by q tilde
   void NptGrid::set_box_coordinate(const Vector& q_tilde, Particle& particle)
@@ -307,7 +293,7 @@ void NptGrid::enforce_relative_particle(const Matrix& Sold)
         for(int i=0; i<number_of_cells_x; i++)
         {
              // get the conductor for this cell
-             cell_conductor = get_cell(i, j)->get_particle_list_head();
+             cell_conductor = get_cell(i, j, 0)->get_particle_list_head();
 
              // loop over all the particles in this cell
              while(cell_conductor != NULL)
@@ -344,7 +330,7 @@ void NptGrid::update_accumulted_momentum()
         for(int i=0; i<number_of_cells_x; i++)
         {
             // get the conductor for this cell
-            cell_conductor = get_cell(i, j)->get_particle_list_head();
+            cell_conductor = get_cell(i, j, 0)->get_particle_list_head();
 
             // loop over all particles in the cell
             while(cell_conductor != NULL)
@@ -423,7 +409,7 @@ void NptGrid::update_accumulted_momentum()
          for(unsigned n=0; n<number_of_neighbours; n++)
          {
              // get the current cell
-             Cell* current_cell = get_cell(i,j);
+             Cell* current_cell = get_cell(i, j, 0);
 
              // get the current cells conductor
              ListNode* current_conductor

@@ -9,9 +9,6 @@ Cell::Cell()
 {
     // initalise the paricle list
     particle_list = new LinkedList;
-
-    // initialise the neightbour list
-    neighbour_list.resize(5);
 }
 
 // destructor
@@ -22,8 +19,8 @@ Cell::~Cell()
 
     // delete the pointers to all the neightbours
     for(unsigned i=0; i<neighbour_list.size(); i++)
-    delete neighbour_list[i];
-    neighbour_list.clear();
+        delete neighbour_list.at(i);
+    //neighbour_list.clear();
 }
 
 // set the neightbour at position i
@@ -37,14 +34,15 @@ void Cell::set_neighbour(const unsigned& i, Cell* neighbour)
     // |   | 3 | 4 |
     // +---+---+---+
 
-    // set the cell
-    neighbour_list[i] = neighbour;
+    // insert the cell
+    neighbour_list.insert(make_pair(i, neighbour));
 }
 
 // get the neighbour
 Cell* Cell::get_neighbour(const unsigned& i)
 {
-    return neighbour_list[i];
+    //return neighbour_list[i];
+    return neighbour_list.at(i);
 }
 
 // return this cells head for looping over all the particles in this Cell

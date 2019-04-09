@@ -22,8 +22,7 @@ class Grid
 {
 public:
     // constructor
-    Grid(const double& a_x, const double& b_x, const double& b_y,
-         const double& cut_off, Molecule* molecule_pt);
+    Grid(const Matrix& Szero, const double& cut_off, Molecule* molecule_pt);
     // destructor
     ~Grid();
     // function which calculates and returns the instant temperature
@@ -55,6 +54,7 @@ protected:
     // number of cells in each direction
     int number_of_cells_x;
     int number_of_cells_y;
+    int number_of_cells_z;
     // number of neightbours for each cell
     unsigned number_of_neighbours;
     // number of particles in the grid
@@ -63,7 +63,7 @@ protected:
     // clear the forces and the potential of the molecule
     void clear_particle_forces(Molecule* molecule_pt);
     // function which maps a matrix index to a cell
-    Cell* get_cell(const int& i, const int& j);
+    Cell* get_cell(const int& i, const int& j, const int& k);
     // check if the current grid satisfies the nessecary conditions, if it does
     // not then update the number of cells and return true boolean
     bool rebuild_grid_check();
@@ -78,6 +78,9 @@ protected:
     double calculate_momentum_temp();
     // calulate and return the minimum image convention
     void calculate_min_image(Vector& r);
+    // This function returns the non dimensional coordinate w.r.t the box
+    // of a particle in the box.
+    Vector get_box_coordinate(const Particle& particle);
 
 private:
     // controls the dimension of the grid
@@ -102,7 +105,8 @@ private:
     // calculates the translational shift of the box
     // as a function of y which is the position of a
     // particle
-    double get_translational_shift(const double& y);
+    double get_translational_shift_x(const Vector& r);
+    double get_translational_shift_y(const Vector& r);
     // initialise the particles from the molecule on the grid
     void initialise_particles_on_grid(Molecule* molecule_pt);
     // set the neighbours such that they comunicate with each other
@@ -132,7 +136,10 @@ private:
 // ------------------------------------------------------------------------- //
 static int mod(const int& a, const int& base)
 {
-    return ((a % base) + base) % base;
+    if(base != 0)
+        return ((a % base) + base) % base;
+    else
+        return 0;
 }
 
 #endif

@@ -37,6 +37,7 @@ public:
 
     // returns the size of the matrix
     vector<int> size() const;
+    void resize(const int& dx, const int& dy);
 
     // setting two matrices equal to eachother
     void operator= (const Matrix& m);

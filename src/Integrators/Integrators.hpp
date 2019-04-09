@@ -46,8 +46,7 @@ public:
                              const double& tmax, const unsigned& nint,
                              const double& t_step, const double& tau);
     // set with grid
-    void integrate_with_grid(const double& a_x, const double& b_x,
-                             const double& b_y, const double& cut_off,
+    void integrate_with_grid(const Matrix& Szero, const double& cut_off,
                              Molecule* molecule_pt);
     // update the pressure and temperature reading
     void npt_update_pressure_temperature();
@@ -78,8 +77,7 @@ protected:
     // compute the force in the correct way
     void compute_force(Molecule* molecule_pt);
     // set with npt grid
-    void integrate_with_npt_grid(const double& a_x, const double& b_x,
-                                 const double& b_y, const double& cut_off,
+    void integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
                                  Molecule* molecule_pt, const double& mass,
                                  const double& target_press,
                                  const double& gamma_npt,

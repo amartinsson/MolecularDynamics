@@ -2,6 +2,7 @@
 #define CELLS_HPP
 
 #include <vector>
+#include <unordered_map>
 
 #include "LinkedList.hpp"
 
@@ -36,7 +37,8 @@ private:
     // particle list
     LinkedList* particle_list;
     // neightbour list
-    vector<Cell*> neighbour_list;
+    // vector<Cell*> neighbour_list;
+    unordered_map<int, Cell*> neighbour_list;
 };
 
 #endif

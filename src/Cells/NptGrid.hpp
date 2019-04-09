@@ -11,7 +11,7 @@ using namespace::std;
 class NptGrid : public Grid
 {
 public:
-    NptGrid(const double& a_x, const double& b_x, const double& b_y,
+    NptGrid(const Matrix& Szero,
             const double& cut_off, Molecule* molecule_pt,
             const double& mass, const double& target_press);
     // destructor
@@ -20,9 +20,6 @@ public:
     // this needs to be called at the end of every integration step
     // and will update the pressure and temperature
     void update_pressure_temperature();
-    // This function returns the non dimensional coordinate w.r.t the box
-    // of a particle in the box.
-    Vector get_box_coordinate(const Particle& particle);
     // This function takes in a 2 dimensional vector and returns the
     // box normalised vector r_tilde
     Vector get_box_min_image_sep(const Particle& current_particle,

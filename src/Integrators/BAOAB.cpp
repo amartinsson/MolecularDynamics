@@ -43,15 +43,14 @@ void BAOAB::integrate(Molecule* molecule_pt)
 }
 
 // set with npt grid
-void BAOAB::integrate_with_npt_grid(const double& a_x, const double& b_x,
-                                    const double& b_y, const double& cut_off,
+void BAOAB::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
                                     Molecule* molecule_pt, const double& mass,
                                     const double& target_press,
                                     const double& gamma_box)
 {
     With_npt = true;
 
-    Langevin::integrate_with_npt_grid(a_x, b_x, b_y, cut_off, molecule_pt,
+    Langevin::integrate_with_npt_grid(Szero, cut_off, molecule_pt,
                                       mass, target_press, gamma_box, Time_Step);
 }
 

@@ -5,9 +5,9 @@ using namespace std;
 // ------------------------------------------------------------------------- //
 //                                MATRIX CLASS
 // ------------------------------------------------------------------------- //
-Matrix::Matrix(const int& n, const int& m) : dimx(n), dimy(m)
+Matrix::Matrix(const int& n, const int& m) : dimx(n), dimy(m),  M(n*m, 0.0)
 {
-    M.resize(dimx * dimy, 0.0);
+    //M.resize(dimx * dimy, 0.0);
 }
 
 // Make matrix from vector
@@ -60,6 +60,13 @@ vector<int> Matrix::size() const
     size[0] = dimx;
     size[1] = dimy;
     return size;
+}
+
+void Matrix::resize(const int& dx, const int& dy)
+{
+    this->M.resize(dx * dy, 0.0);
+    this->dimx = dx;
+    this->dimy = dy;
 }
 
 // operator for getting elements
@@ -359,9 +366,9 @@ Matrix Matrix::T() const
 
 double Matrix::det() const
 {
-    if(dimx != 2 or dimy != 2)
+    if(dimx > 3 or dimy > 3)
     {
-        printf("Error: determinatn only works for 2x2 matrix!\n");
+        printf("Error: determinatn only works for at least 3x3 matrix!\n");
         exit(-1);
     }
 
@@ -371,15 +378,28 @@ double Matrix::det() const
         exit(-1);
     }
 
-    return M[0] *  M[1 + dimy] -  M[1] * M[dimy];
+    if(dimx == 2)
+    {
+        return this->get(0, 0) * this->get(1, 1) -
+                        this->get(1, 0) * this->get(0, 1);
+    }
+    else
+    {
+        return this->get(0,0) * (this->get(1,1) * this->get(2,2)
+                                    - this->get(1,2) * this->get(2,1))
+                - this->get(0,1) * (this->get(1,0) * this->get(2,2)
+                                    - this->get(1,2) * this->get(2,0))
+                + this->get(0,2) * (this->get(1,0) * this->get(2,1)
+                                    - this->get(1,1) * this->get(2,0));
+    }
 }
 
 // calculate the invers of a 2x2 matrix
 Matrix Matrix::inv() const
 {
-    if(dimx != 2 or dimy != 2)
+    if(dimx > 3 or dimy > 3)
     {
-        printf("Error: Inverse only works for 2x2 matrix!\n");
+        printf("Error: Inverse only works for up to 3x3 matrix!\n");
         exit(-1);
     }
 
@@ -391,13 +411,26 @@ Matrix Matrix::inv() const
 
     Matrix Mret(dimx, dimy);
 
-    double det = M[0] *  M[1 + dimy] -  M[1] * M[dimy];
+    double det = this->det();
 
-    Mret(0, 0) = M[1 + dimy] / det;
-    Mret(0, 1) = -M[1] / det;
+    if(dimx == 2)
+    {
+        Mret(0, 0) = this->get(1,1) / det;
+        Mret(0, 1) = -this->get(0,1) / det;
 
-    Mret(1, 0) = -M[dimy] / det;
-    Mret(1, 1) = M[0] / det;
+        Mret(1, 0) = -this->get(1,0) / det;
+        Mret(1, 1) = this->get(0,0) / det;
+    }
+    else
+    {
+        #pragma omp simd collapse(2)
+        for(int i = 0; i < dimx; i++)
+            for(int j = 0; j < dimy; j++)
+        	   Mret(i, j) = (this->get((j+1) % dimx, (i+1) % dimy)
+                                * this->get((j+2) % dimx, (i+2) % dimy)
+                        - this->get((j+1) % dimx, (i+2) % dimy)
+                                * this->get((j+2) % dimx, (i+1) % dimy)) / det;
+    }
 
     return Mret;
 }

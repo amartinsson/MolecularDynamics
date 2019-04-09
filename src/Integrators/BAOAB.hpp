@@ -16,8 +16,7 @@ public:
     // must have integrate
     void integrate(Molecule* molecule_pt);
     // set with npt grid
-    void integrate_with_npt_grid(const double& a_x, const double& b_x,
-                                 const double& b_y, const double& cut_off,
+    void integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
                                  Molecule* molecule_pt, const double& mass,
                                  const double& target_press,
                                  const double& gamma_rot);

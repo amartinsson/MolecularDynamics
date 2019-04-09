@@ -296,16 +296,16 @@ int main(int argc, char* argv[])
 
     // parameters
     int SEED = 1234;
-    unsigned dimension = 2;
+    unsigned dimension = 3;
     unsigned number_of_particles = 25*25;
     double temp = 0.2;
 
     double sigma = 1.0;
     double epsilon = 1.0;
 
-    double a_x = 30.0;
-    double b_x = 0.0;
-    double b_y = 30.0;
+    double sx = 30.0;
+    double sy = 30.0;
+    double sz = -1.0;
 
     double time_step = 0.001;
     double gamma = 1.0;
@@ -362,23 +362,23 @@ int main(int argc, char* argv[])
             number_of_particles  = arg_in;
             printf("number of particles set to: %.0d\n", number_of_particles);
         }
-        else if(arg == "--a_x")
+        else if(arg == "--S_x")
         {
             double arg_in = std::stod(arg2);
-            a_x = arg_in;
-            printf("a_x set to: %1.2f\n", a_x);
+            sx = arg_in;
+            printf("S_x set to: %1.2f\n", sx);
         }
-        else if(arg == "--b_x")
+        else if(arg == "--S_y")
         {
             double arg_in = std::stod(arg2);
-            b_x = arg_in;
-            printf("b_x set to: %1.2f\n", b_x);
+            sy = arg_in;
+            printf("S_y set to: %1.2f\n", sy);
         }
-        else if(arg == "--b_y")
+        else if(arg == "--S_z")
         {
             double arg_in = std::stod(arg2);
-            b_y = arg_in;
-            printf("b_y set to: %1.2f\n", b_y);
+            sz = arg_in;
+            printf("S_z set to: %1.2f\n", sz);
         }
         else if(arg == "--rbuild")
         {
@@ -439,6 +439,17 @@ int main(int argc, char* argv[])
 
     }
 
+    // initialise box size
+    Matrix BoxS(2,2);
+    if(sz > 0.0)
+    {
+        BoxS.resize(3,3);
+        BoxS(2,2) = sz;
+    }
+
+    BoxS(0,0) = sx;
+    BoxS(1,1) = sy;
+
     // add contorl number to seed differently
     SEED += control_number + (control_number + 1) * world_rank;
 
@@ -469,74 +480,56 @@ int main(int argc, char* argv[])
                                      lennard_jones, SEED);
 
     // set to evaluate with grid
-    // integrator->integrate_with_grid(a_x, b_x, b_y, cut_off, cluster);
-    integrator->integrate_with_npt_grid(a_x, b_x, b_y, cut_off, cluster,
-                                        box_mass, target_pressure,
-                                        npt_langevin_friction);
+    integrator->integrate_with_grid(BoxS, cut_off, cluster);
+    // integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
+    //                                     box_mass, target_pressure,
+    //                                     npt_langevin_friction);
 
     // set the integrator scheme
     //integrator->set_npt_integrator_version(npt_scheme_nr);
 
-    if(rebuild_bool)
-        integrator->npt_set_initial(cluster, "Init/initial_position.csv",
-                                    "Init/initial_momentum.csv",
-                                    "Init/initial_volume.csv");
-
-
-    // Matrix P(2,2);
-    // P(0,0) = 1.0;
-    // P(0,1) = 2.0;
-    // P(1,0) = 2.0;
-    // P(1,1) = 4.0;
-    //
-    // printf("P\n%f %f\n %f %f\n\n", P(0,0), P(0,1), P(1,0), P(1,1));
-    //
-    // P.symsqrt();
-
-    // Vector V(2);
-    // V(0) = 5.0;
-    // V(1) = 6.0;
-    //
-    // // Vector Res = V.T() * V;
-    // Vector res = P * V;
-    //
-    // // printf("Resulting vector is %f %f\n",Res(0), Res(1));
-    // printf("Outer product is \t%f\n \t\t\t%f\n",res(0), res(1));
+    // if(rebuild_bool)
+    //     integrator->npt_set_initial(cluster, "Init/initial_position.csv",
+    //                                 "Init/initial_momentum.csv",
+    //                                 "Init/initial_volume.csv");
 
     for(unsigned i=0; i<number_of_steps; i++)
     {
         // integrate forward one step
-        // double before = 0.0;
-        // before = omp_get_wtime();
+        double before = 0.0;
+        before = omp_get_wtime();
+
         integrator->integrate(cluster);
 
-        // double after = omp_get_wtime();
+        double after = omp_get_wtime();
         // fprintf(output, "%f\n", after-before);
-        // printf("%f\n", after-before);
+        printf("%f\n", after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // print positions
-            // print_positions(cluster, time_stamp);
+            print_positions(cluster, time_stamp);
+            
             // update the pressure and temperature
-            integrator->npt_update_pressure_temperature();
-            // integrator->update_temperature();
-
-            // print the pressure
-            double instant_pressure = integrator->npt_get_instant_pressure();
-            double pressure = integrator->npt_get_pressure();
-            print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-                           control_number + (control_number + 1) * world_rank);
-
-            printf("Pressure %.0d\t %1.5f\n", i, pressure);
-
-            //print temperature
-            double instant_temperature = integrator->npt_get_instant_temperature();
-            double temperature = integrator->npt_get_temperature();
-            print_temperature(instant_temperature, temperature, time_stamp,
-                              "temperature", control_number + (control_number + 1) * world_rank);
-            printf("Temperature \t %1.5f\n", temperature);
+        //     //integrator->npt_update_pressure_temperature();
+        //     // integrator->update_temperature();
+        //
+        //     // print the pressure
+        //     // double instant_pressure = integrator->npt_get_instant_pressure();
+        //     // double pressure = integrator->npt_get_pressure();
+        //     // print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+        //     //                control_number + (control_number + 1) * world_rank);
+        //     //
+        //     // printf("Pressure %.0d\t %1.5f\n", i, pressure);
+        //
+        //     //print temperature
+        //     // double instant_temperature = integrator->npt_get_instant_temperature();
+        //     // double temperature = integrator->npt_get_temperature();
+        //     // print_temperature(instant_temperature, temperature, time_stamp,
+        //     //                   "temperature", control_number + (control_number + 1) * world_rank);
+        //     // printf("Temperature \t %1.5f\n", temperature);
+        // }
         }
     }
 
