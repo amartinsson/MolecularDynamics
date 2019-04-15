@@ -114,21 +114,49 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
 // Integrate forward using NPT
 void BAOAB::npt_integration(Molecule* molecule_pt)
 {
+    double before = 0.0;
+    double after = 0.0;
+
     if(Npt_version == 1)
     {
         // integrate forward
+        // before = omp_get_wtime();
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+        // after = omp_get_wtime();
+        // printf("B step %1.5f\n", after-before);
+
+        // before = omp_get_wtime();
         Langevin::A_1_NPT(0.5 * Time_Step);
+        // after = omp_get_wtime();
+        // printf("A1 step %1.5f\n", after-before);
+        
+        // before = omp_get_wtime();
         Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        // after = omp_get_wtime();
+        // printf("A2 step %1.5f\n", after-before);
+
+        // before = omp_get_wtime();
         Langevin::O_NPT(molecule_pt);
+        // after = omp_get_wtime();
+        // printf("O step %1.5f\n", after-before);
+
+        // before = omp_get_wtime();
         Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
         Langevin::A_1_NPT(0.5 * Time_Step);
+        // after = omp_get_wtime();
+        // printf("A step %1.5f\n", after-before);
 
         // force solve
+        // before = omp_get_wtime();
         Langevin::compute_force(molecule_pt);
+        // after = omp_get_wtime();
+        // printf("Force step %1.5f\n", after-before);
 
         // integrate forward
+        // before = omp_get_wtime();
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+        // after = omp_get_wtime();
+        // printf("B step %1.5f\n", after-before);
 
         // for(unsigned i=0; i<molecule_pt->nparticle(); i++)
         // {

@@ -5,9 +5,11 @@ using namespace std;
 // ------------------------------------------------------------------------- //
 //                                MATRIX CLASS
 // ------------------------------------------------------------------------- //
-Matrix::Matrix(const int& n, const int& m) : dimx(n), dimy(m),  M(n*m, 0.0)
+Matrix::Matrix(const int& n, const int& m) : dimx(n), dimy(m)//,  M(n*m, 0.0)
 {
-    //M.resize(dimx * dimy, 0.0);
+    M.resize(n*m,0.0);
+    inverse_caching = false;
+    // empty
 }
 
 // Make matrix from vector
@@ -31,7 +33,8 @@ Matrix::Matrix(vector<double> m)
 Matrix::Matrix(const int& n, const int& m, NormalGenerator& norm) :
         dimx(n), dimy(m)
 {
-    M.resize(dimx * dimy, 0.0);
+    M.resize(n*m, 0.0);
+    inverse_caching = false;
 
     //#pragma omp simd collapse(2)
     for(unsigned i=0; i<dimx; i++)
@@ -445,4 +448,27 @@ RotMatrix::RotMatrix(const double& alpha) : Matrix(2, 2)
     M[1] = sin(alpha);
     M[dimy] = -sin(alpha);
     M[1 + dimy] = cos(alpha);
+}
+
+
+// ------------------------------------------------------------------------- //
+//                                CHOLESKY ROOT
+// ------------------------------------------------------------------------- //
+Matrix CholeskyRoot(const Matrix& S, const Matrix& M, const Matrix& St)
+{
+    // make the matrices needed for itteration
+    Matrix R = M.sqrt() * St;
+    Matrix U = R;
+
+    #pragma omp simd
+    for(int i=0; i<7; i++)
+    {
+        double scaling = pow(U.det(),-0.5);
+        U = (U * scaling + U.inv().T() / scaling) * 0.5;
+    }
+
+    // make matrix for square root
+    Matrix X = U.T() * R;
+
+    return X;
 }

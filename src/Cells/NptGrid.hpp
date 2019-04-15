@@ -48,9 +48,7 @@ public:
     // enforces the relaative positoon of the particles
     void enforce_constant_relative_particle_pos(const Matrix& Sold);
     // returns the box force in direction i
-    double get_accumulated_momentum(const unsigned& i){return momentum_sq(i);}
-    // updates the accumulated momentum
-    void update_accumulted_momentum();
+    void update_kinetic_gradient();
     // returns the virial for the ith direction
     // double get_virial(const unsigned& i){return box_grad_potential[i];}
     // fuction which updates the particle forces. It automatically checks if the
@@ -63,12 +61,7 @@ public:
 
     // Stores the virial function
     Matrix virial;
-
-    // gradient matrices for updating box momentum
-    void update_gradient_matrices();
-    Matrix nablaSa;
-    Matrix nablaSb;
-    Matrix nablaSd;
+    Matrix nablaK;
 
 private:
     // tracking for average observables
@@ -81,9 +74,14 @@ private:
     double box_mass;
     // holder for box force
     // std::vector<double> box_grad_potential;
-    double box_grad_zero;
-    double box_grad_one;
-    double box_grad_two;
+    double box_grad_00;
+    double box_grad_01;
+    double box_grad_11;
+
+    double box_grad_02;
+    double box_grad_12;
+    double box_grad_22;
+
     //double* box_grad_potential;
     Vector momentum_sq;
     // reducto helpers for caluclating the force

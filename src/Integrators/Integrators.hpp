@@ -50,6 +50,7 @@ public:
                              Molecule* molecule_pt);
     // update the pressure and temperature reading
     void npt_update_pressure_temperature();
+    // get the instant pressure from npt
     double npt_get_instant_pressure();
     // get the pressure reading
     double npt_get_pressure();
@@ -57,12 +58,17 @@ public:
     double npt_get_instant_temperature();
     // get the temperature reading
     double npt_get_temperature();
+    // get the volume of the npt
+    double npt_get_volume();
+    // get the instant volume of the npt
+    double npt_get_instant_volume();
+    // return the matrix defining the box
+    Matrix npt_get_box();
     // set the  initial condition from file
     void npt_set_initial(Molecule* molecule_pt,
                          const char* initial_pos_filename,
                          const char* initial_mom_filename,
                          const char* initial_box_filename);
-
 
 protected:
     void A(Particle& particle, const double& h);
@@ -129,7 +135,7 @@ private:
 
     // NPT helper steps
     void A_NPT_2_part(Particle& particle, const double& h);
-    void A_NPT_2_box(Particle& particle, const double& h);
+    void A_NPT_2_box(const double& h);
 
     void B_NPT_part(Particle& particle, const double& h);
     void B_NPT_box(const double& h);

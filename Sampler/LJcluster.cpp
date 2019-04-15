@@ -33,7 +33,7 @@ using namespace::std;
 //   return 1.0 / dim * temperature;
 // };
 
-void print_positions(Molecule* molecule_pt, const unsigned& time_stamp)
+void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stamp)
 {
   // open the file to write to
   char filename[50];
@@ -80,6 +80,33 @@ void print_positions(Molecule* molecule_pt, const unsigned& time_stamp)
   }
   // close the file
   fclose(configuration_file);
+
+  // open the file to write to
+  sprintf(filename, "Observables/fsimbox/frame_%i.csv", time_stamp);
+  configuration_file = fopen(filename, "w");
+
+  for(int i=0;i<10;i++)
+  {
+      if(i==0 | i==4)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", 0.0, 0.0, 0.0);
+      else if(i==1)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0), 0.0, 0.0);
+      else if(i==2)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1), S(1,1), 0.0);
+      else if(i==3)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1), S(1,1), 0.0);
+      else if(i==5 || i==9)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,2), S(1,2), S(2,2));
+      else if(i==6)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,2), S(1,2), S(2,2));
+      else if(i==7)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1)+S(0,2), S(1,1)+S(1,2),S(2,2));
+      else if(i==8)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1)+S(0,2), S(1,1)+S(1,2), S(2,2));
+  }
+
+  fclose(configuration_file);
+
 };
 
 void print_final_positions(Molecule* molecule_pt)
@@ -250,15 +277,16 @@ void print_density(const double& instant_volume, const unsigned& N,
 };
 
 
-void print_volume(const double& volume, const std::vector<double> box, const double& time_stamp)
+void print_volume(const double& volume, const double& time_stamp,
+                  const unsigned& control_number)
 {
   // open the file to write to
   char filename[50];
-  sprintf(filename, "Observables/volume.csv");
+  sprintf(filename, "Observables/volume_%d.csv", control_number);
   FILE* volume_file = fopen(filename, "a");
 
-  //fprintf(volume_file, "%d, %.3f\n", time_stamp, volume);
-  fprintf(volume_file, "%1.4e, %.3f, %.3f, %.3f, %.3f\n", time_stamp, volume, box[0], box[1], box[2]);
+  fprintf(volume_file, "%1.5e, %1.5f\n", time_stamp, volume);
+  //fprintf(volume_file, "%1.4e, %.3f, %.3f, %.3f, %.3f\n", time_stamp, volume, box[0], box[1], box[2]);
 
     // close the file
   fclose(volume_file);
@@ -479,57 +507,53 @@ int main(int argc, char* argv[])
     BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
                                      lennard_jones, SEED);
 
+
     // set to evaluate with grid
-    integrator->integrate_with_grid(BoxS, cut_off, cluster);
-    // integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
-    //                                     box_mass, target_pressure,
-    //                                     npt_langevin_friction);
-
-    // set the integrator scheme
-    //integrator->set_npt_integrator_version(npt_scheme_nr);
-
-    // if(rebuild_bool)
-    //     integrator->npt_set_initial(cluster, "Init/initial_position.csv",
-    //                                 "Init/initial_momentum.csv",
-    //                                 "Init/initial_volume.csv");
+    //integrator->integrate_with_grid(BoxS, cut_off, cluster);
+    integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
+                                        box_mass, target_pressure,
+                                        npt_langevin_friction);
 
     for(unsigned i=0; i<number_of_steps; i++)
     {
+
         // integrate forward one step
-        double before = 0.0;
-        before = omp_get_wtime();
+        // double before = 0.0;
+        // before = omp_get_wtime();
 
         integrator->integrate(cluster);
 
-        double after = omp_get_wtime();
-        // fprintf(output, "%f\n", after-before);
-        printf("%f\n", after-before);
+        // double after = omp_get_wtime();
+        // printf("step %4d took %1.4f\n", i, after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // print positions
-            print_positions(cluster, time_stamp);
-            
+            // Matrix simbox = integrator->npt_get_box();
+            // print_positions(cluster, simbox, i / write_frequency);
             // update the pressure and temperature
-        //     //integrator->npt_update_pressure_temperature();
-        //     // integrator->update_temperature();
-        //
-        //     // print the pressure
-        //     // double instant_pressure = integrator->npt_get_instant_pressure();
-        //     // double pressure = integrator->npt_get_pressure();
-        //     // print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-        //     //                control_number + (control_number + 1) * world_rank);
-        //     //
-        //     // printf("Pressure %.0d\t %1.5f\n", i, pressure);
-        //
-        //     //print temperature
-        //     // double instant_temperature = integrator->npt_get_instant_temperature();
-        //     // double temperature = integrator->npt_get_temperature();
-        //     // print_temperature(instant_temperature, temperature, time_stamp,
-        //     //                   "temperature", control_number + (control_number + 1) * world_rank);
-        //     // printf("Temperature \t %1.5f\n", temperature);
-        // }
+            integrator->npt_update_pressure_temperature();
+            // integrator->update_temperature();
+
+            // print the pressure
+            double instant_pressure = integrator->npt_get_instant_pressure();
+            double pressure = integrator->npt_get_pressure();
+            print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+                           control_number + world_rank);
+
+            // printf("Pressure %.0d\t %1.5f\n", i, pressure);
+
+            //print temperature
+            double instant_temperature = integrator->npt_get_instant_temperature();
+            double temperature = integrator->npt_get_temperature();
+            print_temperature(instant_temperature, temperature, time_stamp,
+                              "temperature", control_number + world_rank);
+            // printf("Temperature \t %1.5f\n", temperature);
+
+            //print volume
+            double volume = integrator->npt_get_volume();
+            print_volume(volume, time_stamp, control_number + world_rank);
         }
     }
 

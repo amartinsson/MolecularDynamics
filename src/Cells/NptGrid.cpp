@@ -8,32 +8,23 @@ using namespace::std;
 NptGrid::NptGrid(const Matrix& Szero, const double& cut_off,
                  Molecule* molecule_pt, const double& mass,
                  const double& target_press) :
-                 Grid(Szero, cut_off, molecule_pt), momentum_sq(3),
-                 virial(2,2), nablaSa(2,2), nablaSb(2,2), nablaSd(2,2)
+                 Grid(Szero, cut_off, molecule_pt), nablaK(2,2), virial(2,2)
 {
-    // set up tracking object to track the average
-    // of the temperature
+    if(Szero.size()[0] > 2)
+    {
+        virial.resize(3, 3);
+        nablaK.resize(3, 3);
+    }
+
+    // set up tracking object to track the average of the temperature
     Volume_pt = new AverageObservable();
     Pressure_pt = new AverageObservable();
 
-    // set the mass of the cell grid for the
-    // NPT integration
+    // set the mass of the cell grid for the NPT integration
     box_mass = mass;
 
-    // set the target pressure of the cell grid
-    // for comupting the box force
+    // set the target pressure of the cell grid for comupting the box force
     target_pressure = target_press;
-
-    // reserve space for the box force in each direction
-    // box_grad_potential.resize(3);
-    //box_grad_potential = new double[3];
-    // momentum_sq.resize(3);
-
-    // for(unsigned i=0; i<momentum_sq.size(); i++)
-    //     box_grad_potential[i] = 0.0;
-
-    printf("Inital grid set as %d x %d\n",
-           number_of_cells_x, number_of_cells_y);
 }
 
 // destructor
@@ -42,10 +33,6 @@ NptGrid::~NptGrid()
     // delete all the average observables
     delete Volume_pt;
     delete Pressure_pt;
-
-    delete &box_grad_zero;
-    delete &box_grad_one;
-    delete &box_grad_two;
 }
 
 // computes the force in and respects the cut off radius. This is
@@ -60,6 +47,25 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
 
     double rsq = r.l22();
 
+    if(number_of_cells_z)
+    {
+    //printf("rsq = %f, d = %f\n", rsq,S(0,0) * S(0,0) + S(1,1) * S(1,1) + S(2,2) * S(2,2));
+        if(rsq > S(0,0) * S(0,0) + S(1,1) * S(1,1) + S(2,2) * S(2,2))
+        {
+            printf("ERROR: blow up event detected: r = %f\n", std::sqrt(rsq));
+            exit(-1);
+        }
+    }
+    else
+    {
+        if(rsq > S(0,0) * S(0,0) + S(1,1) * S(1,1))
+        {
+            printf("ERROR: blow up event detected: r = %f\n", std::sqrt(rsq));
+            exit(-1);
+        }
+    }
+
+
     // chcek the cutoff criterion
     if(rsq < cut_off_sq)
     {
@@ -73,14 +79,24 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
         Vector r_tilde = get_box_min_image_sep(*current_particle,
                                                *neighbour_particle);
 
+        // calculate the virial
+        Matrix V = f_ij.out(r_tilde);
+
         // these need to be minus additive as we are calculating the
         // force but we need the gradient!
         //
         // These are the virials
-        box_grad_zero -= r_tilde(0) * f_ij(0);
-        box_grad_one  -= r_tilde(1) * f_ij(0);
-        box_grad_two  -= r_tilde(1) * f_ij(1);
-  }
+        box_grad_00 -= V(0,0);
+        box_grad_01 -= V(0,1);
+        box_grad_11 -= V(1,1);
+
+        if(r_tilde.size() > 2)
+        {
+            box_grad_02 -= V(0,2);
+            box_grad_12 -= V(1,2);
+            box_grad_22 -= V(2,2);
+        }
+    }
 }
 
   // function which calculates and returns the
@@ -118,9 +134,6 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
   // function which updates the pressure
   void NptGrid::update_pressure()
   {
-      // updatae the accumulated momentum
-      update_accumulted_momentum();
-
       // calculate the macroscopic pressure
       double pressure = calculate_pressure();
 
@@ -180,40 +193,23 @@ Vector NptGrid::get_box_momentum(const Particle& particle)
   {
       // set the new momentum
       particle.p = S.inv() * p_tilde;
-      //
-      // // get the box size
-      // double ax = *L_pt(0);
-      // double bx = *L_pt(1);
-      // double by = *L_pt(2);
-      //
-      // double* px = particle_pt->p_pt(0);
-      // double* py = particle_pt->p_pt(1);
-      //
-      // // set both directions
-      // *px = p_tilde[0]/ax - bx/(ax*by) * p_tilde[1];
-      // *py = p_tilde[1]/by;
   }
 
   // function which update the instantenous and average volume
   void NptGrid::update_volume()
   {
-    // derefernce the cell
-    // double a_x = *L_pt(0);
-    // double b_y = *L_pt(2);
+      // calculate volume
+      double volume = S.det();
 
-    // calcuate the volume
-    // double volume = a_x * b_y;
-    double volume = S.det();
-
-    // make observation of the volume
-    Volume_pt->observe(volume);
+      // make observation of the volume
+      Volume_pt->observe(volume);
   }
 
-  // update both the pressure and the temperature variables -
-  // this needs to be called at the end of every integration step
-  // and will update the pressure and temperature
-  void NptGrid::update_pressure_temperature()
-  {
+// update both the pressure and the temperature variables -
+// this needs to be called at the end of every integration step
+// and will update the pressure and temperature
+void NptGrid::update_pressure_temperature()
+{
     // first update the volume
     update_volume();
 
@@ -222,45 +218,23 @@ Vector NptGrid::get_box_momentum(const Particle& particle)
 
     // update the pressure assuming that the q_dot_f value has been updated
     update_pressure();
-  }
+}
 
-  // this function update the gradient matrices that are used for finding the
-  // momentum of the box
-  void NptGrid::update_gradient_matrices()
-  {
-      // update all three matrices
-      nablaSa(0,0) = -1.0 / Grid::S(0,0);
+// function which calculates the pressure
+double NptGrid::calculate_pressure()
+{
+    this->update_kinetic_gradient();
 
-      nablaSb(0,1) = - 0.5 / Grid::S(0,0);
-      nablaSb(1,0) = - 0.5 / Grid::S(0,0);
+    double pressure = 0.0;
 
-      nablaSd(0,1) = 0.5 * Grid::S(0,1) / (Grid::S(0,0) * Grid::S(1,1));
-      nablaSd(1,0) = 0.5 * Grid::S(0,1) / (Grid::S(0,0) * Grid::S(1,1));
-      nablaSd(1,1) = - 1.0 / Grid::S(1,1);
-  }
+    if(number_of_cells_z != 0)
+        pressure = -1.0 / (3.0 * S(1,1) * S(2,2)) * (nablaK(0,0) + virial(0,0))
+                   -1.0 / (3.0 * S(0,0) * S(2,2)) * (nablaK(1,1) + virial(1,1))
+                   -1.0 / (3.0 * S(0,0) * S(1,1)) * (nablaK(2,2) + virial(2,2));
+    else
+        pressure = -1.0 / (2.0 * S(1,1)) * (nablaK(0,0) + virial(0,0))
+                   -1.0 / (2.0 * S(0,0)) * (nablaK(1,1) + virial(1,1));
 
-  // function which calculates the pressure
-  double NptGrid::calculate_pressure()
-  {
-      // // dereference the box
-      // double lx1 = S(0, 0);
-      // double ly1 = S(0, 1);
-      // double ly2 = S(1, 1);
-      //
-      // double pressure = 1.0/(lx1*ly2) * momentum_sq(0)
-      //                   - 1.0/(ly2) * virial(0,0)
-      //                   + 1.0/(lx1*ly2) * momentum_sq(2)
-      //                   - ly1/(ly2*lx1*lx1) * momentum_sq(1)
-      //                   - 1.0/(lx1) * virial(1,1);
-      //
-      // // return the calulcated pressure
-      // return 0.5 * pressure;
-
-      // double pressure = -1.0/S(1,1) * (momentum_sq(0) + virial(0,0) + target_pressure * S(1,1))
-      //                    -1.0/S(0,0) * (momentum_sq(1) + virial(1,1) + target_pressure * S(0,0));
-      // return pressure;
-    double pressure = -0.5/S(1,1) * (momentum_sq(0) + virial(0,0))
-                      -0.5/S(0,0) * (momentum_sq(1) + virial(1,1));
     if(pressure > 10.0 * target_pressure)
     {
         printf("\n ERROR: Target pressure is: %1.3f breaking!\n\n", pressure);
@@ -268,225 +242,237 @@ Vector NptGrid::get_box_momentum(const Particle& particle)
     }
 
     return pressure;
-  }
+}
 
 // enforce the constraint that the relative distances
 // of the particle position and momentum cannot change.
 void NptGrid::enforce_relative_particle(const Matrix& Sold)
 {
-    Matrix qScale(2,2);
-    Matrix pScale(2,2);
+    // calculate the scale matrices
+    Matrix qScale = S * Sold.inv();
+    Matrix pScale = S.inv() * Sold;
 
-    qScale = S * Sold.inv();
-    pScale = S.inv() * Sold;
-
-    // make parameters
-    ListNode* cell_conductor = NULL;
-    Particle* particle_k = NULL;
-
-    // make holders
-    Vector qnew(2);
-    Vector pnew(2);
+    int zend = 1;
+    if(number_of_cells_z != 0)
+        zend = number_of_cells_z;
 
     // loop over all the cells
-    for(int j=0; j<number_of_cells_y; j++)
-        for(int i=0; i<number_of_cells_x; i++)
-        {
-             // get the conductor for this cell
-             cell_conductor = get_cell(i, j, 0)->get_particle_list_head();
-
-             // loop over all the particles in this cell
-             while(cell_conductor != NULL)
-             {
-                 // dereference the partilce
-                 particle_k = cell_conductor->particle;
-
-                 qnew = qScale * (*particle_k).q;
-                 pnew = pScale * (*particle_k).p;
-
-                 (*particle_k).q = qnew;
-                 (*particle_k).p = pnew;
-
-                 // step the conductor forward
-                 cell_conductor = cell_conductor->next;
-            }
-        }
-  }
-
-// updates the box force in all directions
-void NptGrid::update_accumulted_momentum()
-{
-    // reset the values of the vectors
-    for(unsigned i=0; i<momentum_sq.size(); i++)
-        momentum_sq(i) = 0.0;
-
-    // reference pointers
-    ListNode* cell_conductor = NULL;
-    Particle* particle;
-
-    // loop over all the particles
-#pragma omp simd collapse(2)
-    for(int j=0; j<number_of_cells_y; j++)
-        for(int i=0; i<number_of_cells_x; i++)
-        {
-            // get the conductor for this cell
-            cell_conductor = get_cell(i, j, 0)->get_particle_list_head();
-
-            // loop over all particles in the cell
-            while(cell_conductor != NULL)
+    //#pragma omp simd collapse(3)
+    #pragma omp parallel for default(shared)\
+            firstprivate(zend, number_of_cells_y, number_of_cells_x, \
+                         qScale, pScale) \
+            schedule(dynamic) collapse(3)
+    for(int k=0; k<zend; k++)
+        for(int j=0; j<number_of_cells_y; j++)
+            for(int i=0; i<number_of_cells_x; i++)
             {
-                // dereference the partilce
-                particle = cell_conductor->particle;
+                // get the conductor for this cell
+                ListNode* cell_conductor = get_cell(i, j, k)->get_particle_list_head();
 
-                Matrix Ka = this->nablaSa / particle->m(0,0);
-                Matrix Kd = this->nablaSd;
+                // loop over all the particles in this cell
+                while(cell_conductor != NULL)
+                {
+                    // dereference the partilce
+                    Particle* particle = cell_conductor->particle;
 
-                // divide by the correct mass
-                Kd(0,1) /= particle->m(0,0);
-                Kd(1,0) /= particle->m(0,0);
-                Kd(1,1) /= particle->m(1,1);
+                    (*particle).q = qScale * (*particle).q;
+                    (*particle).p = pScale * (*particle).p;
 
-                momentum_sq(0) += (particle->p.T() * Ka).dot(particle->p);
-                momentum_sq(1) += (particle->p.T() * Kd).dot(particle->p);
-
-                // momentum_sq(0) += particle->p(0) * particle->p(0)
-                //                 / particle->m(0,0);
-                // momentum_sq(1) += particle->p(0) * particle->p(1)
-                //                 / particle->m(0,0);
-                // momentum_sq(2) += particle->p(1) * particle->p(1)
-                //                 / particle->m(1,1);
-
-                // increment the conductor
-                cell_conductor = cell_conductor->next;
+                    // step the conductor forward
+                    cell_conductor = cell_conductor->next;
+                }
             }
-        }
 }
 
-  // fuction which updates the particle forces. It automatically checks if the
-  // grid has changed sufficently to have to rebuild the grid. It then contineous
-  // updateing the forces of all the particles using the linked lists from above,
-  // looping over all the cells in the grid. It also updates the pressure and
-  // the temperature by calculating the dot product of q and f for all the
-  // particles
-  void NptGrid::update_particle_forces(System* system_pt,
-                                       Molecule* molecule_pt)
-  {
+// update the gradient of the kinetic energy w.r.t the box
+void NptGrid::update_kinetic_gradient()
+{
+    // clear the matrix
+    nablaK.zero();
+
+    int zend = 1;
+    if(number_of_cells_z != 0)
+        zend = number_of_cells_z;
+
+    // loop over all the cells
+    #pragma omp parallel for default(shared)\
+            firstprivate(zend, number_of_cells_y, number_of_cells_x) \
+            schedule(dynamic) collapse(3)
+    for(int k=0; k<zend; k++)
+        for(int j=0; j<number_of_cells_y; j++)
+            for(int i=0; i<number_of_cells_x; i++)
+            {
+                // get the conductor for this cell
+                ListNode* cell_conductor = get_cell(i, j, k)->get_particle_list_head();
+
+                // loop over all the particles in this cell
+                while(cell_conductor != NULL)
+                {
+                    // dereference the partilce
+                    Particle* particle = cell_conductor->particle;
+
+                    Matrix B = (*particle).m.inv() * S.inv();
+
+                    int dim = B.size()[0];
+
+                    for(int m=0; m<dim; m++)
+                        for(int n=m; n<dim; n++)
+                        {
+                            Matrix D(dim, dim);
+                            D(n,m) = 1.0;
+                            Matrix E = B * D;
+                            #pragma omp atomic
+                            nablaK(m,n) -= 0.5 * ((*particle).p.T() * (E.T() + E)).dot((*particle).p);
+                        }
+
+                    // step the conductor forward
+                    cell_conductor = cell_conductor->next;
+                }
+            }
+}
+
+
+// fuction which updates the particle forces. It automatically checks if the
+// grid has changed sufficently to have to rebuild the grid. It then contineous
+// updateing the forces of all the particles using the linked lists from above,
+// looping over all the cells in the grid. It also updates the pressure and
+// the temperature by calculating the dot product of q and f for all the
+// particles
+void NptGrid::update_particle_forces(System* system_pt,
+                                     Molecule* molecule_pt)
+{
     // if the grid needs to be rebuilt do that.
     // Otherwise simply make sure that all the particles
     // are in the correct cells and that the boundary
     // conditions are enforced.
-  // #pragma omp single
-    {
-      if(rebuild_grid_check())
-      {
+    if(rebuild_grid_check())
         rebuild_periodic_grid(molecule_pt);
-        // printf("\tfinished rebuilding %d x %d grid\n",
-        //        number_of_cells_x, number_of_cells_y);
-      }
-      else
+    else
         update_particles_on_grid();
 
-      // clear all the particle forces
-      clear_particle_forces(molecule_pt);
+    // clear all the particle forces
+    clear_particle_forces(molecule_pt);
 
-      // reset the potential gradient w.r.t to the box coordinate
-      virial.zero();
-    }
+    // reset the potential gradient w.r.t to the box coordinate
+    virial.zero();
 
-    box_grad_zero = 0.0;
-    box_grad_one = 0.0;
-    box_grad_two = 0.0;
+    box_grad_00 = 0.0;
+    box_grad_01 = 0.0;
+    box_grad_11 = 0.0;
+
+    box_grad_02 = 0.0;
+    box_grad_12 = 0.0;
+    box_grad_22 = 0.0;
+
+    // calculate the z direction component
+    int zend = 1;
+    if(number_of_cells_z != 0)
+        zend = number_of_cells_z;
 
     // loop over all the boxes to calculate the forces
 #pragma omp parallel for default(shared)\
-        reduction(+:box_grad_zero, box_grad_one, box_grad_two) \
-        schedule(dynamic) collapse(3) \
-        firstprivate(number_of_cells_x, number_of_neighbours, system_pt)
-     for(int j=0; j<number_of_cells_y; j++)
-     {
-       for(int i=0; i<number_of_cells_x; i++)
-       {
-         for(unsigned n=0; n<number_of_neighbours; n++)
-         {
-             // get the current cell
-             Cell* current_cell = get_cell(i, j, 0);
+        reduction(+:box_grad_00, box_grad_01, box_grad_11, box_grad_02,\
+                    box_grad_12, box_grad_22) \
+        firstprivate(zend, number_of_cells_y, number_of_cells_x, \
+                     number_of_neighbours, system_pt) \
+        schedule(dynamic) collapse(3)
+    for(int k=0; k<zend; k++)
+    {
+        for(int j=0; j<number_of_cells_y; j++)
+        {
+            for(int i=0; i<number_of_cells_x; i++)
+            {
+                for(unsigned n=0; n<number_of_neighbours; n++)
+                {
+                    // get the current cell
+                    Cell* current_cell = get_cell(i, j, k);
 
-             // get the current cells conductor
-             ListNode* current_conductor
+                    // get the current cells conductor
+                    ListNode* current_conductor
                                     = current_cell->get_particle_list_head();
 
-             // get the neighbour cell
-             Cell* neighbour_cell = current_cell->get_neighbour(n);
+                    // get the neighbour cell
+                    Cell* neighbour_cell = current_cell->get_neighbour(n);
 
-             // reset newton iterator
-             unsigned current_newton_iterator = 0;
+                    // reset newton iterator
+                    unsigned current_newton_iterator = 0;
 
-             // loop over particles in current cell
-             while(current_conductor != NULL)
-             {
-                 // conductor over neighbour cell
-                 ListNode* neighbour_conductor
-                                    = neighbour_cell->get_particle_list_head();
+                    // loop over particles in current cell
+                    while(current_conductor != NULL)
+                    {
+                        // conductor over neighbour cell
+                        ListNode* neighbour_conductor =
+                                    neighbour_cell->get_particle_list_head();
 
-                 // get the particle pointer
-                 Particle* current_particle = current_conductor->particle;
+                        // get the particle pointer
+                        Particle* current_particle =
+                                            current_conductor->particle;
 
-                 // reset newton iterator
-                 unsigned neighbour_newton_iterator = 0;
+                        // reset newton iterator
+                        unsigned neighbour_newton_iterator = 0;
 
-                 // loop over particles in neighbour cell
-                 while(neighbour_conductor != NULL)
-                 {
-                     // apply Newton iterators if we are in the same cell
-                     if(current_cell == neighbour_cell)
-                     {
-                         if(current_newton_iterator <= neighbour_newton_iterator)
-                         {
-                             // get the neighbour particle
-                             Particle* neighbour_particle
+                        // loop over particles in neighbour cell
+                        while(neighbour_conductor != NULL)
+                        {
+                            // apply Newton iterators if we are in the same cell
+                            if(current_cell == neighbour_cell)
+                            {
+                                if(current_newton_iterator <= neighbour_newton_iterator)
+                                {
+                                    // get the neighbour particle
+                                    Particle* neighbour_particle
                                             = neighbour_conductor->particle;
 
-                             // don't compute the force for the same particles
-                             if(current_particle != neighbour_particle)
-                             {
-                                 compute_force(system_pt, molecule_pt,
-                                               current_particle,
-                                               neighbour_particle);
-                             }
-                         }
+                                    // don't compute the force for the same particles
+                                    if(current_particle != neighbour_particle)
+                                    {
+                                        compute_force(system_pt, molecule_pt,
+                                                      current_particle,
+                                                      neighbour_particle);
+                                    }
+                                }
 
-                         // iterate the newton current newton iterator
-                         neighbour_newton_iterator++;
-                     }
-                     else
-                     {
-                         // get the neighbour particle
-                         Particle* neighbour_particle
+                                // iterate the newton current newton iterator
+                                neighbour_newton_iterator++;
+                            }
+                            else
+                            {
+                                // get the neighbour particle
+                                Particle* neighbour_particle
                                             = neighbour_conductor->particle;
 
-                         // compute the force
-                         compute_force(system_pt, molecule_pt,
-                                       current_particle, neighbour_particle);
-                     }
+                                // compute the force
+                                compute_force(system_pt, molecule_pt,
+                                              current_particle,
+                                              neighbour_particle);
+                            }
 
-                     // itreate the current conductor
-                     neighbour_conductor = neighbour_conductor->next;
+                            // itreate the current conductor
+                            neighbour_conductor = neighbour_conductor->next;
 
-                 } // end of loop over neighbour_conductor
+                        } // end of loop over neighbour_conductor
 
-                 // iterate the newton current newton iterator
-                 current_newton_iterator++;
+                        // iterate the newton current newton iterator
+                        current_newton_iterator++;
 
-                 // itreate the current conductor
-                 current_conductor = current_conductor->next;
+                        // itreate the current conductor
+                        current_conductor = current_conductor->next;
 
-             } // end of loop over current_conductor
-         } // end of loop over n, number of neighbours
-     } // end of loop over i, x-direction
- } // end of loop over j, y-direction
+                    } // end of loop over current_conductor
+                } // end of loop over n, number of neighbours
+            } // end of loop over i, x-direction
+        } // end of loop over j, y-direction
+    } // end of loop over k, z-direction
 
- // set the reduction variables
- virial(0,0) = box_grad_zero;
- virial(0,1) = box_grad_one;
- virial(1,1) = box_grad_two;
+    // set the reduction variables
+    virial(0,0) = box_grad_00;
+    virial(0,1) = box_grad_01;
+    virial(1,1) = box_grad_11;
+
+    if(number_of_cells_z != 0)
+    {
+        virial(0,2) = box_grad_02;
+        virial(1,2) = box_grad_12;
+        virial(2,2) = box_grad_22;
+    }
 }

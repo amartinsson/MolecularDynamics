@@ -80,11 +80,22 @@ public:
     void zero();
     void diag(const double& value);
 
+    // set inverse caching to be true
+    void set_inverse_caching()
+    {
+        // allocate memory to inverse
+        Minv.resize(dimx*dimy, 0.0);
+
+        // set bollean to true
+        inverse_caching = true;
+    }
+
 protected:
     vector<double> M;
     vector<double> Minv;
     int dimx;
     int dimy;
+    bool inverse_caching;
 
     // simple get function to simplify getting element
     double get(const int& i, const int& j) const {return M[j + i * dimy];}
@@ -163,5 +174,10 @@ public:
     RotMatrix(const double& alpha);
 
 };
+
+// ------------------------------------------------------------------------- //
+//                                CHOLESKY ROOT
+// ------------------------------------------------------------------------- //
+Matrix CholeskyRoot(const Matrix& S, const Matrix& M, const Matrix& St);
 
 #endif

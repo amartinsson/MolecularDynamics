@@ -77,24 +77,21 @@ void Langevin::A_1_NPT(const double& h)
     // need to rescale the particles such that they are
     // in the same position with repsect to the cell
     NptGrid_pt->enforce_constant_relative_particle_pos(Sold);
-
-    // update the gradient matrices
-    NptGrid_pt->update_gradient_matrices();
 }
 
 // Langevin based position step, constant pressure
 void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 {
     // particle integration
-    #pragma omp simd
+    #pragma omp parallel for default(shared) schedule(static)
     for(unsigned i=0; i<molecule_pt->nparticle(); i++)
     {
         // position dependent part
         A_NPT_2_part(molecule_pt->particle(i), h);
-
-        // particle add contribution to box
-        A_NPT_2_box(molecule_pt->particle(i), h);
     }
+
+    // update box momentum
+    A_NPT_2_box(h);
 }
 
 // Langevin based position step, constant pressure, partilce
@@ -109,22 +106,13 @@ void Langevin::A_NPT_2_part(Particle& particle, const double& h)
 }
 
 // Langevin based position step, constant pressure, box
-void Langevin::A_NPT_2_box(Particle& particle, const double& h)
+void Langevin::A_NPT_2_box(const double& h)
 {
-    // copy matrices
-    Matrix Ka = NptGrid_pt->nablaSa / particle.m(0,0);
-    Matrix Kb = NptGrid_pt->nablaSb / particle.m(0,0);
-    Matrix Kd = NptGrid_pt->nablaSd;
+    // update kinetic gradient
+    NptGrid_pt->update_kinetic_gradient();
 
-    // divide by the correct mass
-    Kd(0,1) /= particle.m(0,0);
-    Kd(1,0) /= particle.m(0,0);
-    Kd(1,1) /= particle.m(1,1);
-
-    // update the box momentum correctly
-    NptGrid_pt->Sp(0,0) -= h * (particle.p.T() * Ka).dot(particle.p);
-    NptGrid_pt->Sp(0,1) -= h * (particle.p.T() * Kb).dot(particle.p);
-    NptGrid_pt->Sp(1,1) -= h * (particle.p.T() * Kd).dot(particle.p);
+    // update the box momentum
+    NptGrid_pt->Sp -= NptGrid_pt->nablaK * h;
 }
 
 // Langevin Momentum based update
@@ -144,7 +132,8 @@ void Langevin::B_NPT(Molecule* molecule_pt, const double& h)
     unsigned number_of_particles = molecule_pt->nparticle();
 
     // particle integration
-    #pragma omp simd
+    //#pragma omp simd
+    #pragma omp parallel for default(shared) schedule(static)
     for(unsigned i=0; i<number_of_particles; i++)
         B_NPT_part(molecule_pt->particle(i), h);
 
@@ -201,6 +190,24 @@ double Langevin::npt_get_instant_temperature()
 double Langevin::npt_get_temperature()
 {
     return NptGrid_pt->get_temperature();
+}
+
+// get the matrix defininf the npt box
+Matrix Langevin::npt_get_box()
+{
+    return NptGrid_pt->S;
+}
+
+// get the volume of the npt
+double Langevin::npt_get_volume()
+{
+    return NptGrid_pt->get_volume();
+}
+
+// get the instant volume of the npt
+double Langevin::npt_get_instant_volume()
+{
+    return NptGrid_pt->get_instant_volume();
 }
 
 void Langevin::npt_set_initial(Molecule* molecule_pt,
@@ -264,17 +271,23 @@ void Langevin::O_NPT(Molecule* molecule_pt)
     // WARNING
 
     // varying mass
-    Matrix MassMatrix = NptGrid_pt->S.inv()
-                * (NptGrid_pt->S * molecule_pt->particle(0).m
-                    * NptGrid_pt->S.T()).symsqrt();
+    // Matrix MassMatrix = NptGrid_pt->S.inv()
+    //             * (NptGrid_pt->S * molecule_pt->particle(0).m
+    //                 * NptGrid_pt->S.T()).symsqrt();
+    Matrix MassMatrix = NptGrid_pt->S.inv() * CholeskyRoot(NptGrid_pt->S,
+                                                    molecule_pt->particle(0).m,
+                                                    NptGrid_pt->S.T());
 
     // particle integration
+    // WARNING cannot parallelisation on this step unless random
+    // numbers are generated individially for each open mp thread
     #pragma omp simd
     for(unsigned i=0; i<number_of_particles; i++)
         O_NPT_part(molecule_pt->particle(i), MassMatrix);
 
     // box integration
     O_NPT_box();
+
 }
 
 void Langevin::O_NPT_part(Particle& particle, Matrix& MassMatrix)
@@ -291,8 +304,11 @@ void Langevin::O_NPT_part(Particle& particle, Matrix& MassMatrix)
 
 void Langevin::O_NPT_box()
 {
+    // get the dimension of momentum
+    int dim = NptGrid_pt->Sp.size()[0];
+
     // make an upper triangular random matrix
-    Matrix N(2, 2, normal_gen);
+    Matrix N(dim, dim, normal_gen);
 
     NptGrid_pt->Sp = NptGrid_pt->Sp * OstepCbox
                     + N * OstepZbox * sqrt(Npt_mass);

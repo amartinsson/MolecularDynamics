@@ -42,6 +42,15 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
     // set up tracking object to track the average
     // of the temperature
     Temperature_pt = new AverageObservable();
+
+    // record the number of cells
+    if(number_of_cells_z != 0)
+        printf("Inital grid set as %d x %d x %d\n", number_of_cells_x,
+                                                    number_of_cells_y,
+                                                    number_of_cells_z);
+    else
+        printf("Inital grid set as %d x %d\n", number_of_cells_x,
+                                               number_of_cells_y);
 }
 
 // destructor
@@ -131,33 +140,70 @@ void Grid::clear_particle_forces(Molecule* molecule_pt)
 // enforce the periodic boundary condition of the particle
 void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
 {
-    double trans_shift_y = 0.0;
-
+    // enforce z
     if(number_of_cells_z != 0)
     {
-        // enforce periodicity in z direction
-        if(particle.q(2) < 0.0)
-            particle.q(2) += S(2, 2);
-        else if(particle.q(2) > S(2, 2))
-            particle.q(2) -= S(2, 2);
+        Vector q_tilde = get_box_coordinate(particle);
 
-        trans_shift_y = get_translational_shift_y(particle.q);
+        if(q_tilde(2) < 0.0)
+            if(q_tilde(2) < -0.1)
+                {
+                    printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
+                    exit(-1);
+                }
+            else
+                particle.q(2) += S(2, 2);
+        else if(q_tilde(2) > 1.0)
+            if(q_tilde(2) > 1.1)
+                {
+                    printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
+                    exit(-1);
+                }
+            else
+                particle.q(2) -= S(2, 2);
     }
 
-    // enforce periodicity in y direction
-    if(particle.q(1) < trans_shift_y)
-        particle.q(1) += S(1,1);
-    else if(particle.q(1) > S(1,1) + trans_shift_y)
-        particle.q(1) -= S(1,1);
+    // recalculate position
+    Vector q_tilde = get_box_coordinate(particle);
 
-    // get the translational shift of this particle
-    double trans_shift_x = get_translational_shift_x(particle.q);
+    // enforce y
+    if(q_tilde(1) < 0.0)
+        if(q_tilde(1) < -0.1)
+            {
+                printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
+                exit(-1);
+            }
+        else
+            particle.q(1) += S(1, 1);
+    else if(q_tilde(1) > 1.0)
+        if(q_tilde(1) > 1.1)
+            {
+                printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
+                exit(-1);
+            }
+        else
+            particle.q(1) -= S(1, 1);
 
-    // enforce periodicity in x direction
-    if(particle.q(0) < trans_shift_x)
-        particle.q(0) += S(0,0);
-    else if (particle.q(0) > S(0,0) + trans_shift_x)
-        particle.q(0) -= S(0,0);
+    // recalculate position
+    q_tilde = get_box_coordinate(particle);
+
+    // enforce x
+    if(q_tilde(0) < 0.0)
+        if(q_tilde(0) < -0.1)
+            {
+                printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
+                exit(-1);
+            }
+        else
+            particle.q(0) += S(0, 0);
+    else if(q_tilde(0) > 1.0)
+        if(q_tilde(0) > 1.1)
+            {
+                printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
+                exit(-1);
+            }
+        else
+            particle.q(0) -= S(0, 0);
 }
 
 // delete and clear the grid
@@ -302,16 +348,48 @@ void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
 // not then update the number of cells and return true boolean
 bool Grid::rebuild_grid_check()
 {
+    // boolean if the grid needs to change
+    bool need_to_change_grid = false;
+
     // calculate the correct number of cells
     int new_number_of_cells_x = (int)floor(S(0,0) / (2.0 * sqrt(cut_off_sq)));
     int new_number_of_cells_y = (int)floor(S(1,1) / (2.0 * sqrt(cut_off_sq)));
+    int new_number_of_cells_z = 0;
 
-    // boolean if the grid needs to change
-    bool need_to_change_grid = false;
+    if(number_of_cells_z != 0)
+    {
+        new_number_of_cells_z = (int)floor(S(2,2) / (2.0 * sqrt(cut_off_sq)));
+
+        // perform the check in the y direction
+        if(new_number_of_cells_z != number_of_cells_z)
+        {
+            // check that cell is sensible
+            if(new_number_of_cells_z < 0 ||
+                new_number_of_cells_z > number_of_cells_z + 2)
+                {
+                    printf("\nERROR: cell is exploding new cell would be: %d x %d x %d\n\n",
+                            new_number_of_cells_x, new_number_of_cells_y,
+                            new_number_of_cells_z);
+                    exit(-1);
+                }
+            need_to_change_grid = true;
+            number_of_cells_z = new_number_of_cells_z;
+        }
+    }
 
     // perform check in x direction
     if(new_number_of_cells_x != number_of_cells_x)
     {
+        // check that cell is sensible
+        if(new_number_of_cells_x < 0 ||
+            new_number_of_cells_x > number_of_cells_x + 2)
+            {
+                printf("\nERROR: cell is exploding new cell would be: %d x %d x %d\n\n",
+                        new_number_of_cells_x, new_number_of_cells_y,
+                        new_number_of_cells_z);
+                exit(-1);
+            }
+
         need_to_change_grid = true;
         number_of_cells_x = new_number_of_cells_x;
     }
@@ -319,9 +397,22 @@ bool Grid::rebuild_grid_check()
     // perform the check in the y direction
     if(new_number_of_cells_y != number_of_cells_y)
     {
+        // check that cell is sensible
+        if(new_number_of_cells_y < 0 ||
+            new_number_of_cells_y > number_of_cells_y + 2)
+            {
+                printf("\nERROR: cell is exploding new cell would be: %d x %d x %d\n\n",
+                        new_number_of_cells_x, new_number_of_cells_y,
+                        new_number_of_cells_z);
+                exit(-1);
+            }
         need_to_change_grid = true;
         number_of_cells_y = new_number_of_cells_y;
     }
+
+    if(need_to_change_grid)
+        printf("New Grid is: %d x %d x %d\n", number_of_cells_x,
+                number_of_cells_y, number_of_cells_z);
 
     // return the result of the check
     return need_to_change_grid;
@@ -522,13 +613,14 @@ void Grid::update_particles_on_grid()
                         enforce_periodic_particle_boundary_condition(*particle);
                     else if(j == 0 or j == number_of_cells_x-1)
                         enforce_periodic_particle_boundary_condition(*particle);
-                    else if(number_of_cells_z != 0)
-                        if(k == 0 or k == number_of_cells_z-1)
-                            enforce_periodic_particle_boundary_condition(*particle);
+                    else if(number_of_cells_z != 0 and k == 0 or k == number_of_cells_z-1)
+                        enforce_periodic_particle_boundary_condition(*particle);
 
                     // get the potentially new cell cordinates
                     vector<int> cell_coordinate =
                                             get_cell_coordinate(*particle);
+
+                    //printf("Cell coordinate %d %d %d\n", cell_coordinate[0],cell_coordinate[1],cell_coordinate[2]);
 
                     // check if particle has moved cell
                     if(cell_coordinate[0] != i
