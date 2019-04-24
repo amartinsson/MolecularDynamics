@@ -525,9 +525,9 @@ int main(int argc, char* argv[])
     BoxS(1,1) = sy;
 
     // pick the correct value for the box mass and langevin friction
-    double dmass = (box_mass_max - box_mass_min) / sqrt((double)world_size);
+    double dmass = (box_mass_max - box_mass_min) / (sqrt((double)world_size) - 1);
     double dfric = (npt_langevin_friction_max - npt_langevin_friction_min)
-                    / sqrt((double)world_size);
+                    / (sqrt((double)world_size) - 1);
 
     double box_values[world_size];
     double lan_values[world_size];
