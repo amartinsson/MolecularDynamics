@@ -47,25 +47,6 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
 
     double rsq = r.l22();
 
-    if(number_of_cells_z)
-    {
-    //printf("rsq = %f, d = %f\n", rsq,S(0,0) * S(0,0) + S(1,1) * S(1,1) + S(2,2) * S(2,2));
-        if(rsq > S(0,0) * S(0,0) + S(1,1) * S(1,1) + S(2,2) * S(2,2))
-        {
-            printf("ERROR: blow up event detected: r = %f\n", std::sqrt(rsq));
-            exit(-1);
-        }
-    }
-    else
-    {
-        if(rsq > S(0,0) * S(0,0) + S(1,1) * S(1,1))
-        {
-            printf("ERROR: blow up event detected: r = %f\n", std::sqrt(rsq));
-            exit(-1);
-        }
-    }
-
-
     // chcek the cutoff criterion
     if(rsq < cut_off_sq)
     {
@@ -234,13 +215,7 @@ double NptGrid::calculate_pressure()
     else
         pressure = -1.0 / (2.0 * S(1,1)) * (nablaK(0,0) + virial(0,0))
                    -1.0 / (2.0 * S(0,0)) * (nablaK(1,1) + virial(1,1));
-
-    if(pressure > 10.0 * target_pressure)
-    {
-        printf("\n ERROR: Target pressure is: %1.3f breaking!\n\n", pressure);
-        exit(-1);
-    }
-
+                   
     return pressure;
 }
 
@@ -289,6 +264,7 @@ void NptGrid::update_kinetic_gradient()
 {
     // clear the matrix
     nablaK.zero();
+    Matrix Sinv = S.inv();
 
     int zend = 1;
     if(number_of_cells_z != 0)
@@ -296,7 +272,7 @@ void NptGrid::update_kinetic_gradient()
 
     // loop over all the cells
     #pragma omp parallel for default(shared)\
-            firstprivate(zend, number_of_cells_y, number_of_cells_x) \
+            firstprivate(zend, number_of_cells_y, number_of_cells_x, Sinv) \
             schedule(dynamic) collapse(3)
     for(int k=0; k<zend; k++)
         for(int j=0; j<number_of_cells_y; j++)
@@ -311,7 +287,7 @@ void NptGrid::update_kinetic_gradient()
                     // dereference the partilce
                     Particle* particle = cell_conductor->particle;
 
-                    Matrix B = (*particle).m.inv() * S.inv();
+                    Matrix B = (*particle).m.inv() * Sinv;
 
                     int dim = B.size()[0];
 

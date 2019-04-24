@@ -39,7 +39,7 @@ Vector LennardJones::compute_force(Molecule* molecule_pt,
     #pragma omp atomic
     particle_i->f(1) += F(1);
 
-    if(molecule_pt->dim() > 2)
+    if(F.size() > 2)
         #pragma omp atomic
         particle_i->f(2) += F(2);
 
@@ -49,7 +49,7 @@ Vector LennardJones::compute_force(Molecule* molecule_pt,
     #pragma omp atomic
     particle_i->f(1) -= F(1);
 
-    if(molecule_pt->dim() > 2)
+    if(F.size() > 2)
         #pragma omp atomic
         particle_i->f(2) -= F(2);
 

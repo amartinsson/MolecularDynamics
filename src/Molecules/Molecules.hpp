@@ -2,6 +2,7 @@
 #define MOLECULES_HPP
 
 #include <vector>
+#include <unordered_map>
 
 #include "Particle.hpp"
 
@@ -16,7 +17,7 @@ public:
     // constructor
     Molecule(const double& kt, const unsigned& nparts, const unsigned& dim)
         : DIM(dim), number_of_particles(nparts), kT(kt), Beta(1.0 / kt),
-          V(0.0) {Particles.resize(number_of_particles);}
+          V(0.0) {Particles.reserve(number_of_particles);} // empty
 
     // destructor
     ~Molecule();
@@ -38,7 +39,8 @@ public:
     // set the beta
     void set_beta(const double& beta);
     // vector of pointers to particles
-    vector<Particle*> Particles;
+    // vector<Particle*> Particles;
+    unordered_map<int, Particle*> Particles;
 
 protected:
     // Dimension

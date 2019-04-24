@@ -452,3 +452,39 @@ void Langevin::O_rot(Particle& particle)
     particle.pi(0,0) = OstepCphi * particle.pi(0,0)
                      + OstepZphi * sqrt(particle.I(0,0)) * normal_gen();
 }
+
+// check if cell blow up
+bool Langevin::cell_blow_up()
+{
+    bool state = false;
+
+    if(With_npt)
+        if(state != NptGrid_pt->break_experiment)
+            state = NptGrid_pt->break_experiment;
+            // printf("With npt grid is %d \n", With_npt);
+// printf("detecting %d\n",  state != NptGrid_pt->break_experiment);
+    // check for blow up event
+
+    // if(With_grid)
+    //     if(state != Grid_pt->break_experiment)
+    //     {
+    //         state = Grid_pt->break_experiment;
+    //     }
+    // else if(With_npt)
+    // {
+    //     printf("Got Here %d \n");
+    //     // printf("state was set to %d from %d\n", state, NptGrid_pt->break_experiment);
+    //     // if(state != NptGrid_pt->break_experiment)
+    //     // {
+    //     //     state = NptGrid_pt->break_experiment;
+    //     // }
+    // }
+    // else
+    // {
+    //     printf("Error: Calling unnessecary function");
+    //     exit(-1);
+    // }
+
+    // return the state
+    return state;
+}

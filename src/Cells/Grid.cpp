@@ -6,7 +6,7 @@ using namespace::std;
 //                                GRID CLASS
 // ------------------------------------------------------------------------- //
 Grid::Grid(const Matrix& Szero, const double& cut_off,
-           Molecule* molecule_pt) : S(2, 2), Sp(2, 2)
+           Molecule* molecule_pt) : S(2, 2), Sp(2, 2), break_experiment(false)
 {
     if(Szero.size()[0] > 2)
     {
@@ -146,21 +146,9 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
         Vector q_tilde = get_box_coordinate(particle);
 
         if(q_tilde(2) < 0.0)
-            if(q_tilde(2) < -0.1)
-                {
-                    printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
-                    exit(-1);
-                }
-            else
-                particle.q(2) += S(2, 2);
+            particle.q(2) += S(2, 2);
         else if(q_tilde(2) > 1.0)
-            if(q_tilde(2) > 1.1)
-                {
-                    printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
-                    exit(-1);
-                }
-            else
-                particle.q(2) -= S(2, 2);
+            particle.q(2) -= S(2, 2);
     }
 
     // recalculate position
@@ -168,42 +156,18 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
 
     // enforce y
     if(q_tilde(1) < 0.0)
-        if(q_tilde(1) < -0.1)
-            {
-                printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
-                exit(-1);
-            }
-        else
-            particle.q(1) += S(1, 1);
+        particle.q(1) += S(1, 1);
     else if(q_tilde(1) > 1.0)
-        if(q_tilde(1) > 1.1)
-            {
-                printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
-                exit(-1);
-            }
-        else
-            particle.q(1) -= S(1, 1);
+        particle.q(1) -= S(1, 1);
 
     // recalculate position
     q_tilde = get_box_coordinate(particle);
 
     // enforce x
     if(q_tilde(0) < 0.0)
-        if(q_tilde(0) < -0.1)
-            {
-                printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
-                exit(-1);
-            }
-        else
-            particle.q(0) += S(0, 0);
+        particle.q(0) += S(0, 0);
     else if(q_tilde(0) > 1.0)
-        if(q_tilde(0) > 1.1)
-            {
-                printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
-                exit(-1);
-            }
-        else
-            particle.q(0) -= S(0, 0);
+        particle.q(0) -= S(0, 0);
 }
 
 // delete and clear the grid
@@ -370,7 +334,10 @@ bool Grid::rebuild_grid_check()
                     printf("\nERROR: cell is exploding new cell would be: %d x %d x %d\n\n",
                             new_number_of_cells_x, new_number_of_cells_y,
                             new_number_of_cells_z);
-                    exit(-1);
+
+                    // set break experiment to true
+                    break_experiment = true;
+                    // exit(-1);
                 }
             need_to_change_grid = true;
             number_of_cells_z = new_number_of_cells_z;
@@ -387,7 +354,10 @@ bool Grid::rebuild_grid_check()
                 printf("\nERROR: cell is exploding new cell would be: %d x %d x %d\n\n",
                         new_number_of_cells_x, new_number_of_cells_y,
                         new_number_of_cells_z);
-                exit(-1);
+
+                // set break experiment to true
+                break_experiment = true;
+                // exit(-1);
             }
 
         need_to_change_grid = true;
@@ -404,15 +374,17 @@ bool Grid::rebuild_grid_check()
                 printf("\nERROR: cell is exploding new cell would be: %d x %d x %d\n\n",
                         new_number_of_cells_x, new_number_of_cells_y,
                         new_number_of_cells_z);
-                exit(-1);
+                // set break experiment to true
+                break_experiment = true;
+                // exit(-1);
             }
         need_to_change_grid = true;
         number_of_cells_y = new_number_of_cells_y;
     }
 
-    if(need_to_change_grid)
-        printf("New Grid is: %d x %d x %d\n", number_of_cells_x,
-                number_of_cells_y, number_of_cells_z);
+    // if(need_to_change_grid)
+    //     printf("New Grid is: %d x %d x %d\n", number_of_cells_x,
+    //             number_of_cells_y, number_of_cells_z);
 
     // return the result of the check
     return need_to_change_grid;

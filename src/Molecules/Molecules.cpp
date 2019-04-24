@@ -6,8 +6,8 @@
 Molecule::~Molecule()
 {
     for(unsigned i=0; i<number_of_particles; i++)
-        delete[] Particles[i];
-    Particles.clear();
+        delete Particles.at(i);
+    // Particles.clear();
 }
 
 // return dimension
@@ -23,7 +23,7 @@ double Molecule::kt() {return kT;}
 double Molecule::beta() {return Beta;}
 
 // return pointer to the i-th particle
-Particle& Molecule::particle(const unsigned& i) {return *Particles[i];}
+Particle& Molecule::particle(const unsigned& i) {return *Particles.at(i);}
 
 // return pointer to the potential
 double& Molecule::potential() {return V;}
@@ -51,7 +51,8 @@ Singelton::Singelton(const Vector& q_0, const Vector& p_0, const Matrix& m,
                         Molecule(kt, 1, dim)
 {
     // create one instance of a particle
-    Particles[0] = new Particle(q_0, p_0, m, dim);
+    Particles.insert(make_pair(0, new Particle(q_0, p_0, m, dim)));
+    // Particles[0] = new Particle(q_0, p_0, m, dim);
 }
 
 /******************************************************************************
@@ -65,7 +66,8 @@ Collection::Collection(const Vector& q_0, const Vector& p_0, const Matrix& m,
 {
     // create all the particles instance of a particle
     for(unsigned i=0; i<number_of_particles; i++)
-        Particles[i] = new Particle(q_0, p_0, m, dim);
+        Particles.insert(make_pair(i, new Particle(q_0, p_0, m, dim)));
+        // Particles[i] = new Particle(q_0, p_0, m, dim);
 }
 
 /******************************************************************************
@@ -80,8 +82,10 @@ Collection::Collection(const Vector& q_0, const Vector& p_0, const Matrix& m,
 {
     // create all the particles instance of a particle
     for(unsigned i=0; i<number_of_particles; i++)
-        Particles[i] = new Particle(q_0, p_0, Q_0, pi_0, m_0, I_0,
-                                      narms, dim);
+        Particles.insert(make_pair(i, new Particle(q_0, p_0, Q_0, pi_0, m_0,
+                                                   I_0, narms, dim)));
+        // Particles[i] = new Particle(q_0, p_0, Q_0, pi_0, m_0, I_0,
+                                      // narms, dim);
 }
 
 //

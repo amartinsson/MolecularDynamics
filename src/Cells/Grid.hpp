@@ -48,6 +48,9 @@ public:
     Matrix S;
     Matrix Sp;
 
+    // holer for exploding experiment
+    bool break_experiment;
+
 protected:
     // holder of the cut cut cut_off
     double cut_off_sq;

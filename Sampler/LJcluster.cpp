@@ -49,9 +49,11 @@ void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stam
 
   // print the correct stuff
   //for(unsigned k=0; k<number_of_particles; k++)
-  for(auto& part : molecule_pt->Particles)
+  // for(auto& part : molecule_pt->Particles)
+  for(int i=0; i<number_of_particles; i++)
   {
     // dereference the particle
+    Particle* part = molecule_pt->Particles.at(i);
     //particle_k = molecule_pt->particle_pt(k);
 
         // loop over the the number of dimensions
@@ -127,8 +129,12 @@ void print_final_positions(Molecule* molecule_pt)
 
   // print the correct stuff
   //for(unsigned k=0; k<number_of_particles; k++)
-  for(auto& part : molecule_pt->Particles)
+  // for(auto& part : molecule_pt->Particles)
+  // {
+  for(int i=0; i<number_of_particles; i++)
   {
+        // dereference the particle
+        Particle* part = molecule_pt->Particles.at(i);
     // dereference the particle
     //particle_k = molecule_pt->particle_pt(k);
 
@@ -178,8 +184,12 @@ void print_final_momentum(Molecule* molecule_pt)
 
   // print the correct stuff
   //for(unsigned k=0; k<number_of_particles; k++)
-  for(auto& part : molecule_pt->Particles)
+  // for(auto& part : molecule_pt->Particles)
+  // {
+  for(int i=0; i<number_of_particles; i++)
   {
+    // dereference the particle
+    Particle* part = molecule_pt->Particles.at(i);
     // dereference the particle
     //particle_k = molecule_pt->particle_pt(k);
 
@@ -321,6 +331,7 @@ int main(int argc, char* argv[])
     // Get the rank of the process
     int world_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    printf("Hello from process %d\n", world_rank);
 
     // parameters
     int SEED = 1234;
@@ -522,9 +533,15 @@ int main(int argc, char* argv[])
         // before = omp_get_wtime();
 
         integrator->integrate(cluster);
+        if(integrator->cell_blow_up())
+        {
+            printf("ERROR: Breaking Process %d with mu = %1.3f, nu = %1.3f\n",
+                    world_rank, box_mass, npt_langevin_friction);
+            break;
+        }
 
         // double after = omp_get_wtime();
-        // printf("step %4d took %1.4f\n", i, after-before);
+        // printf("\tstep %4d took %1.4f\n", i, after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
@@ -556,6 +573,9 @@ int main(int argc, char* argv[])
             print_volume(volume, time_stamp, control_number + world_rank);
         }
     }
+
+    // have mpi process wait if it blew up
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // Finalize the MPI environment.
     MPI_Finalize();

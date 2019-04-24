@@ -69,6 +69,8 @@ public:
                          const char* initial_pos_filename,
                          const char* initial_mom_filename,
                          const char* initial_box_filename);
+    // check blow up
+    bool cell_blow_up();
 
 protected:
     void A(Particle& particle, const double& h);

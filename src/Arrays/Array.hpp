@@ -80,16 +80,6 @@ public:
     void zero();
     void diag(const double& value);
 
-    // set inverse caching to be true
-    void set_inverse_caching()
-    {
-        // allocate memory to inverse
-        Minv.resize(dimx*dimy, 0.0);
-
-        // set bollean to true
-        inverse_caching = true;
-    }
-
 protected:
     vector<double> M;
     vector<double> Minv;
