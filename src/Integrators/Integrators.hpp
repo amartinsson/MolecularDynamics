@@ -136,13 +136,8 @@ private:
     void O_rot(Particle& particle);
 
     // NPT helper steps
-    void A_NPT_2_part(Particle& particle, const double& h);
     void A_NPT_2_box(const double& h);
-
-    void B_NPT_part(Particle& particle, const double& h);
     void B_NPT_box(const double& h);
-
-    void O_NPT_part(Particle& particle, Matrix& MassMatrix);
     void O_NPT_box();
 };
 

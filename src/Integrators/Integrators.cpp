@@ -85,24 +85,12 @@ void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
     // particle integration
     #pragma omp parallel for default(shared) schedule(static)
     for(unsigned i=0; i<molecule_pt->nparticle(); i++)
-    {
-        // position dependent part
-        A_NPT_2_part(molecule_pt->particle(i), h);
-    }
+        A(molecule_pt->particle(i), h);
 
     // update box momentum
     A_NPT_2_box(h);
 }
 
-// Langevin based position step, constant pressure, partilce
-void Langevin::A_NPT_2_part(Particle& particle, const double& h)
-{
-    // update particle position
-    particle.q += particle.m.inv() * particle.p * h;
-
-    if(particle.rigid_body())
-        A_rot(particle, h);
-}
 
 // Langevin based position step, constant pressure, box
 void Langevin::A_NPT_2_box(const double& h)
@@ -134,20 +122,11 @@ void Langevin::B_NPT(Molecule* molecule_pt, const double& h)
     //#pragma omp simd
     #pragma omp parallel for default(shared) schedule(static)
     for(unsigned i=0; i<number_of_particles; i++)
-        B_NPT_part(molecule_pt->particle(i), h);
+        B(molecule_pt->particle(i), h);
 
     // box integration
     B_NPT_box(h);
 }
-
-void Langevin::B_NPT_part(Particle& particle, const double& h)
-{
-    particle.p +=  particle.f * h;
-
-    if(particle.rigid_body())
-        B_rot(particle, h);
-}
-
 
 void Langevin::B_NPT_box(const double& h)
 {
@@ -264,37 +243,16 @@ void Langevin::O_NPT(Molecule* molecule_pt)
     // helper dereference
     unsigned number_of_particles = molecule_pt->nparticle();
 
-    // WARNING
-    // Warning this is bad and assumes that all the particles
-    // have the same mass!!!!
-    // WARNING
-
-    // varying mass
-    // (m * s)^T
-    Matrix MassMatrix = NptGrid_pt->S.inv().T() * (molecule_pt->particle(0).m.sqrt() * NptGrid_pt->S).T();
-
     // particle integration
     // WARNING cannot parallelisation on this step unless random
     // numbers are generated individially for each open mp thread
     #pragma omp simd
     for(unsigned i=0; i<number_of_particles; i++)
-        O_NPT_part(molecule_pt->particle(i), MassMatrix);
+        O(molecule_pt->particle(i));
 
     // box integration
     O_NPT_box();
 
-}
-
-void Langevin::O_NPT_part(Particle& particle, Matrix& MassMatrix)
-{
-    // generate random numbers
-    Vector N(particle.p.size(), normal_gen);
-
-    // find new momentum
-    particle.p = particle.p * OstepC + MassMatrix * N * OstepZ;
-
-    if(particle.rigid_body())
-        O_rot(particle);
 }
 
 void Langevin::O_NPT_box()
