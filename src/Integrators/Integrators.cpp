@@ -270,15 +270,8 @@ void Langevin::O_NPT(Molecule* molecule_pt)
     // WARNING
 
     // varying mass
-    // Matrix MassMatrix = NptGrid_pt->S.inv().T() * CholeskyRoot(NptGrid_pt->S.T(),
-    //                                                 molecule_pt->particle(0).m,
-    //                                                 NptGrid_pt->S);
-
-    // m * S
-    Matrix MassMatrix = NptGrid_pt->S.inv().T() * molecule_pt->particle(0).m.sqrt() * NptGrid_pt->S;
-
     // (m * s)^T
-    // Matrix MassMatrix = NptGrid_pt->S.inv().T() * (molecule_pt->particle(0).m.sqrt() * NptGrid_pt->S).T();
+    Matrix MassMatrix = NptGrid_pt->S.inv().T() * (molecule_pt->particle(0).m.sqrt() * NptGrid_pt->S).T();
 
     // particle integration
     // WARNING cannot parallelisation on this step unless random
