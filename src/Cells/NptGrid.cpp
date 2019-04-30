@@ -162,7 +162,7 @@ Vector NptGrid::get_box_min_image_sep(const Particle& current_particle,
 Vector NptGrid::get_box_momentum(const Particle& particle)
 {
     // calulate the new momentum
-    Vector p_tilde = S * particle.p;
+    Vector p_tilde = S.T() * particle.p;
 
     // return the scaled momentum
     return p_tilde;
@@ -173,7 +173,7 @@ Vector NptGrid::get_box_momentum(const Particle& particle)
   void NptGrid::set_box_momentum(const Vector& p_tilde, Particle& particle)
   {
       // set the new momentum
-      particle.p = S.inv() * p_tilde;
+      particle.p = S.inv().T() * p_tilde;
   }
 
   // function which update the instantenous and average volume
@@ -215,7 +215,7 @@ double NptGrid::calculate_pressure()
     else
         pressure = -1.0 / (2.0 * S(1,1)) * (nablaK(0,0) + virial(0,0))
                    -1.0 / (2.0 * S(0,0)) * (nablaK(1,1) + virial(1,1));
-                   
+
     return pressure;
 }
 
@@ -225,7 +225,7 @@ void NptGrid::enforce_relative_particle(const Matrix& Sold)
 {
     // calculate the scale matrices
     Matrix qScale = S * Sold.inv();
-    Matrix pScale = S.inv() * Sold;
+    Matrix pScale = S.inv().T() * Sold;
 
     int zend = 1;
     if(number_of_cells_z != 0)
@@ -287,7 +287,7 @@ void NptGrid::update_kinetic_gradient()
                     // dereference the partilce
                     Particle* particle = cell_conductor->particle;
 
-                    Matrix B = (*particle).m.inv() * Sinv;
+                    Matrix B = Sinv * (*particle).m.inv();
 
                     int dim = B.size()[0];
 
@@ -296,9 +296,9 @@ void NptGrid::update_kinetic_gradient()
                         {
                             Matrix D(dim, dim);
                             D(n,m) = 1.0;
-                            Matrix E = B * D;
+                            Matrix E = D * B;
                             #pragma omp atomic
-                            nablaK(m,n) -= 0.5 * ((*particle).p.T() * (E.T() + E)).dot((*particle).p);
+                            nablaK(m,n) -= 0.5 * ((*particle).p.T() * (E + E.T())).dot((*particle).p);
                         }
 
                     // step the conductor forward

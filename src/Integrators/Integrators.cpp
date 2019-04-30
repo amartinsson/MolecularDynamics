@@ -60,7 +60,7 @@ Langevin::~Langevin()
 // Langevin based position step
 void Langevin::A(Particle& particle, const double& h)
 {
-    particle.q += (particle.p.T() * particle.m.inv()) * h;
+    particle.q += particle.m.inv() * particle.p * h;
 
     if(particle.rigid_body())
         A_rot(particle, h);
@@ -98,8 +98,7 @@ void Langevin::A_2_NPT(Molecule* molecule_pt, const double& h)
 void Langevin::A_NPT_2_part(Particle& particle, const double& h)
 {
     // update particle position
-    particle.q += NptGrid_pt->S * NptGrid_pt->S.inv().T() * particle.m.inv()
-                * particle.p * h;
+    particle.q += particle.m.inv() * particle.p * h;
 
     if(particle.rigid_body())
         A_rot(particle, h);
@@ -143,7 +142,7 @@ void Langevin::B_NPT(Molecule* molecule_pt, const double& h)
 
 void Langevin::B_NPT_part(Particle& particle, const double& h)
 {
-    particle.p += NptGrid_pt->S.inv() * NptGrid_pt->S.T() * particle.f * h;
+    particle.p +=  particle.f * h;
 
     if(particle.rigid_body())
         B_rot(particle, h);
@@ -271,12 +270,15 @@ void Langevin::O_NPT(Molecule* molecule_pt)
     // WARNING
 
     // varying mass
-    // Matrix MassMatrix = NptGrid_pt->S.inv()
-    //             * (NptGrid_pt->S * molecule_pt->particle(0).m
-    //                 * NptGrid_pt->S.T()).symsqrt();
-    Matrix MassMatrix = NptGrid_pt->S.inv() * CholeskyRoot(NptGrid_pt->S,
-                                                    molecule_pt->particle(0).m,
-                                                    NptGrid_pt->S.T());
+    // Matrix MassMatrix = NptGrid_pt->S.inv().T() * CholeskyRoot(NptGrid_pt->S.T(),
+    //                                                 molecule_pt->particle(0).m,
+    //                                                 NptGrid_pt->S);
+
+    // m * S
+    Matrix MassMatrix = NptGrid_pt->S.inv().T() * molecule_pt->particle(0).m.sqrt() * NptGrid_pt->S;
+
+    // (m * s)^T
+    // Matrix MassMatrix = NptGrid_pt->S.inv().T() * (molecule_pt->particle(0).m.sqrt() * NptGrid_pt->S).T();
 
     // particle integration
     // WARNING cannot parallelisation on this step unless random

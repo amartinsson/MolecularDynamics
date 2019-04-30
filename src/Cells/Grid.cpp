@@ -146,9 +146,21 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
         Vector q_tilde = get_box_coordinate(particle);
 
         if(q_tilde(2) < 0.0)
-            particle.q(2) += S(2, 2);
+            if(q_tilde(2) < -0.25)
+            {
+                printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
+                break_experiment = true;
+            }
+            else
+                particle.q(2) += S(2, 2);
         else if(q_tilde(2) > 1.0)
-            particle.q(2) -= S(2, 2);
+            if(q_tilde(2) > 1.25)
+            {
+                printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
+                break_experiment = true;
+            }
+            else
+                particle.q(2) -= S(2, 2);
     }
 
     // recalculate position
@@ -156,18 +168,42 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
 
     // enforce y
     if(q_tilde(1) < 0.0)
-        particle.q(1) += S(1, 1);
+        if(q_tilde(1) < -0.25)
+        {
+            printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
+            break_experiment = true;
+        }
+        else
+            particle.q(1) += S(1, 1);
     else if(q_tilde(1) > 1.0)
-        particle.q(1) -= S(1, 1);
+        if(q_tilde(1) > 1.25)
+        {
+            printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
+            break_experiment = true;
+        }
+        else
+            particle.q(1) -= S(1, 1);
 
     // recalculate position
     q_tilde = get_box_coordinate(particle);
 
     // enforce x
     if(q_tilde(0) < 0.0)
-        particle.q(0) += S(0, 0);
+        if(q_tilde(0) < -0.25)
+        {
+            printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
+            break_experiment = true;
+        }
+        else
+            particle.q(0) += S(0, 0);
     else if(q_tilde(0) > 1.0)
-        particle.q(0) -= S(0, 0);
+        if(q_tilde(0) > 1.25)
+        {
+            printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
+            break_experiment = true;
+        }
+        else
+            particle.q(0) -= S(0, 0);
 }
 
 // delete and clear the grid
