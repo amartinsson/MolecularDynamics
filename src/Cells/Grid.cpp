@@ -14,6 +14,9 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
         Sp.resize(3, 3);
         number_of_cells_z = (int)floor(Szero(2, 2) / (2.0 * cut_off));
 
+        if(number_of_cells_z == 0)
+            number_of_cells_z = 1;
+
         number_of_neighbours = 10;
     }
     else
@@ -32,6 +35,12 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
     // calculate the number of boxes in each direction
     number_of_cells_x = (int)floor(S(0,0) / (2.0 * cut_off));
     number_of_cells_y = (int)floor(S(1,1) / (2.0 * cut_off));
+
+    if(number_of_cells_x == 0)
+        number_of_cells_x = 1;
+
+    if(number_of_cells_y == 0)
+        number_of_cells_y = 1;
 
     // build a periodic grid
     build_periodic_grid();
@@ -140,11 +149,11 @@ void Grid::clear_particle_forces(Molecule* molecule_pt)
 // enforce the periodic boundary condition of the particle
 void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
 {
+    Vector q_tilde = get_box_coordinate(particle);
+
     // enforce z
     if(number_of_cells_z != 0)
     {
-        Vector q_tilde = get_box_coordinate(particle);
-
         if(q_tilde(2) < 0.0)
             if(q_tilde(2) < -0.25)
             {
@@ -152,7 +161,7 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
                 break_experiment = true;
             }
             else
-                particle.q(2) += S(2, 2);
+                q_tilde(2) += 1.0;
         else if(q_tilde(2) > 1.0)
             if(q_tilde(2) > 1.25)
             {
@@ -160,11 +169,8 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
                 break_experiment = true;
             }
             else
-                particle.q(2) -= S(2, 2);
+                q_tilde(2) -= 1.0;
     }
-
-    // recalculate position
-    Vector q_tilde = get_box_coordinate(particle);
 
     // enforce y
     if(q_tilde(1) < 0.0)
@@ -174,7 +180,7 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
             break_experiment = true;
         }
         else
-            particle.q(1) += S(1, 1);
+            q_tilde(1) += 1.0;
     else if(q_tilde(1) > 1.0)
         if(q_tilde(1) > 1.25)
         {
@@ -182,10 +188,7 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
             break_experiment = true;
         }
         else
-            particle.q(1) -= S(1, 1);
-
-    // recalculate position
-    q_tilde = get_box_coordinate(particle);
+            q_tilde(1) -= 1.0;
 
     // enforce x
     if(q_tilde(0) < 0.0)
@@ -195,7 +198,7 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
             break_experiment = true;
         }
         else
-            particle.q(0) += S(0, 0);
+            q_tilde(0) += 1.0;
     else if(q_tilde(0) > 1.0)
         if(q_tilde(0) > 1.25)
         {
@@ -203,7 +206,10 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
             break_experiment = true;
         }
         else
-            particle.q(0) -= S(0, 0);
+            q_tilde(0) -= 1.0;
+
+    // recalculate position
+    particle.q = S * q_tilde;
 }
 
 // delete and clear the grid
@@ -315,21 +321,21 @@ void Grid::calculate_min_image(Vector& r)
 // calculates the translational shift of the box
 // as a function of y which is the position of a
 // particle
-double Grid::get_translational_shift_x(const Vector& r)
-{
-    if(number_of_cells_z != 0)
-        return r(1) * S(0, 1) / S(1, 1) + r(2) * S(0, 2) / S(2, 2);
-    else
-        return r(1) * S(0, 1) / S(1, 1);
-}
-
-double Grid::get_translational_shift_y(const Vector& r)
-{
-    if(number_of_cells_z != 0)
-        return r(2) * S(1, 2) / S(2, 2);
-    else
-        return 0.0;
-}
+// double Grid::get_translational_shift_x(const Vector& r)
+// {
+//     if(number_of_cells_z != 0)
+//         return r(1) * S(0, 1) / S(1, 1) + r(2) * S(0, 2) / S(2, 2);
+//     else
+//         return r(1) * S(0, 1) / S(1, 1);
+// }
+//
+// double Grid::get_translational_shift_y(const Vector& r)
+// {
+//     if(number_of_cells_z != 0)
+//         return r(2) * S(1, 2) / S(2, 2);
+//     else
+//         return 0.0;
+// }
 
 // initialise the particles from the molecule on the grid
 void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
@@ -356,9 +362,18 @@ bool Grid::rebuild_grid_check()
     int new_number_of_cells_y = (int)floor(S(1,1) / (2.0 * sqrt(cut_off_sq)));
     int new_number_of_cells_z = 0;
 
+    if(new_number_of_cells_x == 0)
+        new_number_of_cells_x = 1;
+
+    if(number_of_cells_y == 0)
+        new_number_of_cells_y = 1;
+
     if(number_of_cells_z != 0)
     {
         new_number_of_cells_z = (int)floor(S(2,2) / (2.0 * sqrt(cut_off_sq)));
+
+        if(new_number_of_cells_x == 0)
+            new_number_of_cells_x = 1;
 
         // perform the check in the y direction
         if(new_number_of_cells_z != number_of_cells_z)
@@ -514,12 +529,12 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
                       1.0 / (2 + (number_of_cells_z != 0))));
 
   // hexagonal separation
-  double separation_in_x = S(0,0) / double(particles_in_dir + 2.0);
-  double separation_in_y = S(1,1) / double(particles_in_dir + 2.0);
+  double separation_in_x = S(0,0) / double(particles_in_dir + 1.0);
+  double separation_in_y = S(1,1) / double(particles_in_dir + 1.0);
   double separation_in_z = 0.0;
 
   if(number_of_cells_z != 0)
-    separation_in_z = S(2, 2) / double(particles_in_dir + 2.0);
+    separation_in_z = S(2, 2) / double(particles_in_dir + 1.0);
 
   // particle counter
   unsigned pc = 0;

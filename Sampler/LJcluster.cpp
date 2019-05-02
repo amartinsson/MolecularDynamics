@@ -551,11 +551,11 @@ int main(int argc, char* argv[])
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // print positions
-            // Matrix simbox = integrator->npt_get_box();
+            Matrix simbox = integrator->npt_get_box();
             // print_positions(cluster, simbox, i / write_frequency);
+
             // update the pressure and temperature
             integrator->npt_update_pressure_temperature();
-            // integrator->update_temperature();
 
             // print the pressure
             double instant_pressure = integrator->npt_get_instant_pressure();
@@ -574,7 +574,7 @@ int main(int argc, char* argv[])
 
             //print volume
             double volume = integrator->npt_get_volume();
-            Matrix simbox = integrator->npt_get_box();
+            // Matrix simbox = integrator->npt_get_box();
             print_volume(volume, simbox, time_stamp, control_number + world_rank);
         }
     }

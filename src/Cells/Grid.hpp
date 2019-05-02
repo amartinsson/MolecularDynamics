@@ -105,11 +105,6 @@ private:
     // returns the position in the grid of a particles based on
     // the particles position
     vector<int> get_cell_coordinate(Particle& particle_pt);
-    // calculates the translational shift of the box
-    // as a function of y which is the position of a
-    // particle
-    double get_translational_shift_x(const Vector& r);
-    double get_translational_shift_y(const Vector& r);
     // initialise the particles from the molecule on the grid
     void initialise_particles_on_grid(Molecule* molecule_pt);
     // set the neighbours such that they comunicate with each other

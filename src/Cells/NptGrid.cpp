@@ -225,7 +225,7 @@ void NptGrid::enforce_relative_particle(const Matrix& Sold)
 {
     // calculate the scale matrices
     Matrix qScale = S * Sold.inv();
-    Matrix pScale = S.inv().T() * Sold;
+    Matrix pScale = S.inv().T() * Sold.T();
 
     int zend = 1;
     if(number_of_cells_z != 0)
