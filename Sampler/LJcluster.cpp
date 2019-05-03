@@ -503,7 +503,7 @@ int main(int argc, char* argv[])
     unsigned number_of_steps = TIME / time_step;
 
     // calculate the number of burn in steps
-    unsigned burn_in_steps = floor(burn_in_fraction * 1e3);
+    unsigned burn_in_steps = floor(burn_in_fraction * number_of_steps);
 
     // make particle standard values
     Vector q_0(dimension);
