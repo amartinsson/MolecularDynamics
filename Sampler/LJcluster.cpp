@@ -111,6 +111,84 @@ void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stam
 
 };
 
+void print_final(Molecule* molecule_pt, Matrix& S, const unsigned& process)
+{
+  // open the file to write to
+  char filename[50];
+  sprintf(filename, "Observables/Final/positions_%i.csv", process);
+  FILE* configuration_file = fopen(filename, "w");
+
+  // dereference the dimension
+  unsigned dim = molecule_pt->dim();
+  unsigned number_of_particles = molecule_pt->nparticle();
+
+  // make a particle pointer
+//  Particle* particle_k = NULL;
+
+  // print the correct stuff
+  //for(unsigned k=0; k<number_of_particles; k++)
+  // for(auto& part : molecule_pt->Particles)
+  for(int i=0; i<number_of_particles; i++)
+  {
+    // dereference the particle
+    Particle* part = molecule_pt->Particles.at(i);
+    //particle_k = molecule_pt->particle_pt(k);
+
+        // loop over the the number of dimensions
+        for(unsigned j=0; j<dim; j++)
+        {
+            // print to file
+            if(j == dim-1)
+                fprintf(configuration_file, "%.4f", part->q(j));
+            else
+                fprintf(configuration_file, "%.4f, ", part->q(j));
+        }
+
+  	// dependedn on rigid body or not print different things
+  	if(part->rigid_body())
+  	{
+      // print the rotation matrix to the file
+      fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
+              part->Q(0,0), part->Q(0,1),
+  		       part->Q(1,0), part->Q(1,1));
+  	}
+    else
+    {
+      // print end of line to file
+      fprintf(configuration_file, "\n");
+    }
+  }
+  // close the file
+  fclose(configuration_file);
+
+  // open the file to write to
+  sprintf(filename, "Observables/Final/volume_%i.csv", process);
+  configuration_file = fopen(filename, "w");
+
+  for(int i=0;i<10;i++)
+  {
+      if(i==0 | i==4)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", 0.0, 0.0, 0.0);
+      else if(i==1)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0), 0.0, 0.0);
+      else if(i==2)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1), S(1,1), 0.0);
+      else if(i==3)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1), S(1,1), 0.0);
+      else if(i==5 || i==9)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,2), S(1,2), S(2,2));
+      else if(i==6)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,2), S(1,2), S(2,2));
+      else if(i==7)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1)+S(0,2), S(1,1)+S(1,2),S(2,2));
+      else if(i==8)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1)+S(0,2), S(1,1)+S(1,2), S(2,2));
+  }
+
+  fclose(configuration_file);
+
+};
+
 void print_final_positions(Molecule* molecule_pt)
 {
 
@@ -221,18 +299,19 @@ void print_final_momentum(Molecule* molecule_pt)
 
 void print_temperature(const double& instant_temperature, double& temperature,
                        const double& time_stamp, const char* file_name,
-                       const unsigned& control_number)
+                       const double& bmass, const double& blan)
 {
     // convert the filename to a string
     std::string name(file_name);
 
     // open the file to write to
     char filename[50];
-    sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
+    sprintf(filename, "Observables/%s_%1.2f_%1.2f.csv", (name).c_str(),
+            bmass, blan);
     FILE* temperature_file = fopen(filename, "a");
 
-    fprintf(temperature_file, "%1.7e, %1.7e, %1.7e\n",
-            time_stamp, instant_temperature, temperature);
+    fprintf(temperature_file, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n",
+            time_stamp, bmass, blan, instant_temperature, temperature);
 
     // close the file
     fclose(temperature_file);
@@ -253,18 +332,19 @@ void print_box_temperature(const double& temperature, const double& time_stamp)
 
 void print_pressure(const double& instant_pressure, const double& pressure,
                     const double& time_stamp, const char* file_name,
-                    const unsigned& control_number)
+                    const double& bmass, const double& blan)
 {
     // convert the filename to a string
     std::string name(file_name);
 
     // open the file to write to
     char filename[50];
-    sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
+    sprintf(filename, "Observables/%s_%1.2f_%1.2f.csv", (name).c_str(),
+            bmass, blan);
     FILE* pressure_file = fopen(filename, "a");
 
-    fprintf(pressure_file, "%1.7e, %1.7e, %1.7e\n",
-            time_stamp, instant_pressure, pressure);
+    fprintf(pressure_file, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n",
+            time_stamp, bmass, blan, instant_pressure, pressure);
 
     // close the file
     fclose(pressure_file);
@@ -287,20 +367,17 @@ void print_density(const double& instant_volume, const unsigned& N,
 };
 
 
-void print_volume(const double& volume, const Matrix& S,
-                const double& time_stamp, const unsigned& control_number)
+void print_volume(const double& volume, const double& time_stamp,
+                  const double& bmass, const double& blan)
 {
   // open the file to write to
   char filename[50];
-  sprintf(filename, "Observables/volume_%d.csv", control_number);
+  sprintf(filename, "Observables/volume_%1.2f_%1.2f.csv",
+            bmass, blan);
   FILE* volume_file = fopen(filename, "a");
 
-  if(S.size()[0] > 2)
-    fprintf(volume_file, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n",
-            time_stamp, volume, S(0,0), S(0,1), S(0,2), S(1,1), S(1,2), S(2,2));
-  else
-    fprintf(volume_file, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n",
-            time_stamp, volume, S(0,0), S(0,1), S(1,1));
+  fprintf(volume_file, "%1.5e, %1.5e, %1.5e, %1.5e\n", time_stamp,
+            bmass, blan, volume);
   //fprintf(volume_file, "%1.4e, %.3f, %.3f, %.3f, %.3f\n", time_stamp, volume, box[0], box[1], box[2]);
 
     // close the file
@@ -358,8 +435,14 @@ int main(int argc, char* argv[])
     double target_pressure = 0.1;
 
     unsigned write_frequency = 100;
+
     double box_mass = 100.0;
+    double box_mass_min = 10.0;
+    double box_mass_max = 200.0;
+
     double npt_langevin_friction = 1.42;
+    double npt_langevin_friction_min = 0.42;
+    double npt_langevin_friction_max = 2.42;
 
     unsigned TIME = 1e2;
     bool rebuild_bool = false;
@@ -435,12 +518,38 @@ int main(int argc, char* argv[])
             box_mass = arg_in;
             printf("Thermal mass of box set to: %1.2f\n", box_mass);
         }
+        else if(arg == "--bmass_max")
+        {
+            double arg_in = std::stod(arg2);
+            box_mass_max = arg_in;
+            printf("max Thermal mass of box set to: %1.2f\n", box_mass_max);
+        }
+        else if(arg == "--bmass_min")
+        {
+            double arg_in = std::stod(arg2);
+            box_mass_min = arg_in;
+            printf("min Thermal mass of box set to: %1.2f\n", box_mass_min);
+        }
         else if(arg == "--blan")
         {
             double arg_in = std::stod(arg2);
             npt_langevin_friction = arg_in;
             printf("NPT friction of box set to: %1.2f\n",
                    npt_langevin_friction);
+        }
+        else if(arg == "--blan_max")
+        {
+            double arg_in = std::stod(arg2);
+            npt_langevin_friction_max = arg_in;
+            printf("max NPT friction of box set to: %1.2f\n",
+                   npt_langevin_friction_max);
+        }
+        else if(arg == "--blan_min")
+        {
+            double arg_in = std::stod(arg2);
+            npt_langevin_friction_min = arg_in;
+            printf("min NPT friction of box set to: %1.2f\n",
+                   npt_langevin_friction_min);
         }
         else if(arg == "--plan")
         {
@@ -493,8 +602,31 @@ int main(int argc, char* argv[])
     BoxS(0,0) = sx;
     BoxS(1,1) = sy;
 
+    // pick the correct value for the box mass and langevin friction
+    double dmass = (box_mass_max - box_mass_min) / (sqrt((double)world_size) - 1);
+    double dfric = (npt_langevin_friction_max - npt_langevin_friction_min)
+                    / (sqrt((double)world_size) - 1);
+
+    double box_values[world_size];
+    double lan_values[world_size];
+
+    int sqrt_size = (int)sqrt((double)world_size);
+
+    for(int i=0; i<sqrt_size; i++)
+        for(int j=0; j<sqrt_size; j++)
+        {
+            box_values[j + i * sqrt_size] = box_mass_min + dmass * j;
+            lan_values[j + i * sqrt_size] = npt_langevin_friction_min + dfric * i;
+        }
+
     // add contorl number to seed differently
     SEED += control_number + (control_number + 1) * world_rank;
+
+    box_mass = box_values[world_rank];
+    npt_langevin_friction = lan_values[world_rank];
+
+    printf("process %d has box_mass %1.3f\n",world_rank, box_mass);
+    printf("process %d has npt_fric %1.3f\n",world_rank, npt_langevin_friction);
 
     // calculate the cut off
     double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
@@ -503,7 +635,7 @@ int main(int argc, char* argv[])
     unsigned number_of_steps = TIME / time_step;
 
     // calculate the number of burn in steps
-    unsigned burn_in_steps = floor(burn_in_fraction * number_of_steps);
+    unsigned burn_in_steps = floor(burn_in_fraction * 1e3);
 
     // make particle standard values
     Vector q_0(dimension);
@@ -551,17 +683,17 @@ int main(int argc, char* argv[])
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // print positions
-            Matrix simbox = integrator->npt_get_box();
+            // Matrix simbox = integrator->npt_get_box();
             // print_positions(cluster, simbox, i / write_frequency);
-
             // update the pressure and temperature
             integrator->npt_update_pressure_temperature();
+            // integrator->update_temperature();
 
             // print the pressure
             double instant_pressure = integrator->npt_get_instant_pressure();
             double pressure = integrator->npt_get_pressure();
             print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-                           control_number + world_rank);
+                           box_mass, npt_langevin_friction);
 
             // printf("Pressure %.0d\t %1.5f\n", i, pressure);
 
@@ -569,13 +701,21 @@ int main(int argc, char* argv[])
             double instant_temperature = integrator->npt_get_instant_temperature();
             double temperature = integrator->npt_get_temperature();
             print_temperature(instant_temperature, temperature, time_stamp,
-                              "temperature", control_number + world_rank);
+                              "temperature",
+                              box_mass, npt_langevin_friction);
             // printf("Temperature \t %1.5f\n", temperature);
 
             //print volume
             double volume = integrator->npt_get_volume();
-            // Matrix simbox = integrator->npt_get_box();
-            print_volume(volume, simbox, time_stamp, control_number + world_rank);
+            print_volume(volume, time_stamp,
+                        box_mass,
+                        npt_langevin_friction);
+        }
+
+        if(i % int(0.2 * number_of_steps) == 0 | i == number_of_steps)
+        {
+            Matrix simbox = integrator->npt_get_box();
+            print_final(cluster, simbox, world_rank);
         }
     }
 

@@ -111,6 +111,84 @@ void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stam
 
 };
 
+void print_final(Molecule* molecule_pt, Matrix& S, const unsigned& process)
+{
+  // open the file to write to
+  char filename[50];
+  sprintf(filename, "Observables/Final/positions_%i.csv", process);
+  FILE* configuration_file = fopen(filename, "w");
+
+  // dereference the dimension
+  unsigned dim = molecule_pt->dim();
+  unsigned number_of_particles = molecule_pt->nparticle();
+
+  // make a particle pointer
+//  Particle* particle_k = NULL;
+
+  // print the correct stuff
+  //for(unsigned k=0; k<number_of_particles; k++)
+  // for(auto& part : molecule_pt->Particles)
+  for(int i=0; i<number_of_particles; i++)
+  {
+    // dereference the particle
+    Particle* part = molecule_pt->Particles.at(i);
+    //particle_k = molecule_pt->particle_pt(k);
+
+        // loop over the the number of dimensions
+        for(unsigned j=0; j<dim; j++)
+        {
+            // print to file
+            if(j == dim-1)
+                fprintf(configuration_file, "%.4f", part->q(j));
+            else
+                fprintf(configuration_file, "%.4f, ", part->q(j));
+        }
+
+  	// dependedn on rigid body or not print different things
+  	if(part->rigid_body())
+  	{
+      // print the rotation matrix to the file
+      fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
+              part->Q(0,0), part->Q(0,1),
+  		       part->Q(1,0), part->Q(1,1));
+  	}
+    else
+    {
+      // print end of line to file
+      fprintf(configuration_file, "\n");
+    }
+  }
+  // close the file
+  fclose(configuration_file);
+
+  // open the file to write to
+  sprintf(filename, "Observables/Final/volume_%i.csv", process);
+  configuration_file = fopen(filename, "w");
+
+  for(int i=0;i<10;i++)
+  {
+      if(i==0 | i==4)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", 0.0, 0.0, 0.0);
+      else if(i==1)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0), 0.0, 0.0);
+      else if(i==2)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1), S(1,1), 0.0);
+      else if(i==3)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1), S(1,1), 0.0);
+      else if(i==5 || i==9)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,2), S(1,2), S(2,2));
+      else if(i==6)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,2), S(1,2), S(2,2));
+      else if(i==7)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1)+S(0,2), S(1,1)+S(1,2),S(2,2));
+      else if(i==8)
+        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1)+S(0,2), S(1,1)+S(1,2), S(2,2));
+  }
+
+  fclose(configuration_file);
+
+};
+
 void print_final_positions(Molecule* molecule_pt)
 {
 
@@ -632,6 +710,12 @@ int main(int argc, char* argv[])
             print_volume(volume, time_stamp,
                         box_mass,
                         npt_langevin_friction);
+        }
+
+        if(i % int(0.2 * number_of_steps) == 0 | i == number_of_steps)
+        {
+            Matrix simbox = integrator->npt_get_box();
+            print_final(cluster, simbox, world_rank);
         }
     }
 
