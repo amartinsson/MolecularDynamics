@@ -79,6 +79,7 @@ public:
 
     void zero();
     void diag(const double& value);
+    Matrix off_diag_zero();
 
 protected:
     vector<double> M;

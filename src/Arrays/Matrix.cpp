@@ -256,6 +256,17 @@ void Matrix::diag(const double& value)
         this->get(i,i) = value;
 }
 
+Matrix Matrix::off_diag_zero()
+{
+    Matrix Mret(dimx, dimy);
+
+    #pragma omp simd collapse(1)
+    for(unsigned i=0; i<dimx; i++)
+        Mret(i,i) = this->get(i,i);
+
+    return Mret;
+}
+
 // Matrix Matrix multiplication
 Matrix Matrix::operator* (const Matrix& m)
 {

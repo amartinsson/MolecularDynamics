@@ -57,11 +57,19 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
                                                std::sqrt(rsq), r);
 
         // rescale the separation into box invariant coordinates
-        Vector r_tilde = get_box_min_image_sep(*current_particle,
-                                               *neighbour_particle);
+        Vector r_tilde = S.inv() * r;
 
         // calculate the virial
-        Matrix V = f_ij.out(r_tilde);
+        // Matrix V = f_ij.out(r_tilde);
+        Matrix V(3,3);
+
+        for(unsigned i=0; i<3; i++)
+            for(unsigned j=i; j<3; j++)
+            {
+                Matrix K(3,3);
+                K(i,j) = 1.0;
+                V(i,j) = f_ij.dot(K * r_tilde);
+            }
 
         // these need to be minus additive as we are calculating the
         // force but we need the gradient!
@@ -132,22 +140,22 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       enforce_relative_particle(Sold);
   }
 
-Vector NptGrid::get_box_min_image_sep(const Particle& current_particle,
-                                      const Particle& neighbour_particle)
-  {
-      // get the box coordinates
-      Vector qc = get_box_coordinate(current_particle);
-      Vector qn = get_box_coordinate(neighbour_particle);
-
-      // calculate x separation
-      Vector r = qn - qc;
-
-      // enforce minimum image convention
-      calculate_min_image(r);
-
-      // retrun the rescalied vector
-      return r;
-  }
+// Vector NptGrid::get_box_min_image_sep(const Particle& current_particle,
+//                                       const Particle& neighbour_particle)
+//   {
+//       // get the box coordinates
+//       Vector qc = get_box_coordinate(current_particle);
+//       Vector qn = get_box_coordinate(neighbour_particle);
+//
+//       // calculate x separation
+//       Vector r = qn - qc;
+//
+//       // enforce minimum image convention
+//       calculate_min_image(r);
+//
+//       // retrun the rescalied vector
+//       return r;
+//   }
 
   // function which sets the position of a particle to the invariant
   // position given by q tilde
@@ -349,8 +357,7 @@ void NptGrid::update_particle_forces(System* system_pt,
 #pragma omp parallel for default(shared)\
         reduction(+:box_grad_00, box_grad_01, box_grad_11, box_grad_02,\
                     box_grad_12, box_grad_22) \
-        firstprivate(zend, number_of_cells_y, number_of_cells_x, \
-                     number_of_neighbours, system_pt) \
+        firstprivate(zend, number_of_cells_y, number_of_cells_x, system_pt) \
         schedule(dynamic) collapse(3)
     for(int k=0; k<zend; k++)
     {
@@ -358,17 +365,18 @@ void NptGrid::update_particle_forces(System* system_pt,
         {
             for(int i=0; i<number_of_cells_x; i++)
             {
-                for(unsigned n=0; n<number_of_neighbours; n++)
-                {
-                    // get the current cell
-                    Cell* current_cell = get_cell(i, j, k);
+                // get the current cell
+                Cell* current_cell = get_cell(i, j, k);
 
+                // for(unsigned n=0; n<number_of_neighbours; n++)
+                for(const auto& ncell : current_cell->neighbour_list)
+                {
                     // get the current cells conductor
-                    ListNode* current_conductor
-                                    = current_cell->get_particle_list_head();
+                    ListNode* current_conductor =
+                                    current_cell->get_particle_list_head();
 
                     // get the neighbour cell
-                    Cell* neighbour_cell = current_cell->get_neighbour(n);
+                    Cell* neighbour_cell = ncell.second;
 
                     // reset newton iterator
                     unsigned current_newton_iterator = 0;
@@ -451,4 +459,6 @@ void NptGrid::update_particle_forces(System* system_pt,
         virial(1,2) = box_grad_12;
         virial(2,2) = box_grad_22;
     }
+
+    // printf("Force on particle 1: %f %f %f\n", molecule_pt->particle(0).f(0),molecule_pt->particle(0).f(1),molecule_pt->particle(0).f(2));
 }

@@ -2,11 +2,10 @@
 
 using namespace::std;
 
-LennardJones::LennardJones(const double& epsilon, const double& sigma)
+LennardJones::LennardJones(const double& epsilon, const double& sigma) :
+    Epsilon(epsilon), Sigma(sigma)
 {
-    // set the force parameters
-    Epsilon = epsilon;
-    Sigma = sigma;
+    // empty
 }
 
 // destructor
@@ -44,14 +43,14 @@ Vector LennardJones::compute_force(Molecule* molecule_pt,
         particle_i->f(2) += F(2);
 
     #pragma omp atomic
-    particle_i->f(0) -= F(0);
+    particle_j->f(0) -= F(0);
 
     #pragma omp atomic
-    particle_i->f(1) -= F(1);
+    particle_j->f(1) -= F(1);
 
     if(F.size() > 2)
         #pragma omp atomic
-        particle_i->f(2) -= F(2);
+        particle_j->f(2) -= F(2);
 
     // add to the potential
     #pragma omp atomic

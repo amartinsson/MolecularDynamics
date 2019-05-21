@@ -12,6 +12,7 @@
 #include "Molecules.hpp"
 #include "System.hpp"
 #include "Array.hpp"
+#include "SystemTemperature.hpp"
 
 using namespace::std;
 
@@ -27,8 +28,6 @@ public:
     ~Grid();
     // function which calculates and returns the instant temperature
     double get_instant_temperature();
-    // returns the number of grid coordinates
-    unsigned get_ncoord();
     // returns the currently held temperature
     double get_temperature();
     // updates the tracking objects by adding the current temperature to
@@ -42,7 +41,6 @@ public:
     // updates the positions from files given
     void add_file_initial_condition(Molecule* molecule_pt,
                                     const char* initial_pos_filename,
-                                    const char* initial_mom_filename,
                                     const char* initial_box_filename);
     // access for grid dimensions
     Matrix S;
@@ -58,8 +56,6 @@ protected:
     int number_of_cells_x;
     int number_of_cells_y;
     int number_of_cells_z;
-    // number of neightbours for each cell
-    unsigned number_of_neighbours;
     // number of particles in the grid
     unsigned number_of_particles;
 
@@ -92,7 +88,8 @@ private:
     // list of cells pointers
     vector<Cell*> cell_list;
     // tracking for average observables
-    AverageObservable* Temperature_pt;
+    // AverageObservable* Temperature_pt;
+    SystemTemperature* Temperature_pt;
 
     // add the particles from molecule object to the grid
     void add_particles_to_grid(Molecule* molecule_pt);

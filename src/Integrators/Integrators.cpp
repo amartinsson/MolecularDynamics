@@ -134,8 +134,7 @@ void Langevin::B_NPT_box(const double& h)
     Matrix Sd = NptGrid_pt->S;
     double det = NptGrid_pt->S.det();
 
-    Sd = Sd.inv();
-    Sd(0,1) = 0.0;
+    Sd = Sd.inv().off_diag_zero();
 
     NptGrid_pt->Sp -= (NptGrid_pt->virial + Sd * det * Target_pressure) * h;
 }
@@ -144,6 +143,11 @@ void Langevin::B_NPT_box(const double& h)
 void Langevin::npt_update_pressure_temperature()
 {
     NptGrid_pt->update_pressure_temperature();
+}
+
+void Langevin::update_temperature()
+{
+    Grid_pt->update_temperature();
 }
 
 // get the instant pressure reading
@@ -159,21 +163,42 @@ double Langevin::npt_get_pressure()
 }
 
 // get the instant temperature reading
-double Langevin::npt_get_instant_temperature()
+double Langevin::get_instant_temperature()
 {
-    return NptGrid_pt->get_instant_temperature();
+    double temp = 0.0;
+
+    if(With_npt)
+        temp = NptGrid_pt->get_instant_temperature();
+    else
+        temp= Grid_pt->get_instant_temperature();
+
+    return temp;
 }
 
 // get the temperature reading
-double Langevin::npt_get_temperature()
+double Langevin::get_temperature()
 {
-    return NptGrid_pt->get_temperature();
+    double temp = 0.0;
+
+    if(With_npt)
+        temp = NptGrid_pt->get_temperature();
+    else
+        temp= Grid_pt->get_temperature();
+
+    return temp;
 }
 
 // get the matrix defininf the npt box
-Matrix Langevin::npt_get_box()
+Matrix Langevin::get_box()
 {
-    return NptGrid_pt->S;
+    Matrix S(3,3);
+
+    if(With_npt)
+        S = NptGrid_pt->S;
+    else
+        S = Grid_pt->S;
+
+    return S;
 }
 
 // get the volume of the npt
@@ -190,13 +215,12 @@ double Langevin::npt_get_instant_volume()
 
 void Langevin::npt_set_initial(Molecule* molecule_pt,
                                const char* initial_pos_filename,
-                               const char* initial_mom_filename,
                                const char* initial_box_filename)
 {
     // read in the particles and the box
-    NptGrid_pt->add_file_initial_condition(molecule_pt, initial_pos_filename,
-        initial_mom_filename,
-        initial_box_filename);
+    NptGrid_pt->add_file_initial_condition(molecule_pt,
+                                           initial_pos_filename,
+                                           initial_box_filename);
 
     // check the initial condition
     NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
@@ -252,7 +276,6 @@ void Langevin::O_NPT(Molecule* molecule_pt)
 
     // box integration
     O_NPT_box();
-
 }
 
 void Langevin::O_NPT_box()

@@ -11,7 +11,7 @@ class AverageObservable
 public:
     AverageObservable();
     // destructor
-    ~AverageObservable();
+    ~AverageObservable() {};
     // make observation of the variable
     void observe(const double& value);
     // return the average of the observable

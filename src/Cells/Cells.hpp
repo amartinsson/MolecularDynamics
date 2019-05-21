@@ -31,14 +31,15 @@ public:
     void remove_particle_listnode(ListNode* node_pt);
     // move a node from one cell to another
     void move_list_node(ListNode* node_pt, Cell* new_cell);
+    // neighbour_list
+    unordered_map<int, Cell*> neighbour_list;
 
 private:
-    unsigned cell_number;
+    // unsigned cell_number;
     // particle list
     LinkedList* particle_list;
     // neightbour list
     // vector<Cell*> neighbour_list;
-    unordered_map<int, Cell*> neighbour_list;
 };
 
 #endif

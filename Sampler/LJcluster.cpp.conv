@@ -165,28 +165,10 @@ void print_final(Molecule* molecule_pt, Matrix& S, const unsigned& process)
   sprintf(filename, "Observables/Final/volume_%i.csv", process);
   configuration_file = fopen(filename, "w");
 
-  for(int i=0;i<10;i++)
-  {
-      if(i==0 | i==4)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", 0.0, 0.0, 0.0);
-      else if(i==1)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0), 0.0, 0.0);
-      else if(i==2)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1), S(1,1), 0.0);
-      else if(i==3)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1), S(1,1), 0.0);
-      else if(i==5 || i==9)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,2), S(1,2), S(2,2));
-      else if(i==6)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,2), S(1,2), S(2,2));
-      else if(i==7)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1)+S(0,2), S(1,1)+S(1,2),S(2,2));
-      else if(i==8)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1)+S(0,2), S(1,1)+S(1,2), S(2,2));
-  }
-
-  fclose(configuration_file);
-
+    fprintf(configuration_file, "%.7e, %.7e, %.7e\n", S(0,0), S(0,1), S(0,2));
+    fprintf(configuration_file, "%.7e, %.7e, %.7e\n", S(1,0), S(1,1), S(1,2));
+    fprintf(configuration_file, "%.7e, %.7e, %.7e\n", S(2,0), S(2,1), S(2,2));
+    fclose(configuration_file);
 };
 
 void print_final_positions(Molecule* molecule_pt)

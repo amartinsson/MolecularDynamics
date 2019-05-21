@@ -5,22 +5,8 @@ using namespace::std;
 /******************************************************************************
                               Average Observable
  *****************************************************************************/
-AverageObservable::AverageObservable()
-{
-    Average = 0.0;
-    Average_sq = 0.0;
-    n_observs = 0.0;
-    instant_value = 0.0;
-}
-
-// destructor
-AverageObservable::~AverageObservable()
-{
-    delete &Average;
-    delete &Average_sq;
-    delete &n_observs;
-    delete &instant_value;
-}
+AverageObservable::AverageObservable() :
+    Average(0.0), Average_sq(0.0), n_observs(0.0), instant_value(0.0) {}
 
 // make observation
 void AverageObservable::observe(const double& value)

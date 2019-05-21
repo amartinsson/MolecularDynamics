@@ -82,7 +82,8 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
     // preforce integration
     // #pragma omp barrier
     // #pragma omp single
-    #pragma omp parallel for simd
+    // #pragma omp parallel for simd
+    // #pragma omp parallel for default(shared) firstprivate(number_of_particles)
     for(unsigned i=0; i<number_of_particles; i++)
     // for(auto& particle = molecule_pt->Particles.begin();
     //     particle != molecule_pt->Particles.end(); particle++)
@@ -90,23 +91,29 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
         particle = &molecule_pt->particle(i);
 
         // integrate forward
+        // printf("B step 1\n");
         Langevin::B(*particle, 0.5 * Time_Step);
+        // printf("A step 1\n");
         Langevin::A(*particle, 0.5 * Time_Step);
+        // printf("O step 1\n");
         Langevin::O(*particle);
+        // printf("A step 2\n");
         Langevin::A(*particle, 0.5 * Time_Step);
     }
 
     // force solve
+    // printf("\tForce\n");
     Langevin::compute_force(molecule_pt);
 
     // #pragma omp barrier
     // #pragma omp single
-    #pragma omp parallel for simd
+    // #pragma omp parallel for simd
     for(unsigned i=0; i<number_of_particles; i++)
     {
         particle = &molecule_pt->particle(i);
 
         // integrate forward
+        // printf("B step 2\n");
         Langevin::B(*particle, 0.5 * Time_Step);
     }
 }
@@ -129,7 +136,7 @@ void BAOAB::npt_integration(Molecule* molecule_pt)
         Langevin::A_1_NPT(0.5 * Time_Step);
         // after = omp_get_wtime();
         // printf("A1 step %1.5f\n", after-before);
-        
+
         // before = omp_get_wtime();
         Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
         // after = omp_get_wtime();

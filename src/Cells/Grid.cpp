@@ -16,15 +16,9 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
 
         if(number_of_cells_z == 0)
             number_of_cells_z = 1;
-
-        number_of_neighbours = 10;
     }
     else
-    {
         number_of_cells_z = 0;
-        // set the number of neightbours for grids
-        number_of_neighbours = 5;
-    }
 
     // initialse the box dimensions
     S = Szero;
@@ -50,7 +44,12 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
 
     // set up tracking object to track the average
     // of the temperature
-    Temperature_pt = new AverageObservable();
+    // Temperature_pt = new AverageObservable();
+    Temperature_pt = new SystemTemperature(molecule_pt);
+
+    // set the temperature to calculate
+    Temperature_pt->set_momentum_temp();
+    // Temperature_pt->set_config_temp();
 
     // record the number of cells
     if(number_of_cells_z != 0)
@@ -75,20 +74,16 @@ Grid::~Grid()
 // updates the positions from files given
 void Grid::add_file_initial_condition(Molecule* molecule_pt,
                                       const char* initial_pos_filename,
-                                      const char* initial_mom_filename,
                                       const char* initial_box_filename)
 {
     // read in the particle positions
     read_position_initial(molecule_pt, initial_pos_filename);
 
-    // read in the particle positions
-    //read_momentum_initial(molecule_pt, initial_mom_filename);
-
     // read the box coordinates
     read_box_initial(initial_box_filename);
 
     // update the position of all particles
-    update_particles_on_grid();
+    rebuild_periodic_grid(molecule_pt);
 }
 
 // add the particles from molecule object to the grid
@@ -123,7 +118,9 @@ void Grid::build_periodic_grid()
     for(int k=0; k<zend; k++)
         for(int j=0; j<number_of_cells_y; j++)
             for(int i=0; i<number_of_cells_x; i++)
+            {
                 cell_list.push_back(new Cell);
+            }
 
     // set the boundary condition of the grid to be periodic
     set_periodic_boundary_conditions();
@@ -151,62 +148,35 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
 {
     Vector q_tilde = get_box_coordinate(particle);
 
-    // enforce z
-    if(number_of_cells_z != 0)
+    for(unsigned i=0; i<q_tilde.size(); i++)
     {
-        if(q_tilde(2) < 0.0)
-            if(q_tilde(2) < -0.25)
+        if(q_tilde(i) <= 0.0)
+        {
+            // if(q_tilde(i) < -0.25)
+            // {
+            //     printf("ERROR: particle detected in dir %d: %1.3f\n",
+            //                                                 i, q_tilde(i));
+            //     break_experiment = true;
+            // }
+            // else
             {
-                printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
-                break_experiment = true;
+                q_tilde(i) += 1.0;
             }
-            else
-                q_tilde(2) += 1.0;
-        else if(q_tilde(2) > 1.0)
-            if(q_tilde(2) > 1.25)
+        }
+        else if(q_tilde(i) > 1.0)
+        {
+            // if(q_tilde(i) > 1.25)
+            // {
+            //     printf("ERROR: particle detected in dir %d: %1.3f\n",
+            //                                                 i, q_tilde(i));
+            //     break_experiment = true;
+            // }
+            // else
             {
-                printf("ERROR: particle detected in z: %1.3f\n", q_tilde(2));
-                break_experiment = true;
+                q_tilde(i) -= 1.0;
             }
-            else
-                q_tilde(2) -= 1.0;
+        }
     }
-
-    // enforce y
-    if(q_tilde(1) < 0.0)
-        if(q_tilde(1) < -0.25)
-        {
-            printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
-            break_experiment = true;
-        }
-        else
-            q_tilde(1) += 1.0;
-    else if(q_tilde(1) > 1.0)
-        if(q_tilde(1) > 1.25)
-        {
-            printf("ERROR: particle detected in y: %1.3f\n", q_tilde(1));
-            break_experiment = true;
-        }
-        else
-            q_tilde(1) -= 1.0;
-
-    // enforce x
-    if(q_tilde(0) < 0.0)
-        if(q_tilde(0) < -0.25)
-        {
-            printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
-            break_experiment = true;
-        }
-        else
-            q_tilde(0) += 1.0;
-    else if(q_tilde(0) > 1.0)
-        if(q_tilde(0) > 1.25)
-        {
-            printf("ERROR: particle detected in x: %1.3f\n", q_tilde(0));
-            break_experiment = true;
-        }
-        else
-            q_tilde(0) -= 1.0;
 
     // recalculate position
     particle.q = S * q_tilde;
@@ -242,13 +212,6 @@ Cell* Grid::get_cell(const int& i, const int& j, const int& k)
 
     return cell_list[mod(i, nx) + mod(j, ny) * nx + mod(k, nz) * nx * ny];
 }
-
-// returns the number of grid coordinates
-unsigned Grid::get_ncoord()
-{
-    return 3;
-}
-
 
 // This function returns the non dimensional coordinate w.r.t the box
 // of a particle in the box.
@@ -287,8 +250,20 @@ Vector Grid::get_separation(const Particle& current_particle,
    // Calculate separation
     Vector r = neighbour_particle.q - current_particle.q;
 
+    Vector r1 = r;
+
     // update difference so that follows mini image
     calculate_min_image(r);
+
+    // for(unsigned i=0; i<3; i++)
+    //     if(std::fabs(r1(i)-r(i)) != 0.0)
+    //     {
+    //         printf("in %d diff = %1.4e\n", i, std::fabs(r1(i)-r(i)));
+    //         printf("r1=(%1.3f, %1.3f, %1.3f), r=(%1.3f, %1.3f, %1.3f)\n", r1(0), r1(1), r1(2), r(0), r(1), r(2));
+    //         printf("with:\n %1.3f, %1.3f, %1.3f\n %1.3f, %1.3f, %1.3f\n %1.3f, %1.3f, %1.3f\n", S(0,0), S(0,1), S(0,2), S(1,0), S(1,1), S(1,2), S(2,0), S(2,1), S(2,2));
+    //         // exit(-1);
+    //         break;
+    //     }
 
     // return the separation
     return r;
@@ -297,45 +272,21 @@ Vector Grid::get_separation(const Particle& current_particle,
 // calulate and return the minimum image convention
 void Grid::calculate_min_image(Vector& r)
 {
-    // enforce minimum image convention
-    if(r(0) > 0.5 * S(0,0))
-        r(0) -= S(0,0);
-    else if(r(0) <= -0.5 * S(0,0))
-        r(0) += S(0,0);
+    // map vector to non-dimensional units
+    Vector rt = S.inv() * r;
 
-    // enforce minimum image convention
-    if(r(1) > 0.5 * S(1,1))
-        r(1) -= S(1,1);
-    else if(r(1) <= -0.5 * S(1,1))
-        r(1) += S(1,1);
-
-    if(number_of_cells_z != 0)
+    for(unsigned i=0; i<r.size(); i++)
     {
-        if(r(2) > 0.5 * S(2, 2))
-            r(2) -= S(2, 2);
-        else if(r(2) <= -0.5 * S(2, 2))
-            r(2) += S(2, 2);
-    }
-}
+        if(rt(i) > 0.5)
+            rt(i) -= 1.0;
 
-// calculates the translational shift of the box
-// as a function of y which is the position of a
-// particle
-// double Grid::get_translational_shift_x(const Vector& r)
-// {
-//     if(number_of_cells_z != 0)
-//         return r(1) * S(0, 1) / S(1, 1) + r(2) * S(0, 2) / S(2, 2);
-//     else
-//         return r(1) * S(0, 1) / S(1, 1);
-// }
-//
-// double Grid::get_translational_shift_y(const Vector& r)
-// {
-//     if(number_of_cells_z != 0)
-//         return r(2) * S(1, 2) / S(2, 2);
-//     else
-//         return 0.0;
-// }
+        if(rt(i) <= -0.5)
+            rt(i) += 1.0;
+    }
+
+    // map back to the original coordinates
+    r = S * rt;
+}
 
 // initialise the particles from the molecule on the grid
 void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
@@ -485,16 +436,37 @@ void Grid::set_periodic_boundary_conditions()
                                 set_neighbour(3, get_cell(i, j+1, k));
                     get_cell(i, j, k)->
                                 set_neighbour(4, get_cell(i+1, j+1, k));
+                    // set the neighbours next layer
                     get_cell(i, j, k)->
-                                set_neighbour(5, get_cell(i+1, j-1, k+1));
+                                set_neighbour(5, get_cell(i-1, j-1, k+1));
                     get_cell(i, j, k)->
-                                set_neighbour(6, get_cell(i, j, k+1));
+                                set_neighbour(6, get_cell(i, j-1, k+1));
                     get_cell(i, j, k)->
-                                set_neighbour(7, get_cell(i+1, j, k+1));
+                                set_neighbour(7, get_cell(i+1, j-1, k+1));
                     get_cell(i, j, k)->
-                                set_neighbour(8, get_cell(i, j+1, k+1));
+                                set_neighbour(8, get_cell(i-1, j, k+1));
                     get_cell(i, j, k)->
-                                set_neighbour(9, get_cell(i+1, j+1, k+1));
+                                set_neighbour(9, get_cell(i, j, k+1));
+                    get_cell(i, j, k)->
+                                set_neighbour(10, get_cell(i+1, j, k+1));
+                    get_cell(i, j, k)->
+                                set_neighbour(11, get_cell(i-1, j+1, k+1));
+                    get_cell(i, j, k)->
+                                set_neighbour(12, get_cell(i, j+1, k+1));
+                    get_cell(i, j, k)->
+                                set_neighbour(13, get_cell(i+1, j+1, k+1));
+                //
+                //                 int nx = number_of_cells_x;
+                //                 int ny = number_of_cells_y;
+                //                 int nz = number_of_cells_z;
+                //
+                //     printf("Cell: %p %d: %d %d %d %d %d\n",get_cell(i,j,k),
+                //     mod(i, nx) + mod(j, ny) * nx + mod(k, nz) * nx * ny,
+                // mod(i+1, nx) + mod(j+1, ny) * nx + mod(k+1, nz) * nx * ny,
+                // mod(i, nx) + mod(j, ny) * nx + mod(k+1, nz) * nx * ny,
+                // mod(i+1, nx) + mod(j, ny) * nx + mod(k+1, nz) * nx * ny,
+                // mod(i, nx) + mod(j+1, ny) * nx + mod(k+1, nz) * nx * ny,
+                // mod(i+1, nx) + mod(j+1, ny) * nx + mod(k+1, nz) * nx * ny);
                 }
             }
             else
@@ -512,6 +484,13 @@ void Grid::set_periodic_boundary_conditions()
                             set_neighbour(4, get_cell(i+1, j+1, 0));
             }
         }
+
+
+        // printf("cell(0,0,0), ");
+        // for(unsigned i=0; i<13; i++)
+        //     printf(", %p", get_cell(0,0,0)->neighbour_list[i]);
+        // printf("\n");
+        // exit(-1);
 }
 
 // initialise particles with random initial conditions, randomly uniform in
@@ -529,12 +508,12 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
                       1.0 / (2 + (number_of_cells_z != 0))));
 
   // hexagonal separation
-  double separation_in_x = S(0,0) / double(particles_in_dir + 1.0);
-  double separation_in_y = S(1,1) / double(particles_in_dir + 1.0);
+  double separation_in_x = S(0,0) / double(particles_in_dir);
+  double separation_in_y = S(1,1) / double(particles_in_dir);
   double separation_in_z = 0.0;
 
   if(number_of_cells_z != 0)
-    separation_in_z = S(2, 2) / double(particles_in_dir + 1.0);
+    separation_in_z = S(2, 2) / double(particles_in_dir);
 
   // particle counter
   unsigned pc = 0;
@@ -553,11 +532,15 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
                 // derefernce the particle
                 Particle* particle = &molecule_pt->particle(pc);
 
-                particle->q(0) = double(i+1) * separation_in_x;
-                particle->q(1) = double(j+1) * separation_in_y;
-
-                if(number_of_cells_z != 0)
-                    particle->q(2) = double(k+1) * separation_in_z;
+                particle->q(0) = double(i) * separation_in_x
+                                    + 0.5 * separation_in_x
+                                    + (k % 2 == 0) * 0.5 * separation_in_x;
+                particle->q(1) = double(j) * separation_in_y
+                                    + 0.5 * separation_in_y;
+                                    // + (i % 2 == 0) * 0.5 * separation_in_y;
+                particle->q(2) = double(k) * separation_in_z
+                                    + 0.5 * separation_in_z;
+                                    // + (j % 2 == 0) * 0.5 * separation_in_z;
 
                 double mx = particle->m(0,0);
                 double my = particle->m(1,1);
@@ -566,11 +549,11 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
                 if(number_of_cells_z != 0)
                     mz = particle->m(2,2);
 
-                particle->p(0) = sqrt(mx / beta) * normal_momentum();
-                particle->p(1) = sqrt(my / beta) * normal_momentum();
+                particle->p(0) = 0.0;//sqrt(mx / beta) * normal_momentum();
+                particle->p(1) = 0.0;//sqrt(my / beta) * normal_momentum();
 
                 if(number_of_cells_z != 0)
-                    particle->p(2) = sqrt(mz / beta) * normal_momentum();
+                    particle->p(2) = 0.0;//sqrt(mz / beta) * normal_momentum();
 
                 // if particle rotates set all the rotations
                 if(particle->rigid_body() != false)
@@ -632,12 +615,14 @@ void Grid::update_particles_on_grid()
 
                     // if we are in boundary cell then enforce the
                     // periodic boundary condition
-                    if(i == 0 or i == number_of_cells_y-1)
-                        enforce_periodic_particle_boundary_condition(*particle);
-                    else if(j == 0 or j == number_of_cells_x-1)
-                        enforce_periodic_particle_boundary_condition(*particle);
-                    else if(number_of_cells_z != 0 and k == 0 or k == number_of_cells_z-1)
-                        enforce_periodic_particle_boundary_condition(*particle);
+                    // if(i == 0 or i == number_of_cells_x-1)
+                    //     enforce_periodic_particle_boundary_condition(*particle);
+                    // else if(j == 0 or j == number_of_cells_y-1)
+                    //     enforce_periodic_particle_boundary_condition(*particle);
+                    // else if(number_of_cells_z != 0)
+                    //     if(k == 0 or k == number_of_cells_z-1)
+                    //         enforce_periodic_particle_boundary_condition(*particle);
+                    enforce_periodic_particle_boundary_condition(*particle);
 
                     // get the potentially new cell cordinates
                     vector<int> cell_coordinate =
@@ -683,76 +668,8 @@ double Grid::get_temperature()
 // current temperature to its average
 void Grid::update_temperature()
 {
-  // calculate the current temperature
-  double temperature = calculate_momentum_temp();
-
   // add this value to the tracking average
-  Temperature_pt->observe(temperature);
-}
-
-// calculates and returns the momentum temperature
-double Grid::calculate_momentum_temp()
-{
-    // initialise the temperature
-    double temperature = 0.0;
-    double rot_temperature = 0.0;
-
-    // helpers
-    Particle* particle = NULL;
-    ListNode* cell_conductor = NULL;
-
-    double N = 1.0;
-
-    int zend = 1;
-    if(number_of_cells_z != 0)
-        zend = number_of_cells_z;
-
-    // loop over all the cells
-    for(int k=0; k<zend; k++)
-        for(int j=0; j<number_of_cells_y; j++)
-            for(int i=0; i<number_of_cells_x; i++)
-            {
-                // get the conductor for this cell
-                cell_conductor = get_cell(i, j, k)->get_particle_list_head();
-
-                // loop over all the particles in this cell
-                while(cell_conductor != NULL)
-                {
-                    // dereference the partilce
-                    particle = cell_conductor->particle;
-
-                    temperature = particle->p.dot(particle->m * particle->p) / N
-                                + (N - 1.0) / N * temperature;
-
-                    //if particle rotates add to rotational temperature
-                    if(particle->rigid_body())
-                    {
-                        double pi = particle->pi(0,0);
-                        double I =  particle->I(0,0);
-
-                        rot_temperature = pi * pi / (I * N)
-                                    + (N-1.0)/N * rot_temperature;
-                    }
-
-                    // increment the number of particles
-                    N++;
-
-                    // step the conductor forward
-                    cell_conductor = cell_conductor->next;
-                }
-            }
-
-    // total temperature
-    double total_temp = 0.0;
-
-    // multiply by the correct constant
-    if(rot_temperature != 0.0)
-        total_temp = 1.0 / 3.0 * (temperature + rot_temperature);
-    else
-        total_temp = 1.0 / (2.0 + (number_of_cells_z != 0)) * temperature;
-
-    // return the temperature
-    return total_temp;
+  Temperature_pt->update();
 }
 
 // computes the force in and respects the cut off radius. This is
@@ -781,39 +698,37 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
 {
     // make sure taht the particles are
     // on the grid and that the forces are set to zero
-    #pragma omp single
-    {
-        // update the particles on the grid
-        update_particles_on_grid();
+    update_particles_on_grid();
 
-        // clear all the particle forces
-        clear_particle_forces(molecule_pt);
-    }
+    // clear all the particle forces
+    clear_particle_forces(molecule_pt);
 
     int zend = 1;
     if(number_of_cells_z != 0)
         zend = number_of_cells_z;
 
   // loop over all the boxes to calculate the forces
-#pragma omp parallel for default(shared) schedule(dynamic) collapse(3) \
-      firstprivate(zend, number_of_neighbours, system_pt)
+
+#pragma omp parallel for default(shared) schedule(dynamic) collapse(3)
+  // firstprivate(zend, system_pt, number_of_cells_y, number_of_cells_x)
     for(int k=0; k<zend; k++)
     {
         for(int j=0; j<number_of_cells_y; j++)
         {
             for(int i=0; i<number_of_cells_x; i++)
             {
-                for(unsigned n=0; n<number_of_neighbours; n++)
-                {
-                    // get the current cell
-                    Cell* current_cell = get_cell(i, j, k);
+                // get the current cell
+                Cell* current_cell = get_cell(i, j, k);
 
+                // for(unsigned n=0; n<number_of_neighbours; n++)
+                for(const auto& ncell : current_cell->neighbour_list)
+                {
                     // get the current cells conductor
                     ListNode* current_conductor =
                                     current_cell->get_particle_list_head();
 
                     // get the neighbour cell
-                    Cell* neighbour_cell = current_cell->get_neighbour(n);
+                    Cell* neighbour_cell = ncell.second;
 
                     // reset newton iterator
                     unsigned current_newton_iterator = 0;
@@ -895,6 +810,8 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
      std::ifstream input(initial_box_filename);
      std::string line;
 
+     unsigned k = 0;
+
     // loop over all the lines in the box
     while(std::getline(input, line))
     {
@@ -908,27 +825,12 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
             parsed_row.push_back(test);
         }
 
-       for(unsigned i=0; i<parsed_row.size();i++)
-       {
-           if(i<3)
-           {
-               if(i == 0)
-                    S(0,0) = parsed_row[i];
-                else if(i == 1)
-                    S(0,1) = parsed_row[i];
-                else
-                    S(1,1) = parsed_row[i];
-           }
-           else
-           {
-               if(i == 0)
-                    Sp(0,0) = parsed_row[i];
-                else if(i == 1)
-                    S(0,1) = parsed_row[i];
-                else
-                    S(1,1) = parsed_row[i];
-           }
-       }
+        S(k, 0) = parsed_row[0];
+        S(k, 1) = parsed_row[1];
+        S(k, 2) = parsed_row[2];
+
+        // increment row counter
+        k++;
     }
 }
 
@@ -962,6 +864,18 @@ void Grid::read_position_initial(Molecule* molecule_pt,
       particle->q(0) = parsed_row[0];
       particle->q(1) = parsed_row[1];
 
+      if(particle->q.size() > 2)
+        particle->q(2) = parsed_row[2];
+
+
+    // printf()
+      // set momentum
+      // particle->p(0) = 0.0;
+      // particle->p(1) = 0.0;
+      //
+      // if(particle->p.size() > 3)
+      //   particle->p(3) = 0.0;
+
       // if we rotates
       if(particle->rigid_body())
       {
@@ -976,44 +890,3 @@ void Grid::read_position_initial(Molecule* molecule_pt,
 
      }
  }
-
-// read in the particle momentums
-void Grid::read_momentum_initial(Molecule* molecule_pt,
-                                 const char* initial_mom_filename)
-{
-    // loop over the box file stream
-    std::ifstream input(initial_mom_filename);
-    std::string line;
-
-    Particle* particle = NULL;
-    unsigned k = 0;
-
-   // loop over all the lines in the box
-   while(std::getline(input, line))
-   {
-       std::stringstream lineStream(line);
-       std::string line_stuff;
-       std::vector<double> parsed_row;
-
-       while(std::getline(lineStream, line_stuff, ','))
-       {
-           double test = strtod(line_stuff.c_str(), NULL);
-           parsed_row.push_back(test);
-       }
-
-       particle = &molecule_pt->particle(k);
-
-       // set momentum
-       particle->p(0) = parsed_row[0];
-       particle->p(1) = parsed_row[1];
-
-       // if we rotates
-       if(particle->rigid_body())
-       {
-           particle->pi(0,0) = parsed_row[2];
-       }
-
-       // increment particle counter
-       k++;
-      }
-}
