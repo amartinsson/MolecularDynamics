@@ -87,6 +87,7 @@ void BAOAB::nvt_integration(Molecule* molecule_pt)
     for(unsigned i=0; i<number_of_particles; i++)
     // for(auto& particle = molecule_pt->Particles.begin();
     //     particle != molecule_pt->Particles.end(); particle++)
+    // int i = 32;
     {
         particle = &molecule_pt->particle(i);
 

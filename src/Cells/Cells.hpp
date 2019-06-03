@@ -33,6 +33,7 @@ public:
     void move_list_node(ListNode* node_pt, Cell* new_cell);
     // neighbour_list
     unordered_map<int, Cell*> neighbour_list;
+    Vector cell_no;
 
 private:
     // unsigned cell_number;

@@ -56,6 +56,17 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
                                                neighbour_particle,
                                                std::sqrt(rsq), r);
 
+       //  Vector q1 = S.inv() * (*current_particle).q;
+       //  Vector q2 = S.inv() * (*neighbour_particle).q;
+       //
+       // if(std::sqrt(rsq) < pow(2.0,1.0/6.0))
+       //      printf("r = %1.3e f = %1.3e %p = (%1.3f, %1.3f, %1.3f) %p = (%1.3f, %1.3f, %1.3f)\n",
+       //      std::sqrt(rsq), f_ij.l2(), current_particle, q1(0), q1(1), q1(2), neighbour_particle, q2(0), q2(1), q2(2));
+
+
+        if(Grid::with_radial_dist)
+            Grid::Radial_pt->update(std::sqrt(rsq));
+
         // rescale the separation into box invariant coordinates
         Vector r_tilde = S.inv() * r;
 
@@ -248,23 +259,16 @@ void NptGrid::enforce_relative_particle(const Matrix& Sold)
     for(int k=0; k<zend; k++)
         for(int j=0; j<number_of_cells_y; j++)
             for(int i=0; i<number_of_cells_x; i++)
-            {
-                // get the conductor for this cell
-                ListNode* cell_conductor = get_cell(i, j, k)->get_particle_list_head();
-
-                // loop over all the particles in this cell
-                while(cell_conductor != NULL)
+                for(ListNode* cell_conductor=get_cell(i,j,k)->get_particle_list_head();
+                        cell_conductor != NULL;
+                            cell_conductor=cell_conductor->next)
                 {
                     // dereference the partilce
                     Particle* particle = cell_conductor->particle;
 
                     (*particle).q = qScale * (*particle).q;
                     (*particle).p = pScale * (*particle).p;
-
-                    // step the conductor forward
-                    cell_conductor = cell_conductor->next;
                 }
-            }
 }
 
 // update the gradient of the kinetic energy w.r.t the box
@@ -285,12 +289,9 @@ void NptGrid::update_kinetic_gradient()
     for(int k=0; k<zend; k++)
         for(int j=0; j<number_of_cells_y; j++)
             for(int i=0; i<number_of_cells_x; i++)
-            {
-                // get the conductor for this cell
-                ListNode* cell_conductor = get_cell(i, j, k)->get_particle_list_head();
-
-                // loop over all the particles in this cell
-                while(cell_conductor != NULL)
+                for(ListNode* cell_conductor=get_cell(i,j,k)->get_particle_list_head();
+                        cell_conductor != NULL;
+                            cell_conductor=cell_conductor->next)
                 {
                     // dereference the partilce
                     Particle* particle = cell_conductor->particle;
@@ -308,11 +309,7 @@ void NptGrid::update_kinetic_gradient()
                             #pragma omp atomic
                             nablaK(m,n) -= 0.5 * ((*particle).p.T() * (E + E.T())).dot((*particle).p);
                         }
-
-                    // step the conductor forward
-                    cell_conductor = cell_conductor->next;
                 }
-            }
 }
 
 
@@ -372,8 +369,8 @@ void NptGrid::update_particle_forces(System* system_pt,
                 for(const auto& ncell : current_cell->neighbour_list)
                 {
                     // get the current cells conductor
-                    ListNode* current_conductor =
-                                    current_cell->get_particle_list_head();
+                    // ListNode* current_conductor =
+                                    // current_cell->get_particle_list_head();
 
                     // get the neighbour cell
                     Cell* neighbour_cell = ncell.second;
@@ -382,11 +379,15 @@ void NptGrid::update_particle_forces(System* system_pt,
                     unsigned current_newton_iterator = 0;
 
                     // loop over particles in current cell
-                    while(current_conductor != NULL)
+                    // while(current_conductor != NULL)
+                    // loop over particles in current cell
+                    for(ListNode* current_conductor=current_cell->get_particle_list_head();
+                            current_conductor != NULL;
+                                current_conductor=current_conductor->next)
                     {
                         // conductor over neighbour cell
-                        ListNode* neighbour_conductor =
-                                    neighbour_cell->get_particle_list_head();
+                        // ListNode* neighbour_conductor =
+                        //             neighbour_cell->get_particle_list_head();
 
                         // get the particle pointer
                         Particle* current_particle =
@@ -396,24 +397,24 @@ void NptGrid::update_particle_forces(System* system_pt,
                         unsigned neighbour_newton_iterator = 0;
 
                         // loop over particles in neighbour cell
-                        while(neighbour_conductor != NULL)
+                        // while(neighbour_conductor != NULL)
+                        // loop over particles in neighbour cell
+                        for(ListNode* neighbour_conductor=neighbour_cell->get_particle_list_head();
+                                neighbour_conductor != NULL;
+                                    neighbour_conductor=neighbour_conductor->next)
                         {
                             // apply Newton iterators if we are in the same cell
                             if(current_cell == neighbour_cell)
                             {
-                                if(current_newton_iterator <= neighbour_newton_iterator)
+                                if(current_newton_iterator < neighbour_newton_iterator)
                                 {
                                     // get the neighbour particle
                                     Particle* neighbour_particle
                                             = neighbour_conductor->particle;
 
-                                    // don't compute the force for the same particles
-                                    if(current_particle != neighbour_particle)
-                                    {
-                                        compute_force(system_pt, molecule_pt,
-                                                      current_particle,
-                                                      neighbour_particle);
-                                    }
+                                    compute_force(system_pt, molecule_pt,
+                                                  current_particle,
+                                                  neighbour_particle);
                                 }
 
                                 // iterate the newton current newton iterator
@@ -432,7 +433,7 @@ void NptGrid::update_particle_forces(System* system_pt,
                             }
 
                             // itreate the current conductor
-                            neighbour_conductor = neighbour_conductor->next;
+                            // neighbour_conductor = neighbour_conductor->next;
 
                         } // end of loop over neighbour_conductor
 
@@ -440,7 +441,7 @@ void NptGrid::update_particle_forces(System* system_pt,
                         current_newton_iterator++;
 
                         // itreate the current conductor
-                        current_conductor = current_conductor->next;
+                        // current_conductor = current_conductor->next;
 
                     } // end of loop over current_conductor
                 } // end of loop over n, number of neighbours

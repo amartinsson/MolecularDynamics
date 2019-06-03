@@ -5,7 +5,7 @@ using namespace::std;
 // ------------------------------------------------------------------------- //
 //                              CELLS
 // ------------------------------------------------------------------------- //
-Cell::Cell()
+Cell::Cell() : cell_no(3)
 {
     // initalise the paricle list
     particle_list = new LinkedList;

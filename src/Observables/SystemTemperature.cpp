@@ -117,7 +117,9 @@ void SystemTemperature::update_mtemp()
 
     // add the observed temperature to the mTemp observable
     double dim = double(system->dim());
-    mTemp->observe(temp.get_average() / dim);
+    double N = double(system->nparticle());
+
+    mTemp->observe(N * temp.get_average() / (dim * (N - 1.0)));
 }
 
 // calculate configurational temperature

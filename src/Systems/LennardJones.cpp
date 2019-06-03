@@ -32,25 +32,32 @@ Vector LennardJones::compute_force(Molecule* molecule_pt,
 
     Vector F = dr * (-dphidr / r);
 
-    #pragma omp atomic
-    particle_i->f(0) += F(0);
-
-    #pragma omp atomic
-    particle_i->f(1) += F(1);
-
-    if(F.size() > 2)
+    for(int k=0; k<F.size(); k++)
+    {
         #pragma omp atomic
-        particle_i->f(2) += F(2);
+        particle_i->f(k) -= F(k);
 
-    #pragma omp atomic
-    particle_j->f(0) -= F(0);
-
-    #pragma omp atomic
-    particle_j->f(1) -= F(1);
-
-    if(F.size() > 2)
         #pragma omp atomic
-        particle_j->f(2) -= F(2);
+        particle_j->f(k) += F(k);
+    }
+    //
+    //
+    //
+    // #pragma omp atomic
+    // particle_i->f(1) += F(1);
+    //
+    // if(F.size() > 2)
+    //     #pragma omp atomic
+    //     particle_i->f(2) += F(2);
+    //
+    //
+    //
+    // #pragma omp atomic
+    // particle_j->f(1) -= F(1);
+    //
+    // if(F.size() > 2)
+    //     #pragma omp atomic
+    //     particle_j->f(2) -= F(2);
 
     // add to the potential
     #pragma omp atomic
@@ -68,5 +75,5 @@ double LennardJones::get_potential(const double& r)
 // function whcih returns the force scalar
 double LennardJones::get_force_scalar(const double& r)
 {
-    return 24.0 * Epsilon * ((Sigma / r, 6.0) - 2.0 * pow(Sigma / r, 12.0)) / r;
+    return 24.0 * Epsilon * (pow(Sigma / r, 6.0) - 2.0 * pow(Sigma / r, 12.0)) / r;
 }

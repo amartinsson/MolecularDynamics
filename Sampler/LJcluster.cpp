@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <mpi.h>
+// #include <gsl/gsl_sf_legendre.h>
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
@@ -430,6 +431,7 @@ int main(int argc, char* argv[])
     unsigned control_number = 0;
 
     double burn_in_fraction = 0.1;
+    bool with_npt = false;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -541,6 +543,12 @@ int main(int argc, char* argv[])
             SEED = arg_in;
             printf("Seed set to: %.0d\n", SEED);
         }
+        else if(arg == "--npt")
+        {
+            int arg_in = std::stod(arg2);
+            with_npt = true;
+            printf("Setting npt to: %d\n", with_npt);
+        }
 
     }
 
@@ -559,7 +567,13 @@ int main(int argc, char* argv[])
     SEED += control_number + (control_number + 1) * world_rank;
 
     // calculate the cut off
-    double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
+    // double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
+    double cut_off = 4.0 * sigma;
+
+    // set the boundaries for the rmin rmax calculations
+    double rmin = 0.0; //0.95 * sigma;
+    double rmax = cut_off;
+    int nrdist = 200;
 
     // calculate the number of steps
     unsigned number_of_steps = TIME / time_step;
@@ -584,12 +598,12 @@ int main(int argc, char* argv[])
     BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
                                      lennard_jones, SEED);
 
-
-    // set to evaluate with grid
-    // integrator->integrate_with_grid(BoxS, cut_off, cluster);
-    integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
-                                        box_mass, target_pressure,
-                                        npt_langevin_friction);
+    if(with_npt)
+        integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
+                                            box_mass, target_pressure,
+                                            npt_langevin_friction);
+    else
+        integrator->integrate_with_grid(BoxS, cut_off, cluster);
 
     if(rebuild_bool)
     {
@@ -602,9 +616,21 @@ int main(int argc, char* argv[])
     }
 
 
-    Matrix simbox = integrator->get_box();
-    print_positions(cluster, simbox, 0);
+    if(with_npt)
+    {
+        Matrix simbox = integrator->npt_obj().S;
+        print_positions(cluster, simbox, 0);
+    }
+    else
+    {
+        Matrix simbox = integrator->grid_obj().S;
+        print_positions(cluster, simbox, 0);
+    }
     // exit(-1);
+    //
+    // cluster->particle(0).p(0) = -10.0;
+    // cluster->particle(1).p(1) = 10.0;
+    // cluster->particle(2).p(2) = -10.0;
 
     for(unsigned i=0; i<number_of_steps; i++)
     {
@@ -623,48 +649,125 @@ int main(int argc, char* argv[])
             break;
         }
 
+        // Vector Ftot(3);
+        // for(unsigned k=0; k<cluster->nparticle(); k++)
+        // {
+        //     Ftot += cluster->particle(k).f;
+        // }
+
+        // printf("Total force sums to: %1.3e %1.3e %1.3e\n", Ftot(0), Ftot(1), Ftot(2));
+
         // double after = omp_get_wtime();
         // printf("\tstep %4d took %1.4f\n", i, after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
-            // print positions
-            Matrix simbox = integrator->get_box();
-            print_positions(cluster, simbox, i / write_frequency);
             // exit(-1);
             // update the pressure and temperature
-            integrator->npt_update_pressure_temperature();
-            // integrator->update_temperature();
+            if(with_npt)
+            {
+                // print positions
+                Matrix simbox = integrator->npt_obj().S;
+                print_positions(cluster, simbox, i / write_frequency);
 
-            // print the pressure
-            double instant_pressure = integrator->npt_get_instant_pressure();
-            double pressure = integrator->npt_get_pressure();
-            print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-                           control_number + world_rank);
+                // update pressure temperature
+                integrator->npt_obj().update_pressure_temperature();
 
-            printf("Pressure %.0d\t %1.5f\n", i, pressure);
+                // print temperature
+                integrator->npt_obj().Temperature_pt->
+                                            print("temperature", time_stamp,
+                                                  control_number + world_rank);
+                double itemp = integrator->npt_obj().get_instant_temperature();
+                double temp = integrator->npt_obj().get_temperature();
+                printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
 
-            //print temperature
-            double instant_temperature = integrator->get_instant_temperature();
-            double temperature = integrator->get_temperature();
-            print_temperature(instant_temperature, temperature, time_stamp,
-                              "temperature", control_number + world_rank);
-            printf("Temperature \t %1.5f %1.3f\n", temperature, instant_temperature);
+                // print pressure
+                double instant_pressure = integrator->npt_obj().get_instant_pressure();
+                double pressure = integrator->npt_obj().get_pressure();
+                print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+                               control_number + world_rank);
+                printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
 
-            //print volume
-            double volume = integrator->npt_get_volume();
-            print_volume(volume, simbox, time_stamp, control_number + world_rank);
-            printf("Volume \t     %1.5f\n", volume);
+                //print volume
+                double volume = integrator->npt_obj().get_volume();
+                print_volume(volume, simbox, time_stamp, control_number + world_rank);
+                printf("Density \t     %1.5f\n", number_of_particles * 4.0/3.0 * M_PI * pow(2.0, 0.5) / volume);
+            }
+            else
+            {
+                // update temperature
+                integrator->grid_obj().update_temperature();
+
+                // print positions
+                Matrix simbox = integrator->grid_obj().S;
+                print_positions(cluster, simbox, i / write_frequency);
+
+                // print temperature
+                integrator->grid_obj().Temperature_pt->
+                                            print("temperature", time_stamp,
+                                                  control_number + world_rank);
+                double itemp = integrator->grid_obj().get_instant_temperature();
+                double temp = integrator->grid_obj().get_temperature();
+                printf("Temperature \t %1.5f %1.3f\n", temp,
+                       itemp);
+
+                // print density
+                printf("Density \t     %1.5f\n", number_of_particles * 4.0/3.0 * M_PI * pow(2.0, 0.5) / simbox.det());
+            }
+            //
+            // // // print the pressure
+            // // double instant_pressure = integrator->npt_get_instant_pressure();
+            // // double pressure = integrator->npt_get_pressure();
+            // // print_pressure(instant_pressure, pressure, time_stamp, "pressure",
+            // //                control_number + world_rank);
+            // //
+            // // printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
+            //
+            // //print temperature
+            // integrator
+            // double instant_temperature = integrator->get_instant_temperature();
+            // double temperature = integrator->get_temperature();
+            // print_temperature(instant_temperature, temperature, time_stamp,
+            //                   "temperature", control_number + world_rank);
+            // printf("Temperature \t %1.5f %1.3f\n", temperature, instant_temperature);
+            //
+            // //print volume
+            // double volume = integrator->npt_get_volume();
+            // print_volume(volume, simbox, time_stamp, control_number + world_rank);
+            // printf("Density \t     %1.5f\n", number_of_particles * 4.0/3.0 * M_PI * pow(2.0, 0.5) / volume);
         }
+
+        if(i == burn_in_steps)
+            if(with_npt)
+                integrator->npt_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
+            else
+                integrator->grid_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
 
         if(i % int(0.2 * number_of_steps) == 0 | i == number_of_steps)
         {
-            Matrix simbox = integrator->get_box();
-            print_final(cluster, simbox, world_rank);
+            if(with_npt)
+            {
+                Matrix simbox = integrator->npt_obj().S;
+                print_final(cluster, simbox, world_rank);
+            }
+            else
+            {
+                Matrix simbox = integrator->grid_obj().S;
+                print_final(cluster, simbox, world_rank);
+            }
+
+
         }
     }
 
+    // print the distribution function
+    if(with_npt)
+        integrator->npt_obj().Radial_pt->print("rdist", 0.0,
+                                           control_number + world_rank);
+    else
+        integrator->grid_obj().Radial_pt->print("rdist", 0.0,
+                                       control_number + world_rank);
     // have mpi process wait if it blew up
     MPI_Barrier(MPI_COMM_WORLD);
 

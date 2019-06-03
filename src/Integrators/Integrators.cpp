@@ -139,91 +139,41 @@ void Langevin::B_NPT_box(const double& h)
     NptGrid_pt->Sp -= (NptGrid_pt->virial + Sd * det * Target_pressure) * h;
 }
 
-// update the pressure and temperature reading
-void Langevin::npt_update_pressure_temperature()
+NptGrid& Langevin::npt_obj()
 {
-    NptGrid_pt->update_pressure_temperature();
+    return *NptGrid_pt;
 }
 
-void Langevin::update_temperature()
+Grid& Langevin::grid_obj()
 {
-    Grid_pt->update_temperature();
-}
-
-// get the instant pressure reading
-double Langevin::npt_get_instant_pressure()
-{
-    return NptGrid_pt->get_instant_pressure();
-}
-
-// get the pressure reading
-double Langevin::npt_get_pressure()
-{
-    return NptGrid_pt->get_pressure();
-}
-
-// get the instant temperature reading
-double Langevin::get_instant_temperature()
-{
-    double temp = 0.0;
-
-    if(With_npt)
-        temp = NptGrid_pt->get_instant_temperature();
-    else
-        temp= Grid_pt->get_instant_temperature();
-
-    return temp;
-}
-
-// get the temperature reading
-double Langevin::get_temperature()
-{
-    double temp = 0.0;
-
-    if(With_npt)
-        temp = NptGrid_pt->get_temperature();
-    else
-        temp= Grid_pt->get_temperature();
-
-    return temp;
-}
-
-// get the matrix defininf the npt box
-Matrix Langevin::get_box()
-{
-    Matrix S(3,3);
-
-    if(With_npt)
-        S = NptGrid_pt->S;
-    else
-        S = Grid_pt->S;
-
-    return S;
-}
-
-// get the volume of the npt
-double Langevin::npt_get_volume()
-{
-    return NptGrid_pt->get_volume();
-}
-
-// get the instant volume of the npt
-double Langevin::npt_get_instant_volume()
-{
-    return NptGrid_pt->get_instant_volume();
+    return *Grid_pt;
 }
 
 void Langevin::npt_set_initial(Molecule* molecule_pt,
                                const char* initial_pos_filename,
                                const char* initial_box_filename)
 {
-    // read in the particles and the box
-    NptGrid_pt->add_file_initial_condition(molecule_pt,
-                                           initial_pos_filename,
-                                           initial_box_filename);
+    if(With_npt)
+    {
+        // read in the particles and the box
+        NptGrid_pt->add_file_initial_condition(molecule_pt,
+                                               initial_pos_filename,
+                                               initial_box_filename);
 
-    // check the initial condition
-    NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
+        // check the initial condition
+        NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
+    }
+    else
+    {
+        // read in the particles and the box
+        Grid_pt->add_file_initial_condition(molecule_pt,
+                                               initial_pos_filename,
+                                               initial_box_filename);
+
+        // check the initial condition
+        Grid_pt->update_particle_forces(System_pt, molecule_pt);
+    }
+
 }
 
 // compute the force in the correct way

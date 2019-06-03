@@ -13,7 +13,7 @@ CXX = mpicxx # XPS - mpi wrapper
 #CXX = g++ # Compute servers
 #CXX = cc # Archer
 
-CXXFLAGS  = -g -std=c++11 -O3 -fopenmp -fopenmp-simd -foffload=-lm $(INCLUDE) -lstdc++ -ftree-vectorize -funroll-loops -ffast-math
+CXXFLAGS  = -g -std=c++11 -O3 -fopenmp -fopenmp-simd $(INCLUDE) -lstdc++ -ftree-vectorize -funroll-loops -ffast-math
 CPP_FILES:= $(shell find ../src -type f -name '*.cpp')
 # GSLFLAGS  = -lgsl -lgslcblas -lm
 HH_FILES := $(shell find ../src -type f -name '*.hpp')
@@ -39,7 +39,7 @@ CURDEPS:= $(patsubst $(CUROBJDIR)/%.o,$(CURDEPDIR)/%.d,$(CUR_OBJS))
 LJcluster: LJcluster.cpp ${OBJS} ${CUR_OBJS}
 	@mkdir -p $(BIN)
 	@echo ${OBJS}
-	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} -lstdc++
+	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} -lstdc++ -lgsl -lgslcblas
 
 -include $(DEPS)
 -include $(CURDEPS)

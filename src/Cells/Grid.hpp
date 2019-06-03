@@ -13,6 +13,7 @@
 #include "System.hpp"
 #include "Array.hpp"
 #include "SystemTemperature.hpp"
+#include "RadialDistObservable.hpp"
 
 using namespace::std;
 
@@ -42,6 +43,13 @@ public:
     void add_file_initial_condition(Molecule* molecule_pt,
                                     const char* initial_pos_filename,
                                     const char* initial_box_filename);
+    // set to calculate radial distribution
+    void set_to_calculate_radial_dist(const double& rmin, const double& rmax,
+                                      const int& N);
+    // access to observables
+    SystemTemperature* Temperature_pt;
+    RadialDistObservable* Radial_pt;
+
     // access for grid dimensions
     Matrix S;
     Matrix Sp;
@@ -58,6 +66,8 @@ protected:
     int number_of_cells_z;
     // number of particles in the grid
     unsigned number_of_particles;
+    // bool check if we calculate radial dist
+    bool with_radial_dist;
 
     // clear the forces and the potential of the molecule
     void clear_particle_forces(Molecule* molecule_pt);
@@ -89,7 +99,6 @@ private:
     vector<Cell*> cell_list;
     // tracking for average observables
     // AverageObservable* Temperature_pt;
-    SystemTemperature* Temperature_pt;
 
     // add the particles from molecule object to the grid
     void add_particles_to_grid(Molecule* molecule_pt);
