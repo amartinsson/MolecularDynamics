@@ -70,6 +70,7 @@ Grid::~Grid()
     // delete all the average observables
     delete Temperature_pt;
     delete Radial_pt;
+    delete Order_pt;
 }
 
 // updates the positions from files given
@@ -266,6 +267,13 @@ void Grid::set_to_calculate_radial_dist(const double& rmin, const double& rmax,
 {
     with_radial_dist = true;
     Radial_pt = new RadialDistObservable(rmin, rmax, N);
+}
+
+void Grid::set_to_calculate_order_param(Molecule* molecule_pt,
+                                        const double& part_rad)
+{
+    with_order_param = true;
+    Order_pt = new OrderObservable(molecule_pt, part_rad);
 }
 
 // check if the current grid satisfies the nessecary conditions, if it does
@@ -522,14 +530,14 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
 
 
 // FCC STUFF
-// Matrix basis(4,3);
-// basis(0,0)=0.0;    basis(0,1)=0.0;    basis(0,2)=0.0;
-// basis(1,0)=0.5;    basis(1,1)=0.5;    basis(1,2)=0.0;
-// basis(2,0)=0.5;    basis(2,1)=0.0;    basis(2,2)=0.5;
-// basis(3,0)=0.0;    basis(3,1)=0.5;    basis(3,2)=0.5;
-//
-// Vector offset(3);
-// offset(0)=0.25;    offset(1)=0.25;    offset(2)=0.25;
+Matrix basis(4,3);
+basis(0,0)=0.0;    basis(0,1)=0.0;    basis(0,2)=0.0;
+basis(1,0)=0.5;    basis(1,1)=0.5;    basis(1,2)=0.0;
+basis(2,0)=0.5;    basis(2,1)=0.0;    basis(2,2)=0.5;
+basis(3,0)=0.0;    basis(3,1)=0.5;    basis(3,2)=0.5;
+
+Vector offset(3);
+offset(0)=0.25;    offset(1)=0.25;    offset(2)=0.25;
 
   // loop over each direction
 for(int i=0; i<particles_in_dir; i++) // x ditection
@@ -703,10 +711,11 @@ void Grid::compute_force(System* system_pt, Molecule* molecule_pt,
     // chcek the cutoff criterion
     if(rsq < cut_off_sq)
     {
+        double d = std::sqrt(rsq);
 
         // Calculate force and potential
         system_pt->compute_force(molecule_pt, current_particle,
-                                 neighbour_particle, std::sqrt(rsq), r);
+                                 neighbour_particle, d, r);
 
         // Vector f_ij = system_pt->compute_force(molecule_pt, current_particle,
         //                          neighbour_particle, std::sqrt(rsq), r);
@@ -720,7 +729,11 @@ void Grid::compute_force(System* system_pt, Molecule* molecule_pt,
 
 
         if(with_radial_dist)
-            Radial_pt->update(std::sqrt(rsq));
+            Radial_pt->update(d);
+
+        if(with_order_param)
+            Order_pt->update(current_particle, neighbour_particle,
+                             d, r);
     }
 }
 
@@ -735,6 +748,10 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
 
     // clear all the particle forces
     clear_particle_forces(molecule_pt);
+
+    // clear the order parameter
+    if(with_order_param)
+        Order_pt->clear();
 
     int zend = 1;
     if(number_of_cells_z != 0)

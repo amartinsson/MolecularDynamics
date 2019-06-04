@@ -63,6 +63,21 @@ double Vector::l22() const
     return length;
 }
 
+// get unit vector
+Vector Vector::unit() const
+{
+    double length = this->l2();
+
+    Vector retvec(dimx);
+
+    #pragma omp simd collapse(1)
+        for(unsigned i=0; i<dimx; i++)
+            retvec(i) = vec[i] / length;
+
+    return retvec;
+}
+
+
 // getting vector
 double Vector::operator() (const int& i) const
 {

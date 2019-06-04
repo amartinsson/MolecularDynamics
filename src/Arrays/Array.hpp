@@ -115,6 +115,9 @@ public:
     double l2() const;
     double l22() const;
 
+    // get the unit vector
+    Vector unit() const;
+
     // setting two matrices equal to eachother
     //Vector* operator*();
     // void operator= (const Vector& other) {*this = other;}

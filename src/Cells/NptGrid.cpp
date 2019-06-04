@@ -50,11 +50,14 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
     // chcek the cutoff criterion
     if(rsq < cut_off_sq)
     {
+        // distance
+        double d = std::sqrt(rsq);
+
         // Calculate force and potential
         Vector f_ij = system_pt->compute_force(molecule_pt,
                                                current_particle,
                                                neighbour_particle,
-                                               std::sqrt(rsq), r);
+                                               d, r);
 
        //  Vector q1 = S.inv() * (*current_particle).q;
        //  Vector q2 = S.inv() * (*neighbour_particle).q;
@@ -65,7 +68,11 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
 
 
         if(Grid::with_radial_dist)
-            Grid::Radial_pt->update(std::sqrt(rsq));
+            Grid::Radial_pt->update(d);
+
+        if(with_order_param)
+            Order_pt->update(current_particle, neighbour_particle,
+                             d, r);
 
         // rescale the separation into box invariant coordinates
         Vector r_tilde = S.inv() * r;
@@ -333,6 +340,10 @@ void NptGrid::update_particle_forces(System* system_pt,
 
     // clear all the particle forces
     clear_particle_forces(molecule_pt);
+
+    // clear the order parameter
+    if(with_order_param)
+        Order_pt->clear();
 
     // reset the potential gradient w.r.t to the box coordinate
     virial.zero();

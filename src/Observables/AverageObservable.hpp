@@ -12,6 +12,8 @@ public:
     AverageObservable();
     // destructor
     ~AverageObservable() {};
+    // clear all the entries
+    void clear();
     // make observation of the variable
     void observe(const double& value);
     // return the average of the observable
@@ -21,10 +23,11 @@ public:
     // return the variance of the observable
     double get_variance();
 
+double n_observs;
 private:
     double Average;
     double Average_sq;
-    double n_observs;
+
     double instant_value;
 };
 

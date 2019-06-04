@@ -14,6 +14,7 @@
 #include "Array.hpp"
 #include "SystemTemperature.hpp"
 #include "RadialDistObservable.hpp"
+#include "OrderObservable.hpp"
 
 using namespace::std;
 
@@ -46,9 +47,12 @@ public:
     // set to calculate radial distribution
     void set_to_calculate_radial_dist(const double& rmin, const double& rmax,
                                       const int& N);
+    void set_to_calculate_order_param(Molecule* molecule_pt,
+                                      const double& part_rad);
     // access to observables
     SystemTemperature* Temperature_pt;
     RadialDistObservable* Radial_pt;
+    OrderObservable* Order_pt;
 
     // access for grid dimensions
     Matrix S;
@@ -68,6 +72,8 @@ protected:
     unsigned number_of_particles;
     // bool check if we calculate radial dist
     bool with_radial_dist;
+    // bool check if with order parameter
+    bool with_order_param;
 
     // clear the forces and the potential of the molecule
     void clear_particle_forces(Molecule* molecule_pt);

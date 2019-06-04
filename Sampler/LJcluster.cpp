@@ -617,20 +617,11 @@ int main(int argc, char* argv[])
 
 
     if(with_npt)
-    {
-        Matrix simbox = integrator->npt_obj().S;
-        print_positions(cluster, simbox, 0);
-    }
+        integrator->npt_obj().set_to_calculate_order_param(cluster, 1.0);
+                                            // pow(2.0, 1.0/6.0) * sigma);
     else
-    {
-        Matrix simbox = integrator->grid_obj().S;
-        print_positions(cluster, simbox, 0);
-    }
-    // exit(-1);
-    //
-    // cluster->particle(0).p(0) = -10.0;
-    // cluster->particle(1).p(1) = 10.0;
-    // cluster->particle(2).p(2) = -10.0;
+        integrator->grid_obj().set_to_calculate_order_param(cluster, 1.0);
+                                            // pow(2.0, 1.0/6.0) * sigma);
 
     for(unsigned i=0; i<number_of_steps; i++)
     {
@@ -640,6 +631,21 @@ int main(int argc, char* argv[])
         // before = omp_get_wtime();
 
         integrator->integrate(cluster);
+
+
+        // // print positions
+        // Matrix simbox = integrator->grid_obj().S;
+        // print_positions(cluster, simbox, 0);
+        //
+        // // print order parameter
+        // integrator->grid_obj().Order_pt->
+        //                             print("order", 0.0,
+        //                                   // control_number + world_rank);
+        //                                   i / write_frequency);
+        // double iorder = integrator->grid_obj().Order_pt->get_instant();
+        // double order = integrator->grid_obj().Order_pt->get_average();
+        // printf("Order \t %1.5f %1.5f\n", order, iorder);
+        // exit(-1);
 
         if(integrator->cell_blow_up())
         {
@@ -692,7 +698,15 @@ int main(int argc, char* argv[])
                 //print volume
                 double volume = integrator->npt_obj().get_volume();
                 print_volume(volume, simbox, time_stamp, control_number + world_rank);
-                printf("Density \t     %1.5f\n", number_of_particles * 4.0/3.0 * M_PI * pow(2.0, 0.5) / volume);
+                printf("Density \t     %1.5f\n", number_of_particles / volume * pow(sigma, 3.0));
+
+                // print order parameter
+                integrator->npt_obj().Order_pt->print("order", time_stamp,
+                                                  // control_number + world_rank);
+                                                  i / write_frequency);
+                double iorder = integrator->npt_obj().Order_pt->get_instant();
+                double order = integrator->npt_obj().Order_pt->get_average();
+                printf("Order \t %1.5f %1.5f\n", order, iorder);
             }
             else
             {
@@ -713,7 +727,16 @@ int main(int argc, char* argv[])
                        itemp);
 
                 // print density
-                printf("Density \t     %1.5f\n", number_of_particles * 4.0/3.0 * M_PI * pow(2.0, 0.5) / simbox.det());
+                printf("Density \t     %1.5f\n", number_of_particles / simbox.det() * pow(sigma, 3.0));
+
+                // print order parameter
+                integrator->grid_obj().Order_pt->
+                                            print("order", time_stamp,
+                                                  // control_number + world_rank);
+                                                  i / write_frequency);
+                double iorder = integrator->grid_obj().Order_pt->get_instant();
+                double order = integrator->grid_obj().Order_pt->get_average();
+                printf("Order \t %1.5f %1.5f\n", order, iorder);
             }
             //
             // // // print the pressure
