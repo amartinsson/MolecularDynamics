@@ -70,3 +70,38 @@ double HistObservable::get_bin_center(const int& i)
 
     return center;
 }
+
+double HistObservable::get_bin_width(const int& i)
+{
+    double lower;
+    double upper;
+    double dbin = 0.0;
+
+    if(i<N)
+        gsl_histogram_get_range(histogram, i, &lower, &upper);
+    else
+    {
+        printf("ERROR: trying to access bin center outside of range in Histogram!\n");
+        exit(-1);
+    }
+
+    // calculate the center
+    dbin = (upper - lower);
+
+    return dbin;
+}
+
+double HistObservable::get_pdf(const int& i)
+{
+    // get the bin width
+    double dx = get_bin_width(i);
+
+    // get the sum of the histogram
+    double tsum = gsl_histogram_sum(histogram);
+
+    // calculate the normalised bin height
+    double pdf = this->get_value(i) / (tsum * dx);
+
+    // return the normalised height
+    return pdf;
+}

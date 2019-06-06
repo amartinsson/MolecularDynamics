@@ -2,6 +2,7 @@
 #define NPTGRID_HPP
 
 #include "Grid.hpp"
+#include "SystemPressure.hpp"
 
 using namespace::std;
 
@@ -13,7 +14,8 @@ class NptGrid : public Grid
 public:
     NptGrid(const Matrix& Szero,
             const double& cut_off, Molecule* molecule_pt,
-            const double& mass, const double& target_press);
+            const double& mass, const double& target_press,
+            const int& recf, const int& rect);
     // destructor
     ~NptGrid();
     // update both the pressure and the temperature variables -
@@ -22,8 +24,8 @@ public:
     void update_pressure_temperature();
     // This function takes in a 2 dimensional vector and returns the
     // box normalised vector r_tilde
-    Vector get_box_min_image_sep(const Particle& current_particle,
-                                 const Particle& neighbour_particle);
+    // Vector get_box_min_image_sep(const Particle& current_particle,
+    //                              const Particle& neighbour_particle);
     // function which sets the position of a particle to the invariant
     // position given by q tilde
     void set_box_coordinate(const Vector& q_tilde, Particle& particle);
@@ -35,16 +37,6 @@ public:
     void set_box_momentum(const Vector& p_tilde, Particle& particle);
     // get the mass of the grid
     double get_mass();
-    // function which calculates and returns the
-    // volume of the current cell
-    double get_instant_volume();
-    // function which returns the instantaneous pressure
-    double get_instant_pressure();
-    // function which returns the cahced volume  which is calculated when
-    // temperature and pressure are updated
-    double get_volume();
-    // returns the currently held pressure
-    double get_pressure();
     // enforces the relaative positoon of the particles
     void enforce_constant_relative_particle_pos(const Matrix& Sold);
     // returns the box force in direction i
@@ -62,11 +54,12 @@ public:
     // Stores the virial function
     Matrix virial;
     Matrix nablaK;
+    // tracking for average observables
+    SystemPressure* Pressure_pt;
+
 
 private:
-    // tracking for average observables
-    AverageObservable* Pressure_pt;
-    AverageObservable* Volume_pt;
+
     // target pressure
     double target_pressure;
     // holder for the mass of the grid --
@@ -96,14 +89,15 @@ private:
                        Particle* current_particle,
                        Particle* neighbour_particle);
     // function which updates the pressure
-    void update_pressure();
+    // void update_pressure();
     // function which updates the volume
-    void update_volume();
+    // void update_volume();
     // enforce the constraint that the relative distances
     // of the particle position and momentum cannot change.
     void enforce_relative_particle(const Matrix& Sold);
-    // function which calculates the pressure
-    double calculate_pressure();
+    // reset the observables for the next step
+    void reset_observables();
+
 };
 
 #endif

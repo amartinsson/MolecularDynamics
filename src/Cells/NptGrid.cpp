@@ -7,8 +7,10 @@ using namespace::std;
 // ------------------------------------------------------------------------- //
 NptGrid::NptGrid(const Matrix& Szero, const double& cut_off,
                  Molecule* molecule_pt, const double& mass,
-                 const double& target_press) :
-                 Grid(Szero, cut_off, molecule_pt), nablaK(2,2), virial(2,2)
+                 const double& target_press, const int& recf,
+                    const int& rect)
+                 : Grid(Szero, cut_off, molecule_pt, recf, rect), nablaK(2,2),
+                 virial(2,2)
 {
     if(Szero.size()[0] > 2)
     {
@@ -17,8 +19,9 @@ NptGrid::NptGrid(const Matrix& Szero, const double& cut_off,
     }
 
     // set up tracking object to track the average of the temperature
-    Volume_pt = new AverageObservable();
-    Pressure_pt = new AverageObservable();
+    // Volume_pt = new AverageObservable();
+    Pressure_pt = new SystemPressure(S, virial, nablaK, RecFreq, RecThres);
+    // Pressure_pt = new AverageObservable();
 
     // set the mass of the cell grid for the NPT integration
     box_mass = mass;
@@ -31,122 +34,8 @@ NptGrid::NptGrid(const Matrix& Szero, const double& cut_off,
 NptGrid::~NptGrid()
 {
     // delete all the average observables
-    delete Volume_pt;
     delete Pressure_pt;
 }
-
-// computes the force in and respects the cut off radius. This is
-// a helper function because the iteration in the same cell is different
-// as we should not double count some distances
-void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
-                            Particle* current_particle,
-                            Particle* neighbour_particle)
-{
-    // calculate the square of the distance between particles
-    Vector r = get_separation(*current_particle, *neighbour_particle);
-
-    double rsq = r.l22();
-
-    // chcek the cutoff criterion
-    if(rsq < cut_off_sq)
-    {
-        // distance
-        double d = std::sqrt(rsq);
-
-        // Calculate force and potential
-        Vector f_ij = system_pt->compute_force(molecule_pt,
-                                               current_particle,
-                                               neighbour_particle,
-                                               d, r);
-
-       //  Vector q1 = S.inv() * (*current_particle).q;
-       //  Vector q2 = S.inv() * (*neighbour_particle).q;
-       //
-       // if(std::sqrt(rsq) < pow(2.0,1.0/6.0))
-       //      printf("r = %1.3e f = %1.3e %p = (%1.3f, %1.3f, %1.3f) %p = (%1.3f, %1.3f, %1.3f)\n",
-       //      std::sqrt(rsq), f_ij.l2(), current_particle, q1(0), q1(1), q1(2), neighbour_particle, q2(0), q2(1), q2(2));
-
-
-        if(Grid::with_radial_dist)
-            Grid::Radial_pt->update(d);
-
-        if(with_order_param)
-            Order_pt->update(current_particle, neighbour_particle,
-                             d, r);
-
-        // rescale the separation into box invariant coordinates
-        Vector r_tilde = S.inv() * r;
-
-        // calculate the virial
-        // Matrix V = f_ij.out(r_tilde);
-        Matrix V(3,3);
-
-        for(unsigned i=0; i<3; i++)
-            for(unsigned j=i; j<3; j++)
-            {
-                Matrix K(3,3);
-                K(i,j) = 1.0;
-                V(i,j) = f_ij.dot(K * r_tilde);
-            }
-
-        // these need to be minus additive as we are calculating the
-        // force but we need the gradient!
-        //
-        // These are the virials
-        box_grad_00 -= V(0,0);
-        box_grad_01 -= V(0,1);
-        box_grad_11 -= V(1,1);
-
-        if(r_tilde.size() > 2)
-        {
-            box_grad_02 -= V(0,2);
-            box_grad_12 -= V(1,2);
-            box_grad_22 -= V(2,2);
-        }
-    }
-}
-
-  // function which calculates and returns the
-  // volume of the current cell
-  double NptGrid::get_instant_volume()
-  {
-    return Volume_pt->get_instant();
-  }
-
-  // function which calculates and returns the
-  // volume of the current cell
-  double NptGrid::get_instant_pressure()
-  {
-    return Pressure_pt->get_instant();
-  }
-
-  // return the volume
-  double NptGrid::get_volume()
-  {
-    return Volume_pt->get_average();
-  };
-
-  // returns the currently held pressure
-  double NptGrid::get_pressure()
-  {
-    return Pressure_pt->get_average();
-  }
-
-  // returns the mass of the cell grid
-  double NptGrid::get_mass()
-  {
-    return box_mass;
-  }
-
-  // function which updates the pressure
-  void NptGrid::update_pressure()
-  {
-      // calculate the macroscopic pressure
-      double pressure = calculate_pressure();
-
-      // add to the observables
-      Pressure_pt->observe(pressure);
-  }
 
   // enforces the relaative positoon of the particles
   void NptGrid::enforce_constant_relative_particle_pos(const Matrix& Sold)
@@ -157,23 +46,6 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
       // rescale positions
       enforce_relative_particle(Sold);
   }
-
-// Vector NptGrid::get_box_min_image_sep(const Particle& current_particle,
-//                                       const Particle& neighbour_particle)
-//   {
-//       // get the box coordinates
-//       Vector qc = get_box_coordinate(current_particle);
-//       Vector qn = get_box_coordinate(neighbour_particle);
-//
-//       // calculate x separation
-//       Vector r = qn - qc;
-//
-//       // enforce minimum image convention
-//       calculate_min_image(r);
-//
-//       // retrun the rescalied vector
-//       return r;
-//   }
 
   // function which sets the position of a particle to the invariant
   // position given by q tilde
@@ -202,47 +74,29 @@ Vector NptGrid::get_box_momentum(const Particle& particle)
       particle.p = S.inv().T() * p_tilde;
   }
 
-  // function which update the instantenous and average volume
-  void NptGrid::update_volume()
-  {
-      // calculate volume
-      double volume = S.det();
-
-      // make observation of the volume
-      Volume_pt->observe(volume);
-  }
-
 // update both the pressure and the temperature variables -
 // this needs to be called at the end of every integration step
 // and will update the pressure and temperature
 void NptGrid::update_pressure_temperature()
 {
     // first update the volume
-    update_volume();
+    Volume_pt->update();
 
     // second update the temperature
-    update_temperature();
+    Temperature_pt->update();
 
     // update the pressure assuming that the q_dot_f value has been updated
-    update_pressure();
+    Pressure_pt->update();
 }
 
-// function which calculates the pressure
-double NptGrid::calculate_pressure()
+// set up the observables for the next step
+void NptGrid::reset_observables()
 {
-    this->update_kinetic_gradient();
+    // call parent function
+    Grid::reset_observables();
 
-    double pressure = 0.0;
 
-    if(number_of_cells_z != 0)
-        pressure = -1.0 / (3.0 * S(1,1) * S(2,2)) * (nablaK(0,0) + virial(0,0))
-                   -1.0 / (3.0 * S(0,0) * S(2,2)) * (nablaK(1,1) + virial(1,1))
-                   -1.0 / (3.0 * S(0,0) * S(1,1)) * (nablaK(2,2) + virial(2,2));
-    else
-        pressure = -1.0 / (2.0 * S(1,1)) * (nablaK(0,0) + virial(0,0))
-                   -1.0 / (2.0 * S(0,0)) * (nablaK(1,1) + virial(1,1));
 
-    return pressure;
 }
 
 // enforce the constraint that the relative distances
@@ -319,6 +173,80 @@ void NptGrid::update_kinetic_gradient()
                 }
 }
 
+// computes the force in and respects the cut off radius. This is
+// a helper function because the iteration in the same cell is different
+// as we should not double count some distances
+void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
+                            Particle* current_particle,
+                            Particle* neighbour_particle)
+{
+    // calculate the square of the distance between particles
+    Vector r = get_separation(*current_particle, *neighbour_particle);
+
+    double rsq = r.l22();
+
+    // chcek the cutoff criterion
+    if(rsq < cut_off_sq)
+    {
+        // distance
+        double d = std::sqrt(rsq);
+
+        // Calculate force and potential
+        Vector f_ij = system_pt->compute_force(molecule_pt,
+                                               current_particle,
+                                               neighbour_particle,
+                                               d, r);
+
+       //  Vector q1 = S.inv() * (*current_particle).q;
+       //  Vector q2 = S.inv() * (*neighbour_particle).q;
+       //
+       // if(std::sqrt(rsq) < pow(2.0,1.0/6.0))
+       //      printf("r = %1.3e f = %1.3e %p = (%1.3f, %1.3f, %1.3f) %p = (%1.3f, %1.3f, %1.3f)\n",
+       //      std::sqrt(rsq), f_ij.l2(), current_particle, q1(0), q1(1), q1(2), neighbour_particle, q2(0), q2(1), q2(2));
+
+
+        if(Grid::with_radial_dist)
+            Grid::Radial_pt->update(d);
+
+        if(with_order_param)
+            Order_pt->update(current_particle, neighbour_particle,
+                             d, r);
+        // update spherical order parameter
+        if(with_sphere_order_param)
+            SphereOrder_pt->update(current_particle, neighbour_particle,
+                                   d, r);
+
+        // rescale the separation into box invariant coordinates
+        Vector r_tilde = S.inv() * r;
+
+        // calculate the virial
+        // Matrix V = f_ij.out(r_tilde);
+        Matrix V(3,3);
+
+        for(unsigned i=0; i<3; i++)
+            for(unsigned j=i; j<3; j++)
+            {
+                Matrix K(3,3);
+                K(i,j) = 1.0;
+                V(i,j) = (f_ij.neg()).dot(K * r_tilde);
+            }
+
+        // these need to be minus additive as we are calculating the
+        // force but we need the gradient!
+        //
+        // These are the virials
+        box_grad_00 += V(0,0);
+        box_grad_01 += V(0,1);
+        box_grad_11 += V(1,1);
+
+        if(r_tilde.size() > 2)
+        {
+            box_grad_02 += V(0,2);
+            box_grad_12 += V(1,2);
+            box_grad_22 += V(2,2);
+        }
+    }
+}
 
 // fuction which updates the particle forces. It automatically checks if the
 // grid has changed sufficently to have to rebuild the grid. It then contineous
@@ -341,9 +269,8 @@ void NptGrid::update_particle_forces(System* system_pt,
     // clear all the particle forces
     clear_particle_forces(molecule_pt);
 
-    // clear the order parameter
-    if(with_order_param)
-        Order_pt->clear();
+    // reset the observables
+    reset_observables();
 
     // reset the potential gradient w.r.t to the box coordinate
     virial.zero();

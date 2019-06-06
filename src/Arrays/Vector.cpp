@@ -235,6 +235,19 @@ Vector Vector::operator- (const Vector& other) const
     return retVec;
 }
 
+// addition and subtraction
+Vector Vector::neg () const
+{
+
+    Vector retVec(dimx);
+
+#pragma omp simd collapse(1)
+    for(unsigned i=0; i<dimx; i++)
+        retVec(i) = -vec[i];
+
+    return retVec;
+}
+
 // set vectors to be equal
 void Vector::operator+= (const Vector& other)
 {

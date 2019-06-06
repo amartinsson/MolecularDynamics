@@ -19,7 +19,8 @@ class OrderObservable : public SystemObservable
 {
 public:
     // constructor
-    OrderObservable(Molecule* molecule_pt, const double& part_rad);
+    OrderObservable(Molecule* molecule_pt, const double& part_rad,
+                    const int& recf, const int& rect);
     // destructor
     ~OrderObservable();
     // clear the observations
@@ -48,6 +49,8 @@ private:
     // cutoff distance for observable
     double cutoff;
     double pr;
+    // local recstep holder
+    bool localRecStep;
     // vector with wave numbers
     vector<Vector> k;
     // long term observable

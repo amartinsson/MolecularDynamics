@@ -29,10 +29,15 @@ public:
     int get_nbins();
     // get the center of the ith bin
     double get_bin_center(const int& i);
+    // get the normalised histogram
+    double get_pdf(const int& i);
 private:
     // gsl histogram structure
     gsl_histogram* histogram;
     // number of bins
     int N;
+
+    // get the width of the ith bin
+    double get_bin_width(const int& i);
 };
 #endif

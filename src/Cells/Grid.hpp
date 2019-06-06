@@ -15,6 +15,8 @@
 #include "SystemTemperature.hpp"
 #include "RadialDistObservable.hpp"
 #include "OrderObservable.hpp"
+#include "SphereOrderObservable.hpp"
+#include "SystemVolume.hpp"
 
 using namespace::std;
 
@@ -25,14 +27,15 @@ class Grid
 {
 public:
     // constructor
-    Grid(const Matrix& Szero, const double& cut_off, Molecule* molecule_pt);
+    Grid(const Matrix& Szero, const double& cut_off, Molecule* molecule_pt,
+        const int& recf, const int& rect);
     // destructor
     ~Grid();
-    // function which calculates and returns the instant temperature
-    double get_instant_temperature();
-    // returns the currently held temperature
-    double get_temperature();
-    // updates the tracking objects by adding the current temperature to
+    // // function which calculates and returns the instant temperature
+    // double get_instant_temperature();
+    // // returns the currently held temperature
+    // double get_temperature();
+    // // updates the tracking objects by adding the current temperature to
     // its average
     void update_temperature();
     // fuction which updates the partice forces. It automatically checks if the
@@ -49,10 +52,16 @@ public:
                                       const int& N);
     void set_to_calculate_order_param(Molecule* molecule_pt,
                                       const double& part_rad);
+    void set_to_calculate_sphere_order_param(Molecule* molecule_pt,
+                                             const int& lmax,
+                                             const double& cutoff);
     // access to observables
     SystemTemperature* Temperature_pt;
+    SystemVolume* Volume_pt;
+
     RadialDistObservable* Radial_pt;
     OrderObservable* Order_pt;
+    SphereOrderObservable* SphereOrder_pt;
 
     // access for grid dimensions
     Matrix S;
@@ -74,6 +83,10 @@ protected:
     bool with_radial_dist;
     // bool check if with order parameter
     bool with_order_param;
+    bool with_sphere_order_param;
+    // frequency to record the state at
+    unsigned RecFreq;
+    unsigned RecThres;
 
     // clear the forces and the potential of the molecule
     void clear_particle_forces(Molecule* molecule_pt);
@@ -96,6 +109,8 @@ protected:
     // This function returns the non dimensional coordinate w.r.t the box
     // of a particle in the box.
     Vector get_box_coordinate(const Particle& particle);
+    // reset the observables to record
+    void reset_observables();
 
 private:
     // controls the dimension of the grid

@@ -46,12 +46,14 @@ void BAOAB::integrate(Molecule* molecule_pt)
 void BAOAB::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
                                     Molecule* molecule_pt, const double& mass,
                                     const double& target_press,
-                                    const double& gamma_box)
+                                    const double& gamma_box, const int& recf,
+                                    const int& rect)
 {
     With_npt = true;
 
     Langevin::integrate_with_npt_grid(Szero, cut_off, molecule_pt,
-                                      mass, target_press, gamma_box, Time_Step);
+                                      mass, target_press, gamma_box, Time_Step,
+                                      recf, rect);
 }
 
 // set with simulation tempering

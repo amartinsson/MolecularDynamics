@@ -47,7 +47,8 @@ public:
                              const double& t_step, const double& tau);
     // set with grid
     void integrate_with_grid(const Matrix& Szero, const double& cut_off,
-                             Molecule* molecule_pt);
+                             Molecule* molecule_pt, const int& recf,
+                             const int& rect);
     // set the  initial condition from file
     void npt_set_initial(Molecule* molecule_pt,
                          const char* initial_pos_filename,
@@ -75,7 +76,8 @@ protected:
                                  Molecule* molecule_pt, const double& mass,
                                  const double& target_press,
                                  const double& gamma_npt,
-                                 const double& o_box_time_step);
+                                 const double& o_box_time_step,
+                                 const int& recf, const int& rect);
     // set to integrate with simulated tempering
     void integrate_with_st(const double& tmin,
                            const double& tmax,

@@ -19,7 +19,8 @@ public:
     void integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
                                  Molecule* molecule_pt, const double& mass,
                                  const double& target_press,
-                                 const double& gamma_rot);
+                                 const double& gamma_box, const int& recf,
+                                 const int& rect);
     // integrate with simulated tempering
     void integrate_with_st(const double& tmin,
                            const double& tmax,

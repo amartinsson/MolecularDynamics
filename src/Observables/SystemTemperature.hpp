@@ -14,7 +14,7 @@ class SystemTemperature : public SystemObservable
 {
 public:
     // constructor
-    SystemTemperature(Molecule* molecule_pt);
+    SystemTemperature(Molecule* molecule_pt, const int& recf, const int& rect);
     // destructor
     ~SystemTemperature(){};
     // set the momentum temperature
@@ -27,11 +27,6 @@ public:
     double get_average();
     // update function
     void update();
-    // print function at timeindex
-    void print(const char* file_name, const double& time,
-               const unsigned& time_index);
-    // print function at time
-    void print(const char* file_name, const double& time);
 
 private:
     // local pointer to molecule object

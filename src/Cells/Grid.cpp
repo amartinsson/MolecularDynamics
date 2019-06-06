@@ -6,7 +6,9 @@ using namespace::std;
 //                                GRID CLASS
 // ------------------------------------------------------------------------- //
 Grid::Grid(const Matrix& Szero, const double& cut_off,
-           Molecule* molecule_pt) : S(2, 2), Sp(2, 2), break_experiment(false)
+           Molecule* molecule_pt, const int& recf, const int& rect)
+                : S(2, 2), Sp(2, 2), break_experiment(false), RecFreq(recf),
+                    RecThres(rect)
 {
     if(Szero.size()[0] > 2)
     {
@@ -42,10 +44,11 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
     // add all the particles to the grid
     initialise_particles_on_grid(molecule_pt);
 
-    // set up tracking object to track the average
-    // of the temperature
-    // Temperature_pt = new AverageObservable();
-    Temperature_pt = new SystemTemperature(molecule_pt);
+    // setup temperature
+    Temperature_pt = new SystemTemperature(molecule_pt, RecFreq, RecThres);
+    // setup volume
+    Volume_pt = new SystemVolume(S, molecule_pt->nparticle(), RecFreq,
+                                 RecThres);
 
     // set the temperature to calculate
     Temperature_pt->set_momentum_temp();
@@ -69,8 +72,11 @@ Grid::~Grid()
 
     // delete all the average observables
     delete Temperature_pt;
+    delete Volume_pt;
+
     delete Radial_pt;
     delete Order_pt;
+    delete SphereOrder_pt;
 }
 
 // updates the positions from files given
@@ -263,17 +269,26 @@ void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
 }
 
 void Grid::set_to_calculate_radial_dist(const double& rmin, const double& rmax,
-                                  const int& N)
+                                        const int& N)
 {
     with_radial_dist = true;
-    Radial_pt = new RadialDistObservable(rmin, rmax, N);
+    Radial_pt = new RadialDistObservable(rmin, rmax, N, RecFreq, RecThres);
 }
 
 void Grid::set_to_calculate_order_param(Molecule* molecule_pt,
                                         const double& part_rad)
 {
     with_order_param = true;
-    Order_pt = new OrderObservable(molecule_pt, part_rad);
+    Order_pt = new OrderObservable(molecule_pt, part_rad, RecFreq, RecThres);
+}
+
+void Grid::set_to_calculate_sphere_order_param(Molecule* molecule_pt,
+                                               const int& lmax,
+                                               const double& cutoff)
+{
+    with_sphere_order_param = true;
+    SphereOrder_pt = new SphereOrderObservable(molecule_pt, lmax, cutoff,
+                                               RecFreq, RecThres);
 }
 
 // check if the current grid satisfies the nessecary conditions, if it does
@@ -529,15 +544,15 @@ void Grid::set_random_particles_initial_condition(Molecule* molecule_pt)
         zend = particles_in_dir;
 
 
-// FCC STUFF
-Matrix basis(4,3);
-basis(0,0)=0.0;    basis(0,1)=0.0;    basis(0,2)=0.0;
-basis(1,0)=0.5;    basis(1,1)=0.5;    basis(1,2)=0.0;
-basis(2,0)=0.5;    basis(2,1)=0.0;    basis(2,2)=0.5;
-basis(3,0)=0.0;    basis(3,1)=0.5;    basis(3,2)=0.5;
-
-Vector offset(3);
-offset(0)=0.25;    offset(1)=0.25;    offset(2)=0.25;
+// // FCC STUFF
+// Matrix basis(4,3);
+// basis(0,0)=0.0;    basis(0,1)=0.0;    basis(0,2)=0.0;
+// basis(1,0)=0.5;    basis(1,1)=0.5;    basis(1,2)=0.0;
+// basis(2,0)=0.5;    basis(2,1)=0.0;    basis(2,2)=0.5;
+// basis(3,0)=0.0;    basis(3,1)=0.5;    basis(3,2)=0.5;
+//
+// Vector offset(3);
+// offset(0)=0.25;    offset(1)=0.25;    offset(2)=0.25;
 
   // loop over each direction
 for(int i=0; i<particles_in_dir; i++) // x ditection
@@ -564,8 +579,8 @@ for(int i=0; i<particles_in_dir; i++) // x ditection
                                         + 0.5 * separation_in_y
                                         + (i % 2 == 0) * 0.5 * separation_in_y;
                     particle->q(2) = double(k) * separation_in_z
-                                        + 0.5 * separation_in_z
-                                        + (j % 2 == 0) * 0.5 * separation_in_z;
+                                        + 0.5 * separation_in_z;
+                                        // + (j % 2 == 0) * 0.5 * separation_in_z;
 
                     double mx = particle->m(0,0);
                     double my = particle->m(1,1);
@@ -675,25 +690,30 @@ void Grid::update_particles_on_grid()
             }
 }
 
-// function which calculates and returns the
-// volume of the current cell
-double Grid::get_instant_temperature()
+void Grid::reset_observables()
 {
-  return Temperature_pt->get_instant();
-}
+    // clear the order parameter
+    if(with_order_param)
+        Order_pt->clear();
 
-// returns the currently held temperature
-double Grid::get_temperature()
-{
-  return Temperature_pt->get_average();
+    // clear the sphere order paramter
+    if(with_sphere_order_param)
+        SphereOrder_pt->clear();
+
+    // bump the counter in radial distribution
+    if(with_radial_dist)
+        Radial_pt->bump_recstep();
 }
 
 // updates the tracking objects by adding the
 // current temperature to its average
 void Grid::update_temperature()
 {
-  // add this value to the tracking average
-  Temperature_pt->update();
+    // update the volume
+    Volume_pt->update();
+
+    // update the temperature
+    Temperature_pt->update();
 }
 
 // computes the force in and respects the cut off radius. This is
@@ -728,12 +748,19 @@ void Grid::compute_force(System* system_pt, Molecule* molecule_pt,
                         //              std::sqrt(rsq), f_ij.l2(), current_particle, q1(0), q1(1), q1(2), neighbour_particle, q2(0), q2(1), q2(2));
 
 
+        // update radial distribution
         if(with_radial_dist)
             Radial_pt->update(d);
 
+        // update order parameter
         if(with_order_param)
             Order_pt->update(current_particle, neighbour_particle,
                              d, r);
+
+        // update spherical order parameter
+        if(with_sphere_order_param)
+            SphereOrder_pt->update(current_particle, neighbour_particle,
+                                   d, r);
     }
 }
 
@@ -749,9 +776,8 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
     // clear all the particle forces
     clear_particle_forces(molecule_pt);
 
-    // clear the order parameter
-    if(with_order_param)
-        Order_pt->clear();
+    // reset the observables
+    reset_observables();
 
     int zend = 1;
     if(number_of_cells_z != 0)

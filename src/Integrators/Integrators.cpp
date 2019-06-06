@@ -249,12 +249,13 @@ void Langevin::integrate(Molecule* molecule_pt)
 
 // set with grid
 void Langevin::integrate_with_grid(const Matrix& Szero, const double& cut_off,
-                                   Molecule* molecule_pt)
+                                   Molecule* molecule_pt, const int& recf,
+                                   const int& rect)
 {
     // set boolean
     With_grid = true;
     // make a new grid
-    Grid_pt = new Grid(Szero, cut_off, molecule_pt);
+    Grid_pt = new Grid(Szero, cut_off, molecule_pt, recf, rect);
     // update all the particle forces using this grid
     Grid_pt->update_particle_forces(System_pt, molecule_pt);
 }
@@ -266,7 +267,8 @@ void Langevin::integrate_with_npt_grid(const Matrix& Szero,
                                        const double& mass,
                                        const double& target_press,
                                        const double& gamma_npt,
-                                       const double& o_box_time_step)
+                                       const double& o_box_time_step,
+                                       const int& recf, const int& rect)
 {
     // set parameters
     With_npt = true;
@@ -275,7 +277,7 @@ void Langevin::integrate_with_npt_grid(const Matrix& Szero,
     GammaNpt = gamma_npt;
     // make new npt grid
     NptGrid_pt = new NptGrid(Szero, cut_off, molecule_pt, mass,
-                             target_press);
+                             target_press, recf, rect);
     // update all the particle forces on this grid
     NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
     // update the box forces

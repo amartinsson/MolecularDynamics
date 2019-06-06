@@ -3,8 +3,10 @@
 using namespace::std;
 
 // constructor
-OrderObservable::OrderObservable(Molecule* molecule_pt, const double& part_rad)
-    : cutoff((1.0 + std::sqrt(2.0)) * part_rad), pr(0.5 * part_rad)
+OrderObservable::OrderObservable(Molecule* molecule_pt, const double& part_rad,
+                                 const int& recf, const int& rect)
+    : SystemObservable(recf, rect), cutoff((1.0 + std::sqrt(2.0)) * part_rad),
+        pr(0.5 * part_rad)
 {
     // copy the pointer to the moleucle object
     OrderObservable::system = molecule_pt;
@@ -48,12 +50,15 @@ void OrderObservable::clear()
         observablemapReal.at(particle.second)->clear();
         observablemapImag.at(particle.second)->clear();
     }
+
+    // bump recstep
+    localRecStep = recStep();
 }
 
 // wrong update function
 void OrderObservable::update()
 {
-    printf("ERROR: must update with value for r in radial RadialDistObservable\n");
+    printf("ERROR: must update with value for r OrderObservable\n");
     exit(-1);
 }
 
@@ -61,12 +66,10 @@ void OrderObservable::update(Particle* current, Particle* neighbour,
                              const double& r, const Vector& dr)
 {
     // check that we are smaller than the cutoff
-    // if(r < cutoff)
-    if(r < 2.0 * pr)
+    if(r < cutoff && localRecStep)
     {
         // get the order parameter for separation
-        // vector<double> order = get_orderparam(dr);
-        vector<double> order = get_orderparam(dr.unit());
+        vector<double> order = get_orderparam(dr);
 
         // add observation to current particle
         observablemapReal.at(current)->observe(order[0]);
@@ -91,11 +94,7 @@ vector<double> OrderObservable::get_orderparam(const Vector& dr)
 
         retval[0] += 1.0 / 6.0 * cos(theta);
         retval[1] += 1.0 / 6.0 * sin(theta);
-
     }
-
-    // printf("r=(%1.3f, %1.3f, %1.3f), ret = %1.3f + i%1.3f\n",
-    //         dr(0), dr(1), dr(2), retval[0], retval[1]);
 
     // return
     return retval;
@@ -123,9 +122,6 @@ void OrderObservable::print(const char* file_name, const double& time,
         // get the real an imaginary part
         double real = observablemapReal.at(particle.second)->get_average();
         double imag = observablemapImag.at(particle.second)->get_average();
-
-        // printf("%p = %1.3f + i%1.3f with %d observations\n", particle.second, real, imag,
-        // (int)observablemapImag.at(particle.second)->n_observs);
 
         // calculate the absolute value
         double obs = real * real + imag * imag;
@@ -180,53 +176,28 @@ void OrderObservable::set_wave()
     // resize and initialise the vector
     k.resize(6, Vector(3));
 
-    // // wave vector 0
-    // k[0](0) = -M_PI / pr;
-    // k[0](1) = M_PI / pr;
-    // k[0](2) = 0.0;
-    // // wave vector 1
-    // k[1](0) = -M_PI / pr;
-    // k[1](1) = 0.0;
-    // k[1](2) = M_PI / pr;
-    // // wave vector 2
-    // k[2](0) = 0.0;
-    // k[2](1) = M_PI / pr;
-    // k[2](2) = M_PI / pr;
-    // // wave vector 3
-    // k[3](0) = -(3.0 * M_PI / (2.0 * pr));
-    // k[3](1) = 3.0 * M_PI / (2.0 * pr);
-    // k[3](2) = M_PI / (2.0 * pr);
-    // // wave vector 4
-    // k[4](0) = -(3.0 * M_PI / (2.0 * pr));
-    // k[4](1) = M_PI / (2.0 * pr);
-    // k[4](2) = 3.0 * M_PI / (2.0 * pr);
-    // // wave vector 5
-    // k[5](0) = -(M_PI / (2.0 * pr));
-    // k[5](1) = 3.0 * M_PI / (2.0 * pr);
-    // k[5](2) = 3.0 * M_PI / (2.0 * pr);
-
     // wave vector 0
-    k[0](0) = -std::sqrt(8.0) * M_PI;
-    k[0](1) = std::sqrt(8.0) * M_PI;
+    k[0](0) = -M_PI / pr;
+    k[0](1) = M_PI / pr;
     k[0](2) = 0.0;
     // wave vector 1
-    k[1](0) = -std::sqrt(8.0) * M_PI;
+    k[1](0) = -M_PI / pr;
     k[1](1) = 0.0;
-    k[1](2) = std::sqrt(8.0) * M_PI;
+    k[1](2) = M_PI / pr;
     // wave vector 2
     k[2](0) = 0.0;
-    k[2](1) = std::sqrt(8.0) * M_PI;
-    k[2](2) = std::sqrt(8.0) * M_PI;
+    k[2](1) = M_PI / pr;
+    k[2](2) = M_PI / pr;
     // wave vector 3
-    k[3](0) = -std::sqrt(18.0) * M_PI;
-    k[3](1) = std::sqrt(18.0) * M_PI;
-    k[3](2) = std::sqrt(2.0) * M_PI;
+    k[3](0) = -(3.0 * M_PI / (2.0 * pr));
+    k[3](1) = 3.0 * M_PI / (2.0 * pr);
+    k[3](2) = M_PI / (2.0 * pr);
     // wave vector 4
-    k[4](0) = -std::sqrt(18.0) * M_PI;
-    k[4](1) = std::sqrt(2.0) * M_PI;
-    k[4](2) =std::sqrt(18.0) * M_PI;
+    k[4](0) = -(3.0 * M_PI / (2.0 * pr));
+    k[4](1) = M_PI / (2.0 * pr);
+    k[4](2) = 3.0 * M_PI / (2.0 * pr);
     // wave vector 5
-    k[5](0) = -std::sqrt(2.0) * M_PI;
-    k[5](1) = std::sqrt(18.0) * M_PI;
-    k[5](2) = std::sqrt(18.0) * M_PI;
+    k[5](0) = -(M_PI / (2.0 * pr));
+    k[5](1) = 3.0 * M_PI / (2.0 * pr);
+    k[5](2) = 3.0 * M_PI / (2.0 * pr);
 }

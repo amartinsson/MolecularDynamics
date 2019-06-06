@@ -131,6 +131,7 @@ public:
     // addition and subtraction
     Vector operator+ (const Vector& other) const;
     Vector operator- (const Vector& other) const;
+    Vector neg() const;
 
     // getting vector
     double operator() (const int& i) const;
