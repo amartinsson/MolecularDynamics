@@ -4,7 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <math.h>
-#include <gsl/gsl_sf_legendre.h>
+#include <boost/math/special_functions/spherical_harmonic.hpp>
 
 #include "AverageObservable.hpp"
 #include "Array.hpp"
@@ -46,14 +46,10 @@ private:
     // holder for molecule
     Molecule* system;
     // number of spherical harmonics to calculate
-    size_t lmax;
+    unsigned lmax;
     int looplmax;
-    // length of output array in sphere calculations
-    int N;
     // bool to keep track of if to record step or not
     bool locRecStep;
-    // gsl norm function
-    gsl_sf_legendre_t norm;
     // cutoff distance for observable
     double cutoff;
     // map from particles to average observables
@@ -70,25 +66,5 @@ private:
     Matrix calculate_order_param(const vector<double>& angles);
     // long term observable
     AverageObservable* state;
-
-
-
-    // map from particles to average observables
-    // unordered_map<Particle*, AverageObservable*> observablemapReal;
-    // unordered_map<Particle*, AverageObservable*> observablemapImag;
-    // // local molecule object
-    // Molecule* system;
-    // // cutoff distance for observable
-    // double cutoff;
-    // double pr;
-    // // vector with wave numbers
-    // vector<Vector> k;
-    // // long term observable
-    // AverageObservable* state;
-    //
-    // // calculate the observable
-    // vector<double> get_orderparam(const Vector& dr);
-    // // set the wave vector
-    // void set_wave();
 };
 #endif

@@ -7,9 +7,8 @@ SphereOrderObservable::SphereOrderObservable(Molecule* molecule_pt,
                                              const int& l_max,
                                              const double& coff,
                                              const int& recf, const int& rect)
-    : SystemObservable(recf, rect), lmax(l_max), norm(GSL_SF_LEGENDRE_SPHARM),
-        cutoff(coff), N(gsl_sf_legendre_array_n(l_max)),
-            looplmax(2 * l_max + 1), locRecStep(false)
+    : SystemObservable(recf, rect), lmax(l_max), cutoff(coff),
+        looplmax(2 * l_max + 1), locRecStep(false)
 {
     // make array of particles
     SphereOrderObservable::system = molecule_pt;
@@ -206,38 +205,30 @@ void SphereOrderObservable::add_obs(Particle* particle,
 Matrix SphereOrderObservable::calculate_order_param(const vector<double>& angles)
 {
     // dereference some helpers
-    double result_array[N];
     double theta = angles[0];
     double phi = angles[1];
 
     // make matrix to return
     Matrix RetMat(looplmax, 2);
 
-    // set up special function object
-    gsl_sf_legendre_array_e(norm, lmax, cos(theta), -1, result_array);
-    // gsl_sf_legendre_array(norm, lmax, cos(theta), result_array);
-
     unsigned index = 0;
 
     for(unsigned m=0; m<=lmax; m++)
     {
-        RetMat(index, 0) =
-            result_array[gsl_sf_legendre_array_index(lmax, m)] * cos(m * phi);
-        RetMat(index, 1) =
-            result_array[gsl_sf_legendre_array_index(lmax, m)] * sin(m * phi);
+        // make the spherical harmonic
+        complex<double> sph = boost::math::spherical_harmonic(lmax, m,
+                                                              theta, phi);
 
+        RetMat(index, 0) = real(sph);
+        RetMat(index, 1) = imag(sph);
          if(m > 0)
          {
              // bump index
              index++;
 
              // calculate real and imaginary parts
-             RetMat(index, 0) = pow(-1.0, m) *
-                result_array[gsl_sf_legendre_array_index(lmax, m)] *
-                    cos(m * phi);
-             RetMat(index, 1) = pow(-1.0, m + 1) *
-                result_array[gsl_sf_legendre_array_index(lmax, m)] *
-                    sin(m * phi);
+             RetMat(index, 0) = pow(-1.0, m) * real(sph);
+             RetMat(index, 1) = pow(-1.0, m + 1) * imag(sph);
         }
 
         // bump index
