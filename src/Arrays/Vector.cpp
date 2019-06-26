@@ -283,6 +283,18 @@ Vector Vector::operator* (const double& value) const
 }
 
 // set vectors to be equal
+Vector Vector::operator/ (const double& value) const
+{
+    Vector retVec(dimx);
+
+#pragma omp simd collapse(1)
+    for(unsigned i=0; i<dimx; i++)
+        retVec(i) = vec[i] / value;
+
+    return retVec;
+}
+
+// set vectors to be equal
 void Vector::operator-= (const Vector& other)
 {
     if(other.size() != dimx)

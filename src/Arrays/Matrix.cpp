@@ -456,8 +456,8 @@ RotMatrix::RotMatrix(const double& alpha) : Matrix(2, 2)
 {
     // set the rotation matrix
     M[0] = cos(alpha);
-    M[1] = sin(alpha);
-    M[dimy] = -sin(alpha);
+    M[1] = -sin(alpha);
+    M[dimy] = sin(alpha);
     M[1 + dimy] = cos(alpha);
 }
 

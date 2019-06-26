@@ -9,6 +9,7 @@ InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
                                      Molecule* molecule_pt, const double& tmin,
                                      const double& tmax, const unsigned& nint,
                                      const double& t_step, const double& tau)
+                                         : thermal_force_scaling(0.0), potential_scale(1.0)//potential_scale(1850)
 {
     // set the integration limits
     beta_max = 1.0 / tmin;
@@ -25,7 +26,6 @@ InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
 
     // set the timestep
     time_step = time_step_scaling * t_step;
-
 
 
     // get the legendre polynominals basis for the interpolation points
@@ -47,7 +47,9 @@ InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
     normalise_weights();
 
     // calculate the force rescaling
+    // printf("FORCE SCALING BEFORE: %f\n", thermal_force_scaling);
     calculate_force_rescaling(molecule_pt);
+    // printf("FORCE SCALING AFTER: %f\n", thermal_force_scaling);
 
     // initialise the force
     init_force(molecule_pt);
@@ -114,7 +116,9 @@ vector<double> InfiniteSwitchSimulatedTempering::get_observable_weights(
                                                         Molecule* molecule_pt)
 {
 	// parameters
-  	double V = molecule_pt->potential();
+  	// double V = molecule_pt->potential();
+    // double V = molecule_pt->potential() + potential_scale;
+    double V = molecule_pt->potential() / potential_scale;
 	vector<double> Weights(number_of_interpolation_points, 0.0);
 
 	// loop over integration point to find
@@ -133,7 +137,8 @@ vector<double> InfiniteSwitchSimulatedTempering::get_observable_weights(
 		    double g_j = gauss_weight[j];
 		    double beta_j = beta[j];
 		    // calculate integral
-		    integral += g_j * w_j * exp(-(beta_j-beta_i) * V);
+            integral += g_j * w_j * exp(-(beta_j-beta_i) * V);
+		    // integral += g_j * w_j * exp(-(beta_j-beta_i) * V + potential_scale);
 		}
 
        	// assign the weight
@@ -165,7 +170,9 @@ void InfiniteSwitchSimulatedTempering::calculate_force_rescaling(
                                                         Molecule* molecule_pt)
 {
 	// dereference
-	double V = molecule_pt->potential();
+    // double V = molecule_pt->potential();
+    // double V = molecule_pt->potential() + potential_scale;
+	double V = molecule_pt->potential() / potential_scale;
 	double InvTemp = molecule_pt->beta();
 
 	double BarNumSum = 0.0;
@@ -179,10 +186,18 @@ void InfiniteSwitchSimulatedTempering::calculate_force_rescaling(
 	    // sum up the integrals
 	    BarNumSum   += gauss_weight[i] * beta[i] * w_i * exp(-beta[i] * V);
 	    BarDeNumSum += gauss_weight[i] * w_i * exp(-beta[i] * V);
+        // BarNumSum   += gauss_weight[i] * beta[i] * w_i * exp(-beta[i] * V + potential_scale);
+	    // BarDeNumSum += gauss_weight[i] * w_i * exp(-beta[i] * V + potential_scale);
+        printf("Exp[%f] with V=%f\n", -beta[i] * V, V);
+     //
+     //    printf("w_i: %f, gw: %f, beta: %f, V: %f\n", w_i, gauss_weight[i], beta[i], V);
 	 }
 
 	 // update the thermal scaling
+     printf("barnumsum: %f, bardenumsum: %f, invtemp: %f\n", BarNumSum, BarDeNumSum, InvTemp);
+     // printf("FORCE SCALING IN FUNC BEFORE: %f\n", thermal_force_scaling);
 	 thermal_force_scaling = BarNumSum / (InvTemp * BarDeNumSum);
+     printf("FORCE SCALING IN FUNC AFTER: %f\n", thermal_force_scaling);
 };
 
 // initialise the force
@@ -200,7 +215,9 @@ void InfiniteSwitchSimulatedTempering::learn_beta_weights(Molecule* molecule_pt)
 {
 	// dereference
 	double h = time_step;
-	double V = molecule_pt->potential();
+    // double V = molecule_pt->potential();
+    // double V = molecule_pt->potential() + potential_scale;
+	double V = molecule_pt->potential() / potential_scale;
 	double BarDeNumSum = 0.0;
 
 	for(unsigned i=0; i<number_of_interpolation_points; i++)
@@ -210,6 +227,7 @@ void InfiniteSwitchSimulatedTempering::learn_beta_weights(Molecule* molecule_pt)
 
 		// sum up the integrals
 		BarDeNumSum += gauss_weight[i] * w_i * exp(-beta[i] * V);
+        // BarDeNumSum += gauss_weight[i] * w_i * exp(-beta[i] * V + potential_scale);
 	}
 
 	// update the partition estimate
@@ -217,6 +235,7 @@ void InfiniteSwitchSimulatedTempering::learn_beta_weights(Molecule* molecule_pt)
 	{
 		// partition estimate
 		partition_estimate[i].observe(exp(-beta[i] * V) / BarDeNumSum);
+        // partition_estimate[i].observe(exp(-beta[i] * V + potential_scale) / BarDeNumSum);
 	}
 
 	// update all the weights with the new values

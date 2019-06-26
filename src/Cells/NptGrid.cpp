@@ -190,20 +190,17 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
     {
         // distance
         double d = std::sqrt(rsq);
-
         // Calculate force and potential
         Vector f_ij = system_pt->compute_force(molecule_pt,
                                                current_particle,
                                                neighbour_particle,
                                                d, r);
-
        //  Vector q1 = S.inv() * (*current_particle).q;
        //  Vector q2 = S.inv() * (*neighbour_particle).q;
        //
        // if(std::sqrt(rsq) < pow(2.0,1.0/6.0))
        //      printf("r = %1.3e f = %1.3e %p = (%1.3f, %1.3f, %1.3f) %p = (%1.3f, %1.3f, %1.3f)\n",
        //      std::sqrt(rsq), f_ij.l2(), current_particle, q1(0), q1(1), q1(2), neighbour_particle, q2(0), q2(1), q2(2));
-
 
         if(Grid::with_radial_dist)
             Grid::Radial_pt->update(d);
@@ -221,12 +218,13 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
 
         // calculate the virial
         // Matrix V = f_ij.out(r_tilde);
-        Matrix V(3,3);
+        unsigned dim = r.size();
+        Matrix V(dim,dim);
 
-        for(unsigned i=0; i<3; i++)
-            for(unsigned j=i; j<3; j++)
+        for(unsigned i=0; i<dim; i++)
+            for(unsigned j=i; j<dim; j++)
             {
-                Matrix K(3,3);
+                Matrix K(dim, dim);
                 K(i,j) = 1.0;
                 V(i,j) = (f_ij.neg()).dot(K * r_tilde);
             }
@@ -239,7 +237,7 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
         box_grad_01 += V(0,1);
         box_grad_11 += V(1,1);
 
-        if(r_tilde.size() > 2)
+        if(dim > 2)
         {
             box_grad_02 += V(0,2);
             box_grad_12 += V(1,2);

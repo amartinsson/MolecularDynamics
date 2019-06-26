@@ -10,24 +10,10 @@ using namespace::std;
 MercedesBenz::MercedesBenz(const double& epsilon_LJ, const double& sigma_LJ,
                            const double& epsilon_HB, const double& sigma_HB,
                            const double& r_HB)
-                           : LennardJones(epsilon_LJ, sigma_LJ)
-{
-    // set all the force parameters
-    Epsilon_LJ = epsilon_LJ;
-    Sigma_LJ = sigma_LJ;
-    Epsilon_HB = epsilon_HB;
-    Sigma_HB = sigma_HB;
-    R_HB = R_HB;
-}
+    : LennardJones(epsilon_LJ, sigma_LJ), Epsilon_HB(epsilon_HB),
+        Sigma_HB(sigma_HB), R_HB(r_HB) {}
 
-MercedesBenz::~MercedesBenz()
-{
-    delete &Epsilon_LJ;
-    delete &Sigma_LJ;
-    delete &Epsilon_HB;
-    delete &Sigma_HB;
-    delete &R_HB;
-}
+MercedesBenz::~MercedesBenz() {}
 
 // compute the force
 void MercedesBenz::compute_force(Molecule* molecule_pt)
@@ -44,9 +30,7 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
                                            const Vector& dr)
 {
       // holders for computing the forces
-      // between the particle_icles
-      // std::vector<double> lj_forces(2, 0.0);
-      Vector forces(2, 0.0);
+      Vector F(2, 0.0);
       double r_x = dr(0);
       double r_y = dr(1);
 
@@ -54,13 +38,164 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
       Vector lj_forces = LennardJones::compute_force(molecule_pt, particle_i,
                                                      particle_j, r, dr);
 
-      forces(0) += lj_forces(0);
-      forces(1) += lj_forces(1);
+      F(0) += lj_forces(0);
+      F(1) += lj_forces(1);
 
     #pragma omp atomic
       molecule_pt->potential() += LennardJones::get_potential(r);
 
       // ------------------------------ HYDROGEN BOND ----------------------------------- //
+
+    //   // unit vector in r direction
+    //   Vector u = dr / r;
+    //
+    //   // arms for each particle
+    //   Matrix armi = particle_i->arm;
+    //   Matrix armj = particle_j->arm;
+    //
+    //   // make the h vecors
+    //   Vector h_i(3);
+    //   Vector h_j(3);
+    //
+    //   // derivative vectors and matrices
+    //   Vector dhi_dx(3);
+    //   Vector dhi_dy(3);
+    //
+    //   Vector dhj_dx(3);
+    //   Vector dhj_dy(3);
+    //
+    //   Matrix dV_dQi(2,2);
+    //   Matrix dV_dQj(2,2);
+    //
+    //   #pragma omp simd collapse(1)
+    //   for(unsigned i=0; i<3; i++)
+    //   {
+    //       // particle i
+    //       Vector arm(2);
+    //       Vector arme(2);
+    //       arme(0) = particle_i->arm(i,0);
+    //       arme(1) = particle_i->arm(i,1);
+    //
+    //       // rotate arm into correct position
+    //       arm = particle_i->Q.T() * arme;
+    //
+    //       // make the helper
+    //       h_i(i) = arm.dot(u);
+    //
+    //       // derivative terms
+    //       Vector p(2);
+    //       p(0) = -pow(dr(1), 2.0) * pow(r, -3.0);
+    //       p(1) = dr(0) * dr(1) * pow(r, -3.0);
+    //       dhi_dx(i) = arm.dot(p);
+    //
+    //       p(0) = dr(0) * dr(1) * pow(r, -3.0);
+    //       p(1) = -pow(dr(0), 2.0) * pow(r, -3.0);
+    //       dhi_dy(i) = arm.dot(p);
+    //
+    //       // log arm
+    //       armi(i,0) = arm(0);
+    //       armi(i,1) = arm(1);
+    //
+    //       // particle j
+    //       arme(0) = particle_j->arm(i,0);
+    //       arme(1) = particle_j->arm(i,1);
+    //
+    //       // rotate arm into correct position
+    //       arm = particle_j->Q.T() * arme;
+    //
+    //       // make helper
+    //       h_j(i) = arm.dot(u);
+    //
+    //       // derivative terms
+    //       p(0) = pow(dr(1), 2.0) * pow(r, -3.0);
+    //       p(1) = -dr(0) * dr(1) * pow(r, -3.0);
+    //       dhj_dx(i) = arm.dot(p);
+    //
+    //       p(0) = -dr(0) * dr(1) * pow(r, -3.0);
+    //       p(1) = pow(dr(0), 2.0) * pow(r, -3.0);
+    //       dhj_dy(i) = arm.dot(p);
+    //
+    //       // log arm
+    //       armj(i,0) = arm(0);
+    //       armj(i,1) = arm(1);
+    //   }
+    //
+    //   // calculate forces in each direction
+    //   double dHB_dx = 0.0;
+    //   double dHB_dy = 0.0;
+    //
+    //   // #pragma omp simd collapse(2)
+    //   for(unsigned k=0; k<3; k++)
+    //       for(unsigned l=0; l<3; l++)
+    //       {
+    //           // translational forces
+    //         dHB_dx += Epsilon_HB * (r - R_HB) * pow(Sigma_HB, -2.0) * G(r - R_HB) * u(0) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0)
+    //                 - Epsilon_HB * G(r - R_HB) * (h_i(k) - 1.0) * pow(Sigma_HB, -2.0) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0) * dhi_dx(k)
+    //                 - Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * (h_j(l) + 1.0) * pow(Sigma_HB, -2.0) * G(h_j(l) + 1.0) * dhj_dx(l);
+    //
+    //         dHB_dy += Epsilon_HB * (r - R_HB) * pow(Sigma_HB, -2.0) * G(r - R_HB) * u(1) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0)
+    //                 - Epsilon_HB * G(r - R_HB) * (h_i(k) - 1.0) * pow(Sigma_HB, -2.0) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0) * dhi_dy(k)
+    //                 - Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * (h_j(l) + 1.0) * pow(Sigma_HB, -2.0) * G(h_j(l) + 1.0) * dhj_dy(l);
+    //
+    //         // rotational forces
+    //         dV_dQi(0,0) -= Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * (h_i(k) - 1.0) * pow(Sigma_HB, -2.0) * G(h_i(k) - 1.0) * armi(k, 0) * u(0);
+    //         dV_dQi(0,1) -= Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * (h_i(k) - 1.0) * pow(Sigma_HB, -2.0) * G(h_i(k) - 1.0) * armi(k, 0) * u(1);
+    //         dV_dQi(1,0) -= Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * (h_i(k) - 1.0) * pow(Sigma_HB, -2.0) * G(h_i(k) - 1.0) * armi(k, 1) * u(0);
+    //         dV_dQi(1,1) -= Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * (h_i(k) - 1.0) * pow(Sigma_HB, -2.0) * G(h_i(k) - 1.0) * armi(k, 1) * u(1);
+    //
+    //         dV_dQj(0,0) -= Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * (h_j(l) + 1.0) * pow(Sigma_HB, -2.0) * G(h_j(l) + 1.0) * armj(l, 0) * u(0);
+    //         dV_dQj(0,1) -= Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * (h_j(l) + 1.0) * pow(Sigma_HB, -2.0) * G(h_j(l) + 1.0) * armj(l, 0) * u(1);
+    //         dV_dQj(1,0) -= Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * (h_j(l) + 1.0) * pow(Sigma_HB, -2.0) * G(h_j(l) + 1.0) * armj(l, 1) * u(0);
+    //         dV_dQj(1,1) -= Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * (h_j(l) + 1.0) * pow(Sigma_HB, -2.0) * G(h_j(l) + 1.0) * armj(l, 1) * u(1);
+    //
+    //         #pragma omp atomic
+    //         molecule_pt->potential() += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0);
+    //     }
+    //
+    // // add translational forces
+    // // the dHB_dx is the gradient. As we are measuring in the direction i->j
+    // // this means that the foce is the negative of the gradient in this direction
+    // // F(0) -= dHB_dx;
+    // // F(1) -= dHB_dy;
+    // F(0) += dHB_dx;
+    // F(1) += dHB_dy;
+    //
+    // // add translational forces for particles
+    // #pragma omp atomic
+    // // particle_i->f(0) -= dHB_dx;
+    // particle_i->f(0) += dHB_dx;
+    //
+    // #pragma omp atomic
+    // // particle_i->f(1) -= dHB_dy;
+    // particle_i->f(1) += dHB_dy;
+    //
+    // #pragma omp atomic
+    // // particle_j->f(0) += dHB_dx;
+    // particle_j->f(0) -= dHB_dx;
+    //
+    // #pragma omp atomic
+    // // particle_j->f(1) += dHB_dy;
+    // particle_j->f(1) -= dHB_dy;
+    //
+    // Matrix rest = particle_i->Q.T() * dV_dQi;
+    // Matrix res = rest - rest.T();
+    // double tau_i = res(0,1);
+    //
+    // rest = particle_j->Q.T() * dV_dQj;
+    // res = rest - rest.T();
+    // double tau_j = res(0,1);
+    //
+    // // all ready accounted for the minus sign in the tau = - rot^-1(A - A^T)
+    // // part of the force
+    // #pragma omp atomic
+    // // particle_i->tau(0,0) += tau_i;
+    // particle_i->tau(0,0) -= tau_i;
+    //
+    // #pragma omp atomic
+    // // particle_j->tau(0,0) += tau_j;
+    // particle_j->tau(0,0) -= tau_j;
+
+    // OLD STUFF !!!
 
       // Helpers and derivatives with respect to x and y
       std::vector<double> h_i(3, 0.0);
@@ -103,7 +238,7 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
       double dphiHB_dQ_j_11 = 0.0;
 
       // derivatives with respect to r
-      double dG_dr = -(r-R_HB) / (Sigma_HB*Sigma_HB) * G(r-R_HB);
+      double dG_dr = -(r-R_HB) / (Sigma_HB * Sigma_HB) * G(r-R_HB);
       double dr_dx = -r_x/r;
       double dr_dy = -r_y/r;
 
@@ -129,6 +264,12 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
       //       // particle_icle j
       //       Q_j[k][l] = *particle_j->Q_pt(k, l);
       //   }
+
+      // printf("arms_i:");
+      // printf("\t%f, %f\n",particle_i->arm(0,0), particle_i->arm(0,1));
+      // printf("\t%f, %f\n",particle_i->arm(1,0), particle_i->arm(1,1));
+      // printf("\t%f, %f\n",particle_i->arm(2,0), particle_i->arm(2,1));
+      // exit(-1);
       for(unsigned k=0; k<3; k++)
       {
             for(unsigned l=0;l<2;l++)
@@ -145,10 +286,10 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
                 }
 
                 // read in particle_icle i
-                arm_i[l][k] = particle_i->arm(l, k);
+                arm_i[l][k] = particle_i->arm(k, l);
 
                 // read in particle_icle j
-                arm_j[l][k] = particle_j->arm(l, k);
+                arm_j[l][k] = particle_j->arm(k, l);
             }
         }
 
@@ -291,7 +432,7 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
            // dh_i_dQ_00[k] = u[0] *  arm_i[0][k];
            // dh_i_dQ_01[k] = u[1] *  arm_i[0][k];
            //
-           // dh_i_dQ_10[k] = u[0] *  arm_i[1][k];
+           // dh_i_dQ_10[k] = u[0] *  arm_i[1][k];    Epsilon_LJ = epsilon_LJ;
            // dh_i_dQ_11[k] = u[1] *  arm_i[1][k];
            //
            // // matrix elements for the Torque particle_icle J
@@ -458,8 +599,10 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
         particle_j->f(1) += Epsilon_HB * dphiHB_dy;
 
     // add up the forces between particle_icles
-    forces(0) -= Epsilon_HB * dphiHB_dx;
-    forces(1) -= Epsilon_HB * dphiHB_dy;
+    F(0) -= Epsilon_HB * dphiHB_dx;
+    F(1) -= Epsilon_HB * dphiHB_dy;
+
+    // printf("f = (%2.3f, %2.3f)\n", forces(0), forces(1));
 
 
        // add torque to overall torque
@@ -492,7 +635,7 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
          // delete [] arm_j;
 
         // return the forces between the particle_icles
-        return forces;
+        return F;
 }
 
 // Gaussian function

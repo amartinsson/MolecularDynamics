@@ -45,6 +45,7 @@ private:
     double time_step;
     double thermal_force_scaling;
     double time_step_scaling;
+    double potential_scale;
 
     // unsigned holders
     unsigned number_of_interpolation_points;

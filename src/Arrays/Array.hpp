@@ -128,6 +128,8 @@ public:
     void operator*= (const double& value);
     Vector operator* (const double& value) const;
 
+    // set vectors to be equal
+    Vector operator/ (const double& value) const;
     // addition and subtraction
     Vector operator+ (const Vector& other) const;
     Vector operator- (const Vector& other) const;

@@ -6,32 +6,10 @@
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
-#include "LennardJones.hpp"
+#include "MercedesBenz.hpp"
 #include "Array.hpp"
 
 using namespace::std;
-//
-// double box_temp(std::vector<double>& Lp, double mass)
-// {
-//   unsigned dim = 3.0;
-//
-//   // mass and momentum for particle k
-//   double momentum = 0.0;
-//
-//   // Temperature
-//   double temperature = 0.0;
-//
-//   // loop over all the particles
-//   for(unsigned j=0; j<dim; j++)
-//   {
-//       // dereference the momentum and mass
-// 	  momentum = Lp[j];
-// 	  temperature += momentum * momentum / mass;
-//   }
-//
-//   // return the temperature
-//   return 1.0 / dim * temperature;
-// };
 
 void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stamp)
 {
@@ -280,74 +258,6 @@ void print_final_momentum(Molecule* molecule_pt)
   fclose(configuration_file);
 };
 
-// void print_temperature(const double& instant_temperature, double& temperature,
-//                        const double& time_stamp, const char* file_name,
-//                        const unsigned& control_number)
-// {
-//     // convert the filename to a string
-//     std::string name(file_name);
-//
-//     // open the file to write to
-//     char filename[50];
-//     sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
-//     FILE* temperature_file = fopen(filename, "a");
-//
-//     fprintf(temperature_file, "%1.7e, %1.7e, %1.7e\n",
-//             time_stamp, instant_temperature, temperature);
-//
-//     // close the file
-//     fclose(temperature_file);
-// };
-//
-// void print_box_temperature(const double& temperature, const double& time_stamp)
-// {
-//   // open the file to write to
-//   char filename[50];
-//   sprintf(filename, "Observables/box_temperature.csv");
-//   FILE* temperature_file = fopen(filename, "a");
-//
-//   fprintf(temperature_file, "%1.4e, %1.3e\n", time_stamp, temperature);
-//
-//     // close the file
-//   fclose(temperature_file);
-// };
-//
-void print_pressure(const double& instant_pressure, const double& pressure,
-                    const double& time_stamp, const char* file_name,
-                    const unsigned& control_number)
-{
-    // convert the filename to a string
-    std::string name(file_name);
-
-    // open the file to write to
-    char filename[50];
-    sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), control_number);
-    FILE* pressure_file = fopen(filename, "a");
-
-    fprintf(pressure_file, "%1.7e, %1.7e, %1.7e\n",
-            time_stamp, instant_pressure, pressure);
-
-    // close the file
-    fclose(pressure_file);
-};
-
-void print_density(const double& instant_volume, const unsigned& N,
-                   const double& time_stamp, const unsigned& control_number)
-{
-  // open the file to write to
-  char filename[50];
-  sprintf(filename, "Observables/density_%d.csv", control_number);
-  FILE* volume_file = fopen(filename, "a");
-
-  //fprintf(volume_file, "%d, %.3f\n", time_stamp, volume);
-  fprintf(volume_file, "%1.4e, %1.4e\n",
-          time_stamp, (double)N / instant_volume);
-
-    // close the file
-  fclose(volume_file);
-};
-
-
 void print_volume(const double& volume, const Matrix& S,
                 const double& time_stamp, const unsigned& control_number)
 {
@@ -401,12 +311,11 @@ int main(int argc, char* argv[])
 
     // parameters
     int SEED = 1234;
-    unsigned dimension = 3;
+    unsigned dimension = 2;
     unsigned number_of_particles = 25*25;
     double temp = 0.2;
 
-    double sigma = 1.0;
-    double epsilon = 1.0;
+    double momIntertia = 0.01126;
 
     double sx = 30.0;
     double sy = 30.0;
@@ -564,15 +473,6 @@ int main(int argc, char* argv[])
     // add contorl number to seed differently
     SEED += control_number + (control_number + 1) * world_rank;
 
-    // calculate the cut off
-    // double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
-    double cut_off = 4.0 * sigma;
-
-    // set the boundaries for the rmin rmax calculations
-    double rmin = 0.0; //0.95 * sigma;
-    double rmax = cut_off;
-    int nrdist = 200;
-
     // calculate the number of steps
     unsigned number_of_steps = TIME / time_step;
 
@@ -582,19 +482,42 @@ int main(int argc, char* argv[])
     // make particle standard values
     Vector q_0(dimension);
     Vector p_0(dimension);
+    Matrix Q_0(dimension, dimension);
+    Matrix pi_0(1, 1);
     Matrix m_0(dimension, dimension);
-    m_0.diag(1.0); // set mass to be one
+    Matrix I_0(dimension, dimension);
+
+    // set mass and moment of inertia
+    m_0.diag(1.0);
+    I_0.diag(momIntertia);
 
     // make crystal molecule with number_of_particles
-    Molecule* cluster = new Collection(q_0, p_0, m_0, temp,
-                                       number_of_particles, dimension);
+    unsigned narms = 3;
+    Molecule* cluster = new AniCollection(q_0, p_0, Q_0, pi_0, m_0, I_0, narms,
+                                          temp, number_of_particles, dimension);
 
-    // Make a Lennard Jones Force solver
-    System* lennard_jones = new LennardJones(epsilon, sigma);
+    // Make a Mercedes Benz Force solver
+    double epsilon = 0.1;
+    double sigma = 0.7;
+    double epsilon_hb = -1.0;
+    double sigma_hb = 0.085;
+    double r_hb = 1.0;
+
+    System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb,
+                                             sigma_hb, r_hb);
 
     // make integrator
-    BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
-                                     lennard_jones, SEED);
+    BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step,
+                                  mercedes_benz, SEED);
+
+    // calculate the cut off
+    // double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
+    double cut_off = 4.0 * r_hb;
+
+    // set the boundaries for the rmin rmax calculations
+    double rmin = 0.0; //0.95 * sigma;
+    double rmax = cut_off;
+    int nrdist = 200;
 
     if(with_npt)
         integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
@@ -614,7 +537,6 @@ int main(int argc, char* argv[])
         sprintf(volume, "Observables/Initial/volume_%i.csv", world_rank);
         integrator->npt_set_initial(cluster, position, volume);
     }
-
 
     if(with_npt)
     {
@@ -638,12 +560,20 @@ int main(int argc, char* argv[])
 
     for(unsigned i=0; i<number_of_steps; i++)
     {
-
-        // integrate forward one step
-        // double before = 0.0;
-        // before = omp_get_wtime();
-
+        // integrate forward
         integrator->integrate(cluster);
+
+        // double F1 = 0.0;
+        // double F2 = 0.0;
+        // double TAU = 0.0;
+        // for(const auto& particle : cluster->Particles)
+        // {
+        //     F1 += particle.second->f(0);
+        //     F2 += particle.second->f(1);
+        //     TAU += particle.second->tau(0,0);
+        // }
+        //
+        // printf("Total Force = (%2.5f, %2.5f), Tau = %f\n", F1, F2, TAU);
 
 
         // update pressure temperature// update pressure temperature
@@ -652,20 +582,6 @@ int main(int argc, char* argv[])
         else
             integrator->grid_obj().update_temperature();
 
-        // // print positions
-        // Matrix simbox = integrator->grid_obj().S;
-        // print_positions(cluster, simbox, 0);
-        //
-        // // print order parameter
-        // integrator->grid_obj().SphereOrder_pt->
-        //                             print("order", 0.0,
-        //                                   // control_number + world_rank);
-        //                                   i / write_frequency);
-        // double iorder = integrator->grid_obj().SphereOrder_pt->get_instant();
-        // double order = integrator->grid_obj().SphereOrder_pt->get_average();
-        // printf("Order \t %1.5f %1.5f\n", order, iorder);
-        // exit(-1);
-
         if(integrator->cell_blow_up())
         {
             printf("step %d\n", i);
@@ -673,17 +589,6 @@ int main(int argc, char* argv[])
                     world_rank, box_mass, npt_langevin_friction);
             break;
         }
-
-        // Vector Ftot(3);
-        // for(unsigned k=0; k<cluster->nparticle(); k++)
-        // {
-        //     Ftot += cluster->particle(k).f;
-        // }
-
-        // printf("Total force sums to: %1.3e %1.3e %1.3e\n", Ftot(0), Ftot(1), Ftot(2));
-
-        // double after = omp_get_wtime();
-        // printf("\tstep %4d took %1.4f\n", i, after-before);
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
@@ -694,7 +599,7 @@ int main(int argc, char* argv[])
             {
                 // print positions
                 Matrix simbox = integrator->npt_obj().S;
-                // print_positions(cluster, simbox, i / write_frequency);
+                print_positions(cluster, simbox, i / write_frequency);
 
 
                 // print temperature
@@ -713,29 +618,29 @@ int main(int argc, char* argv[])
                                                        control_number + world_rank);
                                                             // i / write_frequency);
 
-                double temp = integrator->npt_obj().Temperature_pt->get_average();
-                double itemp = integrator->npt_obj().Temperature_pt->get_instant();
-                printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
-
-                // print pressure
-                double instant_pressure = integrator->npt_obj().Pressure_pt->get_instant();
-                double pressure = integrator->npt_obj().Pressure_pt->get_average();
-                printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
-
-                //print volume
-                double vol = integrator->npt_obj().Volume_pt->get_average();
-                double ivol = integrator->npt_obj().Volume_pt->get_average();
-                printf("Density \t     %1.5f\n", number_of_particles / vol * pow(sigma, 3.0));
-
-                double iorder = integrator->npt_obj().SphereOrder_pt->get_instant();
-                double order = integrator->npt_obj().SphereOrder_pt->get_average();
-                printf("Order \t %1.5f %1.5f\n", order, iorder);
+                // double temp = integrator->npt_obj().Temperature_pt->get_average();
+                // double itemp = integrator->npt_obj().Temperature_pt->get_instant();
+                // printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
+                //
+                // // print pressure
+                // double instant_pressure = integrator->npt_obj().Pressure_pt->get_instant();
+                // double pressure = integrator->npt_obj().Pressure_pt->get_average();
+                // printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
+                //
+                // //print volume
+                // double vol = integrator->npt_obj().Volume_pt->get_average();
+                // double ivol = integrator->npt_obj().Volume_pt->get_average();
+                // printf("Density \t     %1.5f\n", number_of_particles / vol * pow(sigma, 3.0));
+                //
+                // double iorder = integrator->npt_obj().SphereOrder_pt->get_instant();
+                // double order = integrator->npt_obj().SphereOrder_pt->get_average();
+                // printf("Order \t %1.5f %1.5f\n", order, iorder);
             }
             else
             {
                 // print positions
                 Matrix simbox = integrator->grid_obj().S;
-                print_positions(cluster, simbox, i / write_frequency);
+                // print_positions(cluster, simbox, i / write_frequency);
 
                 // print temperature
                 integrator->grid_obj().Temperature_pt->print("temperature",
@@ -747,42 +652,21 @@ int main(int argc, char* argv[])
                 // print order
                 integrator->grid_obj().SphereOrder_pt->print("order", time_stamp,
                                                 control_number + world_rank);
-                // break
-                double temp = integrator->grid_obj().Temperature_pt->get_average();
-                double itemp = integrator->grid_obj().Temperature_pt->get_instant();
-                printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
-
-                //print volume
-                double vol = integrator->grid_obj().Volume_pt->get_average();
-                double ivol = integrator->grid_obj().Volume_pt->get_average();
-                // print_volume(volume, simbox, time_stamp, control_number + world_rank);
-                printf("Density \t     %1.5f\n", number_of_particles / vol * pow(sigma, 3.0));
-
-                double iorder = integrator->grid_obj().SphereOrder_pt->get_instant();
-                double order = integrator->grid_obj().SphereOrder_pt->get_average();
-                printf("Order \t %1.5f %1.5f\n", order, iorder);
+                // // break
+                // double temp = integrator->grid_obj().Temperature_pt->get_average();
+                // double itemp = integrator->grid_obj().Temperature_pt->get_instant();
+                // printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
+                //
+                // //print volume
+                // double vol = integrator->grid_obj().Volume_pt->get_average();
+                // double ivol = integrator->grid_obj().Volume_pt->get_average();
+                // // print_volume(volume, simbox, time_stamp, control_number + world_rank);
+                // printf("Density \t     %1.5f\n", number_of_particles / vol * pow(sigma, 3.0));
+                //
+                // double iorder = integrator->grid_obj().SphereOrder_pt->get_instant();
+                // double order = integrator->grid_obj().SphereOrder_pt->get_average();
+                // printf("Order \t %1.5f %1.5f\n", order, iorder);
             }
-            //
-            // // // print the pressure
-            // // double instant_pressure = integrator->npt_get_instant_pressure();
-            // // double pressure = integrator->npt_get_pressure();
-            // // print_pressure(instant_pressure, pressure, time_stamp, "pressure",
-            // //                control_number + world_rank);
-            // //
-            // // printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
-            //
-            // //print temperature
-            // integrator
-            // double instant_temperature = integrator->get_instant_temperature();
-            // double temperature = integrator->get_temperature();
-            // print_temperature(instant_temperature, temperature, time_stamp,
-            //                   "temperature", control_number + world_rank);
-            // printf("Temperature \t %1.5f %1.3f\n", temperature, instant_temperature);
-            //
-            // //print volume
-            // double volume = integrator->npt_get_volume();
-            // print_volume(volume, simbox, time_stamp, control_number + world_rank);
-            // printf("Density \t     %1.5f\n", number_of_particles * 4.0/3.0 * M_PI * pow(2.0, 0.5) / volume);
         }
 
         if(i % int(0.2 * number_of_steps) == 0 | i == number_of_steps)

@@ -30,15 +30,18 @@ Vector LennardJones::compute_force(Molecule* molecule_pt,
 {
     double dphidr = get_force_scalar(r);
 
-    Vector F = dr * (-dphidr / r);
+    // we have removed minus coming from derivatie of x and y as the positive
+    // direction is in going from i -> j and we need the force, which is the
+    // negative of the gradient!
+    Vector F = dr * dphidr / r;
 
     for(int k=0; k<F.size(); k++)
     {
         #pragma omp atomic
-        particle_i->f(k) -= F(k);
+        particle_i->f(k) += F(k);
 
         #pragma omp atomic
-        particle_j->f(k) += F(k);
+        particle_j->f(k) -= F(k);
     }
     //
     //

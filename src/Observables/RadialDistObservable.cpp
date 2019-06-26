@@ -47,7 +47,7 @@ void RadialDistObservable::print(const char* file_name, const double& time,
     int N = radialDist.get_nbins();
 
     for(int i=0; i<N; i++)
-        fprintf(file, "%1.7e, %1.7e %1.7e\n",
+        fprintf(file, "%1.7e, %1.7e, %1.7e\n",
                 radialDist.get_bin_center(i),
                 radialDist.get_value(i),
                 radialDist.get_pdf(i));

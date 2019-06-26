@@ -23,12 +23,12 @@ public:
     explicit Particle(const unsigned& dim) : q(dim), p(dim), f(dim),
                                              m(dim, dim),
                                              rigid_body_state(false),
-                                             DIM(dim) {};
+                                             DIM(dim) {}
     // explicit constructor
     explicit Particle(const Vector& q_0, const Vector& p_0, const Matrix& m_0,
                       const unsigned& dim) : q(q_0), p(p_0), f(dim), m(m_0),
                                              rigid_body_state(false),
-                                             DIM(dim) {};
+                                             DIM(dim) {}
     // explicit constructor
     explicit Particle(const Vector& q_0, const Vector& p_0,
                       const Matrix& Q_0, const Matrix& pi_0,
@@ -37,7 +37,11 @@ public:
                       q(q_0), p(p_0), f(dim), Q(Q_0), pi(pi_0),
                       tau(1, 1),
                       m(m_0), I(I_0), rigid_body_state(true),
-                      arm(narms, dim), DIM(dim) {};
+                      arm(narms, dim), DIM(dim)
+    {
+        // set the arms of the particle to correct number
+        this->set_eqidistant_arms(narms);
+    }
     // destructor
     ~Particle();
 
@@ -79,17 +83,14 @@ public:
     // return the dimesnion of the particle
     unsigned dim() const;
 
-    // set equidistant arms
-    void set_eqidistant_arms();
-
-protected:
-    // Vector q_;
 private:
-
     // holder of dimension
     unsigned DIM;
     // holder for the rigid body state
     bool rigid_body_state;
+
+    // set equidistant arms
+    void set_eqidistant_arms(const unsigned& i);
 };
 
 #endif

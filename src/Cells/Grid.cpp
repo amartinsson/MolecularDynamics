@@ -52,7 +52,6 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
 
     // set the temperature to calculate
     Temperature_pt->set_momentum_temp();
-    // Temperature_pt->set_config_temp();
 
     // record the number of cells
     if(number_of_cells_z != 0)
@@ -167,8 +166,10 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
     // if((q_tildebf(0) != q_tilde(0)) || (q_tildebf(1) != q_tilde(1)) || (q_tildebf(2) != q_tilde(2)))
     //     printf("(%1.2e, %1.2e, %1.2e) => (%1.2e, %1.2e, %1.2e)\n",
     //     q_tilde(0), q_tilde(1), q_tilde(2), q_tildebf(0), q_tildebf(1), q_tildebf(2));
+
     // recalculate position
     particle.q = S * q_tilde;
+
 }
 
 // delete and clear the grid
@@ -197,9 +198,9 @@ Cell* Grid::get_cell(const int& i, const int& j, const int& k)
 // of a particle in the box.
 Vector Grid::get_box_coordinate(const Particle& particle)
 {
-
   // rescale the coordiinate
   Vector q_tilde = S.inv() * particle.q;
+
 
   // return the coordinates
   return q_tilde;
@@ -263,7 +264,6 @@ void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
 
     // set random initial conditions
     set_random_particles_initial_condition(molecule_pt);
-
     // add the particles to the grid
     add_particles_to_grid(molecule_pt);
 }
@@ -578,8 +578,9 @@ for(int i=0; i<particles_in_dir; i++) // x ditection
                     particle->q(1) = double(j) * separation_in_y
                                         + 0.5 * separation_in_y
                                         + (i % 2 == 0) * 0.5 * separation_in_y;
-                    particle->q(2) = double(k) * separation_in_z
-                                        + 0.5 * separation_in_z;
+                    if(particle->q.size() > 2)
+                        particle->q(2) = double(k) * separation_in_z
+                                            + 0.5 * separation_in_z;
                                         // + (j % 2 == 0) * 0.5 * separation_in_z;
 
                     double mx = particle->m(0,0);

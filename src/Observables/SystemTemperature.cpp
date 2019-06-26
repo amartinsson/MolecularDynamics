@@ -113,11 +113,22 @@ void SystemTemperature::update_mtemp()
 
     // loop overa all the particles
     for(const auto& particle : system->Particles)
+    {
         temp.observe(particle.second->p.dot(
                      particle.second->m.inv() * particle.second->p));
 
+        // if(particle.second->rigid_body())
+        //     temp.observe(particle.second->pi(0, 0) *
+        //                  particle.second->I(0, 0) * particle.second->pi(0,0));
+
+    }
+
     // add the observed temperature to the mTemp observable
     double dim = double(system->dim());
+
+    // if(system->particle(0).rigid_body())
+    //     dim++;
+
     double N = double(system->nparticle());
 
     mTemp->observe(N * temp.get_average() / (dim * (N - 1.0)));

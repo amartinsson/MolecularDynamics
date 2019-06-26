@@ -149,6 +149,11 @@ Grid& Langevin::grid_obj()
     return *Grid_pt;
 }
 
+InfiniteSwitchSimulatedTempering& Langevin::isst_obj()
+{
+    return *Isst_pt;
+}
+
 void Langevin::npt_set_initial(Molecule* molecule_pt,
                                const char* initial_pos_filename,
                                const char* initial_box_filename)
@@ -193,7 +198,7 @@ void Langevin::compute_force(Molecule* molecule_pt)
         System_pt->compute_force(molecule_pt);
     }
 
-    // if we are running with ISST rescale the forces =
+    // if we are running with ISST rescale the forces
     if(With_isst)
         Isst_pt->apply_force_rescaling(molecule_pt);
 }
@@ -354,19 +359,30 @@ void Langevin::A_rot(Particle &particle, const double& h)
     I = particle.I(0,0);
     alpha = h * pi / I;
 
-    printf("ERROR: NEED TO CHECK THAT THIS IS CORRECT -- ARE THEY SPINNING IN THE RIGHT DIRECTION\n");
-    exit(-1);
+    // printf("ERROR: NEED TO CHECK THAT THIS IS CORRECT -- ARE THEY SPINNING IN THE RIGHT DIRECTION\n");
+    // exit(-1);
 
     RotMatrix R(alpha);
 
+    // printf("R(%1.3f):\t%2.3f, %2.3f\n", alpha, R(0,0), R(0,1));
+    // printf("\t%2.3f, %2.3f\n", R(1,0), R(1,1));
     // clockwise spinning:
     // R^T * Q
     // anti-clockwise spinning:
     // R * Q
 
     // multiply matrices together
-    Matrix Q_np1 = R.T() * particle.Q;
+    // Matrix Q_np1 = R.T() * particle.Q;
+    Matrix Q_np1 = particle.Q * R.T();
+    // Matrix Q_np1 = R * particle.Q;
+
+    // printf("Q was:\t%2.3f, %2.3f\n", particle.Q(0,0), particle.Q(0,1));
+    // printf("\t%2.3f, %2.3f\n", particle.Q(1,0), particle.Q(1,1));
+
     particle.Q = Q_np1;
+
+    // printf("\tQ new:\t%2.3f, %2.3f\n", particle.Q(0,0), particle.Q(0,1));
+    // printf("\t\t%2.3f, %2.3f\n", particle.Q(1,0), particle.Q(1,1));
 }
 
 void Langevin::B_rot(Particle& particle, const double& h)

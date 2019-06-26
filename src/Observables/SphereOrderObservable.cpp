@@ -103,7 +103,7 @@ void SphereOrderObservable::print(const char* file_name, const double& time,
         }
 
         // calculate the absolute value
-        double obs = std::sqrt(4.0 * M_PI / 13.0 * (real * real + imag * imag));
+        double obs = std::sqrt(4.0 * M_PI / (2.0 * (double)lmax + 1.0) * (real * real + imag * imag));
 
         // reord the observation
         current_state.observe(obs);
@@ -180,7 +180,10 @@ vector<double> SphereOrderObservable::get_angles(const Vector& dr)
     vector<double> angles(2, 0.0);
 
     // calculate theta first
-    angles[0] = acos(dr(2));
+    if(dr.size() > 2)
+        angles[0] = acos(dr(2));
+    else
+        angles[0] = 0.0;
 
     // calculate phi second
     angles[1] = atan2(dr(1), dr(0));

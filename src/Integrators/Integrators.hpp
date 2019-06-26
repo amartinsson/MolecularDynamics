@@ -58,6 +58,7 @@ public:
     // return the npt grid observable
     NptGrid& npt_obj();
     Grid& grid_obj();
+    InfiniteSwitchSimulatedTempering& isst_obj();
 
 protected:
     void A(Particle& particle, const double& h);

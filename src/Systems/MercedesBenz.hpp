@@ -3,6 +3,7 @@
 
 #include "LennardJones.hpp"
 #include "Array.hpp"
+#include <math.h>
 
 using namespace::std;
 
@@ -28,8 +29,6 @@ public:
                          const double& r,
                          const Vector& dr);
 private:
-    double Epsilon_LJ;
-    double Sigma_LJ;
     double Epsilon_HB;
     double Sigma_HB;
     double R_HB;
