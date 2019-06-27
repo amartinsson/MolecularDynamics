@@ -36,10 +36,12 @@ CUR_OBJS      := $(patsubst %.cpp, $(CUROBJDIR)/%.o, $(CUR_CPP_FILES))
 
 CURDEPS:= $(patsubst $(CUROBJDIR)/%.o,$(CURDEPDIR)/%.d,$(CUR_OBJS))
 
-MercBenz: MercedesBenz.cpp ${OBJS} ${CUR_OBJS}
+#MercBenz: MercedesBenz.cpp ${OBJS} ${CUR_OBJS}
+LJcluster: LJcluster.cpp ${OBJS} ${CUR_OBJS}
 	@mkdir -p $(BIN)
 	@echo ${OBJS}
-	$(CXX) $(CXXFLAGS) -o $(BIN)/MercBenz ${OBJS} ${CUR_OBJS} -lstdc++ -lgsl -lgslcblas
+	# $(CXX) $(CXXFLAGS) -o $(BIN)/MercBenz ${OBJS} ${CUR_OBJS} -lstdc++ -lgsl -lgslcblas
+	$(CXX) $(CXXFLAGS) -o $(BIN)/LJcluster ${OBJS} ${CUR_OBJS} -lstdc++ -lgsl -lgslcblas
 
 -include $(DEPS)
 -include $(CURDEPS)
