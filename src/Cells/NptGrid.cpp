@@ -226,7 +226,8 @@ void NptGrid::compute_force(System* system_pt, Molecule* molecule_pt,
             {
                 Matrix K(dim, dim);
                 K(i,j) = 1.0;
-                V(i,j) = (f_ij.neg()).dot(K * r_tilde);
+                // V(i,j) = (f_ij.neg()).dot(K * r_tilde);
+                V(i,j) = f_ij.dot(K * r_tilde);
             }
 
         // these need to be minus additive as we are calculating the
