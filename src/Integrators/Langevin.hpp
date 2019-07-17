@@ -1,10 +1,11 @@
-#ifndef INTEGRATORS_HPP
-#define INTEGRATORS_HPP
+#ifndef LANGEVIN_HPP
+#define LANGEVIN_HPP
 #include <iostream>
 #include <vector>
 #include <math.h>
 #include <omp.h>
 
+#include "Integrator.hpp"
 #include "Generator.hpp"
 #include "Grid.hpp"
 #include "InfiniteSwitchSimulatedTempering.hpp"
@@ -16,24 +17,10 @@
 
 using namespace::std;
 
- /******************************************************************************
-                            Generic Base Class
-  *****************************************************************************/
-class Integrator
-{
-public:
-    Integrator() {};
-    // destructor
-    ~Integrator() {};
-    // must be implemented
-    virtual void integrate(Molecule* molecule_pt) = 0;
-};
-
 /******************************************************************************
                            Langevin Base Class
  *****************************************************************************/
-class Langevin : public Integrator
-{
+class Langevin : public Integrator {
 public:
     Langevin(const double& beta, const double& gamma, const double& gamma_rot,
              const double& o_step_size, System* system_pt, const int& seed);
@@ -52,6 +39,7 @@ public:
     // set the  initial condition from file
     void npt_set_initial(Molecule* molecule_pt,
                          const char* initial_pos_filename,
+                         const char* initial_mom_filename,
                          const char* initial_box_filename);
     // check blow up
     bool cell_blow_up();

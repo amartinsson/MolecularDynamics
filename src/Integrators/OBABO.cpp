@@ -116,8 +116,10 @@ void OBABO::npt_integration(Molecule* molecule_pt)
         // integrate forward
         Langevin::O_NPT(molecule_pt);
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
-        Langevin::A_1_NPT(Time_Step);
+
+        Langevin::A_1_NPT(0.5 * Time_Step);
         Langevin::A_2_NPT(molecule_pt, Time_Step);
+        Langevin::A_1_NPT(0.5 * Time_Step);
 
         // force solve
         Langevin::compute_force(molecule_pt);
@@ -131,9 +133,11 @@ void OBABO::npt_integration(Molecule* molecule_pt)
         // integrate forward
         Langevin::O_NPT(molecule_pt);
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
-        Langevin::A_2_NPT(molecule_pt, Time_Step);
+
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
         Langevin::A_1_NPT(Time_Step);
-        
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+
         // force solve
         Langevin::compute_force(molecule_pt);
 

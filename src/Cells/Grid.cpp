@@ -8,7 +8,7 @@ using namespace::std;
 Grid::Grid(const Matrix& Szero, const double& cut_off,
            Molecule* molecule_pt, const int& recf, const int& rect)
                 : S(2, 2), Sp(2, 2), break_experiment(false), RecFreq(recf),
-                    RecThres(rect)
+                    RecThres(rect), number_of_particles(molecule_pt->nparticle())
 {
     if(Szero.size()[0] > 2)
     {
@@ -50,9 +50,6 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
     Volume_pt = new SystemVolume(S, molecule_pt->nparticle(), RecFreq,
                                  RecThres);
 
-    // set the temperature to calculate
-    Temperature_pt->set_momentum_temp();
-
     // record the number of cells
     if(number_of_cells_z != 0)
         printf("Inital grid set as %d x %d x %d\n", number_of_cells_x,
@@ -81,10 +78,14 @@ Grid::~Grid()
 // updates the positions from files given
 void Grid::add_file_initial_condition(Molecule* molecule_pt,
                                       const char* initial_pos_filename,
+                                      const char* initial_mom_filename,
                                       const char* initial_box_filename)
 {
     // read in the particle positions
     read_position_initial(molecule_pt, initial_pos_filename);
+
+    // read in the particle momentums
+    read_momentum_initial(molecule_pt, initial_mom_filename);
 
     // read the box coordinates
     read_box_initial(initial_box_filename);
@@ -260,7 +261,8 @@ void Grid::calculate_min_image(Vector& r)
 void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
 {
     // set the number of particles
-    number_of_particles = molecule_pt->nparticle();
+    // set when initiaised
+    // number_of_particles = molecule_pt->nparticle();
 
     // set random initial conditions
     set_random_particles_initial_condition(molecule_pt);
@@ -272,7 +274,8 @@ void Grid::set_to_calculate_radial_dist(const double& rmin, const double& rmax,
                                         const int& N)
 {
     with_radial_dist = true;
-    Radial_pt = new RadialDistObservable(rmin, rmax, N, RecFreq, RecThres);
+    Radial_pt = new RadialDistObservable(rmin, rmax, N, RecFreq, RecThres,
+                                        number_of_particles);
 }
 
 void Grid::set_to_calculate_order_param(Molecule* molecule_pt,
@@ -590,8 +593,8 @@ for(int i=0; i<particles_in_dir; i++) // x ditection
                     if(number_of_cells_z != 0)
                         mz = particle->m(2,2);
 
-                    particle->p(0) = 0.0;//sqrt(mx / beta) * normal_momentum();
-                    particle->p(1) = 0.0;//sqrt(my / beta) * normal_momentum();
+                    particle->p(0) = sqrt(mx / beta) * normal_momentum();
+                    particle->p(1) = sqrt(my / beta) * normal_momentum();
 
                     if(number_of_cells_z != 0)
                         particle->p(2) = 0.0;//sqrt(mz / beta) * normal_momentum();
@@ -703,7 +706,7 @@ void Grid::reset_observables()
 
     // bump the counter in radial distribution
     if(with_radial_dist)
-        Radial_pt->bump_recstep();
+        Radial_pt->bump_recstep(S.det());
 }
 
 // updates the tracking objects by adding the
@@ -951,3 +954,47 @@ void Grid::read_position_initial(Molecule* molecule_pt,
 
      }
  }
+
+
+ // read in the particle positions
+ void Grid::read_momentum_initial(Molecule* molecule_pt,
+                                  const char* initial_mom_filename)
+ {
+    // loop over the box file stream
+    std::ifstream input(initial_mom_filename);
+    std::string line;
+
+    Particle* particle = NULL;
+    unsigned k = 0;
+
+   // loop over all the lines in the box
+   while(std::getline(input, line))
+   {
+       std::stringstream lineStream(line);
+       std::string line_stuff;
+       std::vector<double> parsed_row;
+
+       while(std::getline(lineStream, line_stuff, ','))
+       {
+           double test = strtod(line_stuff.c_str(), NULL);
+           parsed_row.push_back(test);
+       }
+
+       particle = &molecule_pt->particle(k);
+
+       // set position
+       particle->p(0) = parsed_row[0];
+       particle->p(1) = parsed_row[1];
+
+       if(particle->p.size() > 2)
+         particle->p(2) = parsed_row[2];
+
+       // if we rotates
+       if(particle->rigid_body())
+           particle->pi(0, 0) = parsed_row[2];
+
+       // increment particle counter
+       k++;
+
+      }
+  }

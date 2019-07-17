@@ -28,6 +28,7 @@ public:
                          Particle* particle_j,
                          const double& r,
                          const Vector& dr);
+
 private:
     double Epsilon_HB;
     double Sigma_HB;

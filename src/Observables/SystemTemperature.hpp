@@ -17,34 +17,20 @@ public:
     SystemTemperature(Molecule* molecule_pt, const int& recf, const int& rect);
     // destructor
     ~SystemTemperature(){};
-    // set the momentum temperature
-    void set_momentum_temp(){momentum = true;}
-    // set the momentum temperature
-    void set_config_temp(){configurational = true;}
     // instant
     double get_instant();
     // average
     double get_average();
     // update function
     void update();
+    // update the temperature -- can be overridden by other temperatures
+    void update_temperature();
 
 private:
     // local pointer to molecule object
     Molecule* system;
     // private momentum temperature
-    AverageObservable* mTemp;
-    // private configurational temperature
-    AverageObservable* cTemp;
-
-    // boolean for momentum temperature
-    bool momentum;
-    // boolean for configurational temperature
-    bool configurational;
-
-    // calculate momentum temperature
-    void update_mtemp();
-    // calculate configurational temperature
-    void update_ctemp();
+    AverageObservable* Temp;
 };
 
 #endif

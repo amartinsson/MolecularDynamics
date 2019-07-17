@@ -21,6 +21,10 @@ public:
                          Particle* particle_j,
                          const double& r,
                          const Vector& dr);
+     // calculate the potential
+     double compute_potential(const Vector& x) {/* empty */};
+     double compute_laplace(const Vector& x) {/* empty */};
+     
 protected:
     // force parameters
     double Epsilon;

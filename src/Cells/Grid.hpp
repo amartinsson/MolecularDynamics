@@ -46,6 +46,7 @@ public:
     // updates the positions from files given
     void add_file_initial_condition(Molecule* molecule_pt,
                                     const char* initial_pos_filename,
+                                    const char* initial_mom_filename,
                                     const char* initial_box_filename);
     // set to calculate radial distribution
     void set_to_calculate_radial_dist(const double& rmin, const double& rmax,

@@ -28,6 +28,8 @@ public:
 				                           		   Particle* particle_j,
 										   		   const double& r,
 												   const Vector& dr) = 0;
+	virtual double compute_potential(const Vector& x) = 0;
+	virtual double compute_laplace(const Vector& x) = 0;
 };
 
 // class Systems

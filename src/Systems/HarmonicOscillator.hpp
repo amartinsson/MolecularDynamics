@@ -22,6 +22,10 @@ public:
 				                      Particle* particle_j,
 									  const double& r, const double& r_x,
                                       const double& r_y);
+    // calculate the potential
+    double compute_potential(const Vector& x) {/* empty */};
+    double compute_laplace(const Vector& x) {/* empty */};
+    
 };
 
 #endif

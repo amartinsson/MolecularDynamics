@@ -55,7 +55,6 @@ private:
     vector<Vector> k;
     // long term observable
     AverageObservable* state;
-
     // calculate the observable
     vector<double> get_orderparam(const Vector& dr);
     // set the wave vector

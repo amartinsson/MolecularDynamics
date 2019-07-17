@@ -34,6 +34,10 @@ public:
     Particle& particle(const unsigned& i);
     // return pointer to the potential
     double& potential();
+    double potential() const;
+    // return pointer to the potential
+    double& laplace();
+    double laplace() const;
     // set temperature
     void set_temperature(const double& temperature);
     // set the beta
@@ -52,6 +56,8 @@ protected:
     double Beta;
     //potential
     double V;
+    // laplacian
+    double L;
 };
 
 /******************************************************************************

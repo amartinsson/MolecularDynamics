@@ -1,4 +1,4 @@
-#include "Integrators.hpp"
+#include "Langevin.hpp"
 
 using namespace::std;
 
@@ -156,6 +156,7 @@ InfiniteSwitchSimulatedTempering& Langevin::isst_obj()
 
 void Langevin::npt_set_initial(Molecule* molecule_pt,
                                const char* initial_pos_filename,
+                               const char* initial_mom_filename,
                                const char* initial_box_filename)
 {
     if(With_npt)
@@ -163,6 +164,7 @@ void Langevin::npt_set_initial(Molecule* molecule_pt,
         // read in the particles and the box
         NptGrid_pt->add_file_initial_condition(molecule_pt,
                                                initial_pos_filename,
+                                               initial_mom_filename,
                                                initial_box_filename);
 
         // check the initial condition
@@ -173,6 +175,7 @@ void Langevin::npt_set_initial(Molecule* molecule_pt,
         // read in the particles and the box
         Grid_pt->add_file_initial_condition(molecule_pt,
                                                initial_pos_filename,
+                                               initial_mom_filename,
                                                initial_box_filename);
 
         // check the initial condition

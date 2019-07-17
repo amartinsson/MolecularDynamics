@@ -45,12 +45,7 @@ class UniformGenerator : public Generator
 {
 public:
     UniformGenerator(const double& min, const double& max, const int& seed):
-    Generator(seed), real_distribution(min, max)
-    {delete &int_distribution;}
-
-    explicit UniformGenerator(const int& min, const int& max, const int& seed):
-    Generator(seed), int_distribution(min, max)
-    {delete &real_distribution;}
+    Generator(seed), real_distribution(min, max) {};
 
     // destructor
     ~UniformGenerator(){};
@@ -60,7 +55,6 @@ public:
 
 private:
     std::uniform_real_distribution<double> real_distribution;
-    std::uniform_int_distribution<int> int_distribution;
 };
 
 #endif

@@ -28,6 +28,15 @@ Particle& Molecule::particle(const unsigned& i) {return *Particles.at(i);}
 // return pointer to the potential
 double& Molecule::potential() {return V;}
 
+// return the potential
+double Molecule::potential() const {return V;}
+
+// return pointer to the laplacian
+double& Molecule::laplace() {return L;}
+
+// return the laplacian
+double Molecule::laplace() const {return L;}
+
 // set temperature
 void Molecule::set_temperature(const double& temperature)
 {

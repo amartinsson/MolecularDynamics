@@ -114,8 +114,10 @@ void ABOBA::npt_integration(Molecule* molecule_pt)
     if(Npt_version == 1)
     {
         // integrate forward
-        Langevin::A_1_NPT(0.5 * Time_Step);
+        Langevin::A_1_NPT(0.25 * Time_Step);
         Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_1_NPT(0.25 * Time_Step);
+
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
         Langevin::O_NPT(molecule_pt);
 
@@ -124,15 +126,18 @@ void ABOBA::npt_integration(Molecule* molecule_pt)
 
         // integrate forward
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
-        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
-        Langevin::A_1_NPT(0.5 * Time_Step);
 
+        Langevin::A_1_NPT(0.25 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_1_NPT(0.25 * Time_Step);
     }
     else if(Npt_version == 2)
     {
         // integrate forward
-        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.25 * Time_Step);
         Langevin::A_1_NPT(0.5 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.25 * Time_Step);
+
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
         Langevin::O_NPT(molecule_pt);
 
@@ -141,8 +146,10 @@ void ABOBA::npt_integration(Molecule* molecule_pt)
 
         // integrate forward
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
+
+        Langevin::A_2_NPT(molecule_pt, 0.25 * Time_Step);
         Langevin::A_1_NPT(0.5 * Time_Step);
-        Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
+        Langevin::A_2_NPT(molecule_pt, 0.25 * Time_Step);
     }
 
 }

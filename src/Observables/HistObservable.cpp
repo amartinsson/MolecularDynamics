@@ -105,3 +105,12 @@ double HistObservable::get_pdf(const int& i)
     // return the normalised height
     return pdf;
 }
+
+double HistObservable::get_lower_bin(const int& i)
+{
+    double lower;
+    double upper;
+    gsl_histogram_get_range(histogram, i, &lower, &upper);
+
+    return lower;
+}
