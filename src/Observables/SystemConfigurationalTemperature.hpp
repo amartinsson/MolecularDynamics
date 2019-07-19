@@ -16,12 +16,14 @@ public:
                                      const int& rect);
     // destructor
     ~SystemConfigurationalTemperature();
+    // update
+    void update();
     // get instant
     double get_instant();
-    // get average 
+    // get average
     double get_average();
     // calculate configurational temperature
-    void update_temp();
+    void update_temperature();
 
 private:
     AverageObservable* nablaSquare;

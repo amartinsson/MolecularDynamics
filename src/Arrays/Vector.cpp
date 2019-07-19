@@ -100,7 +100,7 @@ void Vector::zero()
 // Vector* Vector::operator*() {return this};
 
 // multiply two vectors together
-double Vector::dot(const Vector& other)
+double Vector::dot(const Vector& other) const
 {
     if(other.size() != dimx)
     {

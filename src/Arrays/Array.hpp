@@ -140,7 +140,7 @@ public:
     double& operator() (const int& i);
 
     // multiply two vectors
-    double dot(const Vector& other);
+    double dot(const Vector& other) const;
     Matrix out(const Vector& other);
 
     // multiply vector with matrix

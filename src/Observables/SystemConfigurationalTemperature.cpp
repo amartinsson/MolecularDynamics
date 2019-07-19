@@ -30,8 +30,27 @@ double SystemConfigurationalTemperature::get_average()
     return nablaSquare->get_average() / laplace->get_average();
 }
 
+// update function
+void SystemConfigurationalTemperature::update()
+{
+    if(recStep()) {
+        // update the temperature
+        update_temperature();
+    }
+}
 
 // calculate the configurational temperature
-void SystemConfigurationalTemperature::update_temp() {
+void SystemConfigurationalTemperature::update_temperature() {
+    // make temporary temperature
+    double k = 0.0;
 
+    for(const auto& particle : system->Particles) {
+        k += particle.second->f.dot(particle.second->f);
+    }
+
+    // add to nabla square
+    nablaSquare->observe(k);
+
+    // add to the
+    laplace->observe(SystemTemperature::system->laplace());
 }

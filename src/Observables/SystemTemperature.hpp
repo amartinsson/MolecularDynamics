@@ -26,7 +26,7 @@ public:
     // update the temperature -- can be overridden by other temperatures
     void update_temperature();
 
-private:
+protected:
     // local pointer to molecule object
     Molecule* system;
     // private momentum temperature

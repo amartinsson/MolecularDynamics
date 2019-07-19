@@ -32,22 +32,32 @@ protected:
     double beta;
     // holder for the variance
     double sigma;
+    // potential
+    double V;
+    double Vnp1;
     // normal generator to generate random numbers
     NormalGenerator normal_gen;
     // uniform generator
     UniformGenerator uniform_gen;
     // system holder
     System* system;
+    // boolean for check if first step
+    bool first_step;
 
     // proposal for the algorithm
     Vector proposal_move(const Vector& q);
     // proposal ratio
-    double proposal_ratio(const Vector& q, const Vector& qprime);
-    // calculate the acceptance ratio
-    double acceptance_ratio(const Vector& q, const Vector& qprime);
+    double proposal_ratio(Molecule* molecule_pt);
+    // make an accept reject evaulation with acceptance a
+    bool accept_reject(const double& a, const double& proposal_ratio);
+    // creat the map
+    void create_position_map(Molecule* molecule_pt);
 
 private:
+    // private
     AverageObservable* acceptance;
+    // system for storing positions
+    unordered_map<Particle*, Vector> qprime;
 };
 
 #endif

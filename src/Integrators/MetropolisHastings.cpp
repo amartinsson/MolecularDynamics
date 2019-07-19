@@ -5,7 +5,7 @@ using namespace::std;
 MetropolisHastings::MetropolisHastings(const double& beta, const double& sigma,
     System* system, const int& seed)
         : normal_gen(0.0, 1.0, seed), beta(beta), sigma(sigma), system(system),
-            uniform_gen(0.0, 1.0, seed+1) {
+            uniform_gen(0.0, 1.0, seed+1), first_step(true) {
     // make a new average object to keep track of the acceptance ratio
     acceptance = new AverageObservable();
 }
@@ -21,34 +21,37 @@ MetropolisHastings::~MetropolisHastings() {
 
 // integrator
 void MetropolisHastings::integrate(Molecule* molecule_pt) {
-    // reset the potential
-    molecule_pt->potential() = 0.0;
+    // for first step make sure map exists
+    if(first_step)
+        create_position_map(molecule_pt);
 
     // loop over all the particles
+    Vnp1 = 0.0;
     for(auto& particle : molecule_pt->Particles) {
         // generate new proposal
-        Vector qprime = proposal_move(particle.second->q);
+        qprime[particle.second] = proposal_move(particle.second->q);
 
-        // calculate acceptance ratio
-        double a = acceptance_ratio(particle.second->q, qprime);
+        // calclate the potential at this step
+        Vnp1 += system->compute_potential(qprime[particle.second]);
+    }
 
-        // make a uniform
-        double u = uniform_gen();
+    // calculate the difference in energy
+    double dE = Vnp1 - V;
+    bool step = accept_reject(dE, proposal_ratio(molecule_pt));
 
-        if(u <= a) {
-            // accept the step
-            particle.second->q = qprime;
-            // add to the potential
-            molecule_pt->potential() += system->compute_potential(particle.second->q);
-            // log the step as accepted
-            acceptance->observe(1.0);
+    // take action based on outcome of step
+    if(step) { // step accepted
+        // update the potential
+        V = Vnp1;
+        // update the positions
+        for(auto& particle : molecule_pt->Particles) {
+            particle.second->q = qprime[particle.second];
         }
-        else {
-            // log the step as rejected
-            acceptance->observe(0.0);
-            // add to the potential
-            molecule_pt->potential() += system->compute_potential(particle.second->q);
-        }
+        // cumpute the dummy variables
+        system->compute_force(molecule_pt);
+    }
+    else { // step rejected
+        // do nothing as nothing changes
     }
 }
 
@@ -65,18 +68,50 @@ Vector MetropolisHastings::proposal_move(const Vector& q) {
 }
 
 
-double MetropolisHastings::proposal_ratio(const Vector& q,
-                                          const Vector& qprime) {
+double MetropolisHastings::proposal_ratio(Molecule* molecult_pt) {
     // in this case it's symmetric so let's not worry
     return 1.0;
 }
 
-double MetropolisHastings::acceptance_ratio(const Vector& q,
-    const Vector& qprime) {
-        // delta energy
-        double dE = system->compute_potential(qprime)
-                    - system->compute_potential(q);
+void MetropolisHastings::create_position_map(Molecule* molecule_pt) {
+    // update the force for dummy variables
+    system->compute_force(molecule_pt);
 
-        // holder for acceptance
-        return exp(-beta * dE) * proposal_ratio(q, qprime);
+    for(const auto& particle : molecule_pt->Particles) {
+        // insert particle in position
+        qprime.insert(make_pair(particle.second, particle.second->q));
+
+        // add to the potential
+        V += system->compute_potential(qprime[particle.second]);
+    }
+
+    // log that we have created lists
+    first_step = false;
 }
+
+// make an accept reject evaulation with acceptance a
+bool MetropolisHastings::accept_reject(const double& dE,
+    const double& proposal_ratio) {
+        // return boolean
+        bool accepted = false;
+
+        // calculate acceptance
+        double a = exp(-beta * dE) * proposal_ratio;
+
+        // make a uniform
+        double u = uniform_gen();
+
+        if(u <= a) {
+            // log the step as accepted
+            acceptance->observe(1.0);
+            // change boolean to accepted
+            accepted = true;
+        }
+        else {
+            // log the step as rejected
+            acceptance->observe(0.0);
+        }
+
+        // return boolean if it was accepted
+        return accepted;
+    }
