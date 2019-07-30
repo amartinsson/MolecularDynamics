@@ -5,52 +5,57 @@
 #include <mpi.h>
 
 #include "BAOAB.hpp"
+#include "ABOBA.hpp"
+#include "OBABO.hpp"
 #include "Molecules.hpp"
-#include "MercedesBenz.hpp"
+#include "LennardJones.hpp"
 #include "Array.hpp"
+#include "SystemTrajectory.hpp"
 
 using namespace::std;
 
-void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stamp)
+void print_final_momentum(Molecule* molecule_pt, const int& ind)
 {
-  // open the file to write to
+
+    // dereference the dimension
+    unsigned dim = molecule_pt->dim();
+    unsigned number_of_particles = molecule_pt->nparticle();
+
+    // open the file to write to
   char filename[50];
-  sprintf(filename, "Observables/Frames/frame_%i.csv", time_stamp);
+  sprintf(filename, "Observables/Final/momentum_%i.csv",
+          ind);
   FILE* configuration_file = fopen(filename, "w");
 
-  // dereference the dimension
-  unsigned dim = molecule_pt->dim();
-  unsigned number_of_particles = molecule_pt->nparticle();
-
   // make a particle pointer
-//  Particle* particle_k = NULL;
+  //Particle* particle_k = NULL;
 
   // print the correct stuff
   //for(unsigned k=0; k<number_of_particles; k++)
   // for(auto& part : molecule_pt->Particles)
+  // {
   for(int i=0; i<number_of_particles; i++)
   {
     // dereference the particle
     Particle* part = molecule_pt->Particles.at(i);
+    // dereference the particle
     //particle_k = molecule_pt->particle_pt(k);
 
-        // loop over the the number of dimensions
-        for(unsigned j=0; j<dim; j++)
-        {
-            // print to file
-            if(j == dim-1)
-                fprintf(configuration_file, "%.4f", part->q(j));
-            else
-                fprintf(configuration_file, "%.4f, ", part->q(j));
-        }
+    // loop over the the number of dimensions
+    for(unsigned j=0; j<dim; j++)
+    {
+      // print to file
+      if(j == dim-1)
+        fprintf(configuration_file, "%.10f", part->p(j));
+      else
+        fprintf(configuration_file, "%.10f, ", part->p(j));
+    }
 
   	// dependedn on rigid body or not print different things
   	if(part->rigid_body())
   	{
       // print the rotation matrix to the file
-      fprintf(configuration_file, ", %.10f, %.10f, %.10f, %.10f\n",
-              part->Q(0,0), part->Q(0,1),
-  		       part->Q(1,0), part->Q(1,1));
+      fprintf(configuration_file, ", %.10f\n", part->pi(0,0));
   	}
     else
     {
@@ -60,33 +65,6 @@ void print_positions(Molecule* molecule_pt, Matrix& S, const unsigned& time_stam
   }
   // close the file
   fclose(configuration_file);
-
-  // open the file to write to
-  sprintf(filename, "Observables/fsimbox/frame_%i.csv", time_stamp);
-  configuration_file = fopen(filename, "w");
-
-  for(int i=0;i<10;i++)
-  {
-      if(i==0 | i==4)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", 0.0, 0.0, 0.0);
-      else if(i==1)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0), 0.0, 0.0);
-      else if(i==2)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1), S(1,1), 0.0);
-      else if(i==3)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1), S(1,1), 0.0);
-      else if(i==5 || i==9)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,2), S(1,2), S(2,2));
-      else if(i==6)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,2), S(1,2), S(2,2));
-      else if(i==7)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,0)+S(0,1)+S(0,2), S(1,1)+S(1,2),S(2,2));
-      else if(i==8)
-        fprintf(configuration_file, "%.3f, %.3f, %.3f\n", S(0,1)+S(0,2), S(1,1)+S(1,2), S(2,2));
-  }
-
-  fclose(configuration_file);
-
 };
 
 void print_final(Molecule* molecule_pt, Matrix& S, const unsigned& process)
@@ -148,6 +126,7 @@ void print_final(Molecule* molecule_pt, Matrix& S, const unsigned& process)
   fprintf(configuration_file, "%.7e, %.7e, %.7e\n", S(2,0), S(2,1), S(2,2));
   fclose(configuration_file);
 
+  print_final_momentum(molecule_pt, process);
 };
 
 void print_final_positions(Molecule* molecule_pt)
@@ -205,79 +184,6 @@ void print_final_positions(Molecule* molecule_pt)
   fclose(configuration_file);
 };
 
-void print_final_momentum(Molecule* molecule_pt)
-{
-
-    // dereference the dimension
-    unsigned dim = molecule_pt->dim();
-    unsigned number_of_particles = molecule_pt->nparticle();
-
-    // open the file to write to
-  char filename[50];
-  sprintf(filename, "Observables/initial_momentum_%i.csv",
-          number_of_particles);
-  FILE* configuration_file = fopen(filename, "w");
-
-  // make a particle pointer
-  //Particle* particle_k = NULL;
-
-  // print the correct stuff
-  //for(unsigned k=0; k<number_of_particles; k++)
-  // for(auto& part : molecule_pt->Particles)
-  // {
-  for(int i=0; i<number_of_particles; i++)
-  {
-    // dereference the particle
-    Particle* part = molecule_pt->Particles.at(i);
-    // dereference the particle
-    //particle_k = molecule_pt->particle_pt(k);
-
-    // loop over the the number of dimensions
-    for(unsigned j=0; j<dim; j++)
-    {
-      // print to file
-      if(j == dim-1)
-        fprintf(configuration_file, "%.10f", part->p(j));
-      else
-        fprintf(configuration_file, "%.10f, ", part->p(j));
-    }
-
-  	// dependedn on rigid body or not print different things
-  	if(part->rigid_body())
-  	{
-      // print the rotation matrix to the file
-      fprintf(configuration_file, ", %.10f\n", part->pi(0,0));
-  	}
-    else
-    {
-      // print end of line to file
-      fprintf(configuration_file, "\n");
-    }
-  }
-  // close the file
-  fclose(configuration_file);
-};
-
-void print_volume(const double& volume, const Matrix& S,
-                const double& time_stamp, const unsigned& control_number)
-{
-  // open the file to write to
-  char filename[50];
-  sprintf(filename, "Observables/volume_%d.csv", control_number);
-  FILE* volume_file = fopen(filename, "a");
-
-  if(S.size()[0] > 2)
-    fprintf(volume_file, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n",
-            time_stamp, volume, S(0,0), S(0,1), S(0,2), S(1,1), S(1,2), S(2,2));
-  else
-    fprintf(volume_file, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n",
-            time_stamp, volume, S(0,0), S(0,1), S(1,1));
-  //fprintf(volume_file, "%1.4e, %.3f, %.3f, %.3f, %.3f\n", time_stamp, volume, box[0], box[1], box[2]);
-
-    // close the file
-  fclose(volume_file);
-};
-
 void print_final_box_size(const std::vector<double> box, const std::vector<double> momentum,
                             const unsigned& nparticles)
 {
@@ -311,11 +217,12 @@ int main(int argc, char* argv[])
 
     // parameters
     int SEED = 1234;
-    unsigned dimension = 2;
+    unsigned dimension = 3;
     unsigned number_of_particles = 25*25;
     double temp = 0.2;
 
-    double momIntertia = 0.01126;
+    double sigma = 1.0;
+    double epsilon = 1.0;
 
     double sx = 30.0;
     double sy = 30.0;
@@ -473,6 +380,16 @@ int main(int argc, char* argv[])
     // add contorl number to seed differently
     SEED += control_number + (control_number + 1) * world_rank;
 
+    // calculate the cut off
+    // double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
+    double cut_off = 4.0 * sigma;
+    // double cut_off = 2.0 * sigma;
+
+    // set the boundaries for the rmin rmax calculations
+    double rmin = 0.0; //0.95 * sigma;
+    double rmax = cut_off;
+    int nrdist = 200;
+
     // calculate the number of steps
     unsigned number_of_steps = TIME / time_step;
 
@@ -482,42 +399,29 @@ int main(int argc, char* argv[])
     // make particle standard values
     Vector q_0(dimension);
     Vector p_0(dimension);
-    Matrix Q_0(dimension, dimension);
-    Matrix pi_0(1, 1);
     Matrix m_0(dimension, dimension);
-    Matrix I_0(dimension, dimension);
-
-    // set mass and moment of inertia
-    m_0.diag(1.0);
-    I_0.diag(momIntertia);
+    m_0.diag(1.0); // set mass to be one
 
     // make crystal molecule with number_of_particles
-    unsigned narms = 3;
-    Molecule* cluster = new AniCollection(q_0, p_0, Q_0, pi_0, m_0, I_0, narms,
-                                          temp, number_of_particles, dimension);
+    Molecule* cluster = new Collection(q_0, p_0, m_0, temp,
+                                       number_of_particles, dimension);
 
-    // Make a Mercedes Benz Force solver
-    double epsilon = 0.1;
-    double sigma = 0.7;
-    double epsilon_hb = -1.0;
-    double sigma_hb = 0.085;
-    double r_hb = 1.0;
 
-    System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb,
-                                             sigma_hb, r_hb);
+    // Make a Lennard Jones Force solver
+    System* lennard_jones = new LennardJones(epsilon, sigma);
 
+    // // make integrator
+    // BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
+                                  // lennard_jones, SEED);
+    // // make integrator
+    ABOBA* integrator = new ABOBA(1.0/temp, gamma, 0.0, time_step,
+                                      lennard_jones, SEED);
     // make integrator
-    BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step,
-                                  mercedes_benz, SEED);
+    // OBABO* integrator = new OBABO(1.0/temp, gamma, 0.0, time_step,
+                                      // lennard_jones, SEED);
 
-    // calculate the cut off
-    // double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
-    double cut_off = 4.0 * r_hb;
-
-    // set the boundaries for the rmin rmax calculations
-    double rmin = 0.0; //0.95 * sigma;
-    double rmax = cut_off;
-    int nrdist = 200;
+    // set the integrator scheme
+    integrator->set_npt_integrator_version(npt_scheme_nr);
 
     if(with_npt)
         integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
@@ -532,11 +436,14 @@ int main(int argc, char* argv[])
     {
         char position[50];
         char volume[50];
+        char momentum[50];
 
         sprintf(position, "Observables/Initial/positions_%i.csv", world_rank);
         sprintf(volume, "Observables/Initial/volume_%i.csv", world_rank);
-        integrator->npt_set_initial(cluster, position, volume);
+        sprintf(momentum, "Observables/Initial/momentum_%i.csv", world_rank);
+        integrator->npt_set_initial(cluster, position, momentum, volume);
     }
+
 
     if(with_npt)
     {
@@ -556,6 +463,12 @@ int main(int argc, char* argv[])
         integrator->grid_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
     }
 
+    // make system trajectory object
+    SystemTrajectory traj = SystemTrajectory(cluster);
+
+    if(with_npt)
+        traj.set_simbox(integrator->npt_obj().S);
+
     printf("Print every %d steps after %d\n", write_frequency, burn_in_steps);
 
     for(unsigned i=0; i<number_of_steps; i++)
@@ -563,32 +476,19 @@ int main(int argc, char* argv[])
         // integrate forward
         integrator->integrate(cluster);
 
-        // double F1 = 0.0;
-        // double F2 = 0.0;
-        // double TAU = 0.0;
-        // for(const auto& particle : cluster->Particles)
-        // {
-        //     F1 += particle.second->f(0);
-        //     F2 += particle.second->f(1);
-        //     TAU += particle.second->tau(0,0);
-        // }
-        //
-        // printf("Total Force = (%2.5f, %2.5f), Tau = %f\n", F1, F2, TAU);
-
-
         // update pressure temperature// update pressure temperature
         if(with_npt)
             integrator->npt_obj().update_pressure_temperature();
         else
             integrator->grid_obj().update_temperature();
 
-        if(integrator->cell_blow_up())
-        {
-            printf("step %d\n", i);
-            printf("ERROR: Breaking Process %d with mu = %1.3f, nu = %1.3f\n",
-                    world_rank, box_mass, npt_langevin_friction);
-            break;
-        }
+        // if(integrator->cell_blow_up() && i != 0)
+        // {
+        //     printf("step %d\n", i);
+        //     printf("ERROR: Breaking Process %d with mu = %1.3f, nu = %1.3f\n",
+        //             world_rank, box_mass, npt_langevin_friction);
+        //     // break;
+        // }
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
@@ -598,8 +498,8 @@ int main(int argc, char* argv[])
             if(with_npt)
             {
                 // print positions
-                Matrix simbox = integrator->npt_obj().S;
-                print_positions(cluster, simbox, i / write_frequency);
+                // traj.print_positions("frame", i / write_frequency);
+                // traj.print_simbox("simbox", i / write_frequency);
 
 
                 // print temperature
@@ -618,14 +518,14 @@ int main(int argc, char* argv[])
                                                        control_number + world_rank);
                                                             // i / write_frequency);
 
-                // double temp = integrator->npt_obj().Temperature_pt->get_average();
+                // double temperature = integrator->npt_obj().Temperature_pt->get_average();
                 // double itemp = integrator->npt_obj().Temperature_pt->get_instant();
-                // printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
+                // printf("Temperature \t %1.5f %1.3f ave error: %1.3f\%\n", temperature,itemp, fabs(temperature - temp) / temp * 100.0);
                 //
                 // // print pressure
                 // double instant_pressure = integrator->npt_obj().Pressure_pt->get_instant();
                 // double pressure = integrator->npt_obj().Pressure_pt->get_average();
-                // printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
+                // printf("Pressure %.0d\t %1.5f %1.3f ave error: %1.3f\%\n", i, pressure, instant_pressure, fabs(pressure - target_pressure) / target_pressure * 100.0);
                 //
                 // //print volume
                 // double vol = integrator->npt_obj().Volume_pt->get_average();

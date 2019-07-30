@@ -36,7 +36,7 @@ void HMC::integrate(Molecule* molecule_pt) {
             // reset position
             particle.second->q = position[particle.second];
             // flip the momentum
-            particle.second->p = -momentum[particle.second];
+            particle.second->p = momentum[particle.second].neg();
         }
         // reset the force
         Hamilton::System_pt->compute_force(molecule_pt);
@@ -52,7 +52,8 @@ void HMC::log_current_position(Molecule* molecule_pt) {
             // insert particle in position
             position.insert(make_pair(particle.second, particle.second->q));
             // update momentum
-            momentum.insert(make_pair(particle.second, propsal_momentum(*particle.second)));
+            propsal_momentum(*particle.second);
+            momentum.insert(make_pair(particle.second, particle.second->p));
             // add to the hamiltoian
             H += calculate_hamiltonian(*particle.second);
         }

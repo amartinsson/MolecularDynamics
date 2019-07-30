@@ -35,6 +35,7 @@ protected:
     double Hnp1;
     // system for storing positions
     unordered_map<Particle*, Vector> position;
+    unordered_map<Particle*, Vector> momentum;
 
     void log_current_position(Molecule* molecule_pt);
 
