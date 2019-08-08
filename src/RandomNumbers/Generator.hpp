@@ -57,4 +57,27 @@ private:
     std::uniform_real_distribution<double> real_distribution;
 };
 
+/******************************************************************************
+                    Exponential Random Number Generator Class
+ *****************************************************************************/
+class ExponentialGenerator : public Generator
+{
+public:
+    ExponentialGenerator(const double& lambda, const int& seed)
+            : Generator(seed), uniform(0, 1, seed + 100),
+                distribution(lambda) {};
+
+    // destructor
+    ~ExponentialGenerator(){};
+
+    // return exponential number
+    double operator ()();
+    // return exponential with lambda
+    double operator() (const double& lambda);
+private:
+    std::exponential_distribution<double> distribution;
+    UniformGenerator uniform;
+};
+
+
 #endif

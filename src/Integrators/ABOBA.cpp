@@ -12,9 +12,6 @@ ABOBA::ABOBA(const double& beta, const double& gamma, const double& gamma_rot,
     Time_Step = time_step;
     Step = 0;
     Npt_version = 1;
-
-    With_npt = false;
-    With_st = false;
 }
 
 // destructor
@@ -22,9 +19,15 @@ ABOBA::~ABOBA()
 {
     delete &Time_Step;
     delete &Step;
+}
 
-    delete &With_npt;
-    delete &With_st;
+// set with npt grid
+void ABOBA::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
+    Molecule* molecule_pt, const double& mass, const double& target_press,
+        const double& gamma_box, const int& recf, const int& rect) {
+            // call the Langevin grid integrator
+            Langevin::integrate_with_npt_grid(Szero, cut_off,molecule_pt,
+                mass, target_press, gamma_box, Time_Step, recf, rect);
 }
 
 // integrator
@@ -40,33 +43,6 @@ void ABOBA::integrate(Molecule* molecule_pt)
 
     if(With_st)
         Langevin::update_simulated_tempering(molecule_pt, Step, Time_Step);
-}
-
-// set with npt grid
-void ABOBA::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
-                                    Molecule* molecule_pt, const double& mass,
-                                    const double& target_press,
-                                    const double& gamma_box, const int& recf,
-                                    const int& rect)
-{
-    With_npt = true;
-
-    Langevin::integrate_with_npt_grid(Szero, cut_off, molecule_pt,
-                                      mass, target_press, gamma_box, Time_Step,
-                                      recf, rect);
-}
-
-// set with simulation tempering
-void ABOBA::integrate_with_st(const double& tmin,
-                              const double& tmax,
-                              const double& n_temperatures,
-                              const unsigned& mod_switch,
-                              const int& seed)
-{
-    With_st = true;
-
-    // initialise the simulated tempering class
-    Langevin::integrate_with_st(tmin, tmax, n_temperatures, mod_switch, seed);
 }
 
 void ABOBA::set_npt_integrator_version(const unsigned& version)

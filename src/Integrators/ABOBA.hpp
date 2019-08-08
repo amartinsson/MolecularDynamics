@@ -21,12 +21,6 @@ public:
                                  const double& target_press,
                                  const double& gamma_box, const int& recf,
                                  const int& rect);
-    // integrate with simulated tempering
-    void integrate_with_st(const double& tmin,
-                           const double& tmax,
-                           const double& n_temperatures,
-                           const unsigned& mod_switch,
-                           const int& seed);
     // set which npt integration version
     void set_npt_integrator_version(const unsigned& version);
 
@@ -34,9 +28,6 @@ private:
     double Time_Step;
     unsigned Step;
     unsigned Npt_version;
-
-    bool With_npt;
-    bool With_st;
 
     void nvt_integration(Molecule* molecule_pt);
     void npt_integration(Molecule* molecule_pt);

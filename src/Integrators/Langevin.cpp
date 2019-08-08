@@ -154,6 +154,15 @@ InfiniteSwitchSimulatedTempering& Langevin::isst_obj()
     return *Isst_pt;
 }
 
+SimulatedTempering& Langevin::st_obj() {
+    return *St_pt;
+}
+
+OngulatedTempering& Langevin::ot_obj() {
+    return *Ot_pt;
+}
+
+
 void Langevin::npt_set_initial(Molecule* molecule_pt,
                                const char* initial_pos_filename,
                                const char* initial_mom_filename,
@@ -313,8 +322,22 @@ void Langevin::integrate_with_st(const double& tmin,
                                  const unsigned& mod_switch,
                                  const int& seed)
 {
+    With_st = true;
     // initialise the simulated tempering class
     St_pt = new SimulatedTempering(tmin, tmax, n_temperatures,
+                                   mod_switch, seed);
+}
+
+// set with ongulated tempering
+void Langevin::integrate_with_ot(const double& tmin,
+                                 const double& tmax,
+                                 const double& n_temperatures,
+                                 const unsigned& mod_switch,
+                                 const int& seed)
+{
+    With_ot = true;
+    // initialise the simulated tempering class
+    Ot_pt = new OngulatedTempering(tmin, tmax, n_temperatures,
                                    mod_switch, seed);
 }
 
@@ -323,8 +346,27 @@ void Langevin::update_simulated_tempering(Molecule* molecule_pt,
                                           const unsigned& step,
                                           const double& h)
 {
+    // update hte temperature and all the variables
     St_pt->update_temperature(molecule_pt, step);
-    Beta = 1.0 / St_pt->get_temperature();
+    update_integrator_temperature(1.0 / St_pt->get_temperature(), h);
+}
+
+// check if to update temperature
+void Langevin::update_ongulated_tempering(Molecule* molecule_pt,
+                                          const unsigned& step,
+                                          const double& h)
+{
+    // update all the temperatures and variables
+    Ot_pt->update_temperature(molecule_pt, step);
+    update_integrator_temperature(1.0 / Ot_pt->get_temperature(), h);
+}
+
+// update temperature
+void Langevin::update_integrator_temperature(const double& beta,
+        const double& h) {
+
+    // set beta
+    Beta = beta;
 
     // translational
     OstepC = exp(-Gamma * h);
@@ -341,6 +383,7 @@ void Langevin::update_simulated_tempering(Molecule* molecule_pt,
         OstepZbox = sqrt((1.0 - OstepCbox * OstepCbox) * 1.0 / Beta);
     }
 }
+
 
 void Langevin::A_rot(Particle &particle, const double& h)
 {

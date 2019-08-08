@@ -34,7 +34,7 @@ public:
     // set the temperature weight for i^th component
     void set_beta_weight(const double& weight, const unsigned& i);
 
-private:
+protected:
     // inverse temperature limits
     double beta_min;
     double beta_max;

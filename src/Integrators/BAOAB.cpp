@@ -12,9 +12,6 @@ BAOAB::BAOAB(const double& beta, const double& gamma, const double& gamma_rot,
     Time_Step = time_step;
     Step = 0;
     Npt_version = 1;
-
-    With_npt = false;
-    With_st = false;
 }
 
 // destructor
@@ -22,9 +19,15 @@ BAOAB::~BAOAB()
 {
     delete &Time_Step;
     delete &Step;
+}
 
-    delete &With_npt;
-    delete &With_st;
+// set with npt grid
+void BAOAB::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
+    Molecule* molecule_pt, const double& mass, const double& target_press,
+        const double& gamma_box, const int& recf, const int& rect) {
+            // call the Langevin grid integrator
+            Langevin::integrate_with_npt_grid(Szero, cut_off,molecule_pt,
+                mass, target_press, gamma_box, Time_Step, recf, rect);
 }
 
 // integrator
@@ -33,40 +36,16 @@ void BAOAB::integrate(Molecule* molecule_pt)
     // update the step counter
     Step++;
 
-    if(With_npt)
+    if(Langevin::With_npt)
         npt_integration(molecule_pt);
     else
         nvt_integration(molecule_pt);
 
-    if(With_st)
+    if(Langevin::With_st)
         Langevin::update_simulated_tempering(molecule_pt, Step, Time_Step);
-}
 
-// set with npt grid
-void BAOAB::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
-                                    Molecule* molecule_pt, const double& mass,
-                                    const double& target_press,
-                                    const double& gamma_box, const int& recf,
-                                    const int& rect)
-{
-    With_npt = true;
-
-    Langevin::integrate_with_npt_grid(Szero, cut_off, molecule_pt,
-                                      mass, target_press, gamma_box, Time_Step,
-                                      recf, rect);
-}
-
-// set with simulation tempering
-void BAOAB::integrate_with_st(const double& tmin,
-                              const double& tmax,
-                              const double& n_temperatures,
-                              const unsigned& mod_switch,
-                              const int& seed)
-{
-    With_st = true;
-
-    // initialise the simulated tempering class
-    Langevin::integrate_with_st(tmin, tmax, n_temperatures, mod_switch, seed);
+    if(Langevin::With_ot)
+        Langevin::update_ongulated_tempering(molecule_pt, Step, Time_Step);
 }
 
 void BAOAB::set_npt_integrator_version(const unsigned& version)
@@ -141,7 +120,7 @@ void BAOAB::npt_integration(Molecule* molecule_pt)
         Langevin::A_1_NPT(0.25 * Time_Step);
         Langevin::A_2_NPT(molecule_pt, 0.5 * Time_Step);
         Langevin::A_1_NPT(0.25 * Time_Step);
-        
+
         // force solve
         Langevin::compute_force(molecule_pt);
 
