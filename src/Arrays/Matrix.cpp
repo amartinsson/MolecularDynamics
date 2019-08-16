@@ -427,7 +427,10 @@ Matrix Matrix::inv() const
 
     double det = this->det();
 
-    if(dimx == 2)
+    if(dimx == 1) {
+        Mret(0,0) = 1.0 / this->get(0,0);
+    }
+    else if(dimx == 2)
     {
         Mret(0, 0) = this->get(1,1) / det;
         Mret(0, 1) = -this->get(0,1) / det;

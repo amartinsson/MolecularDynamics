@@ -37,6 +37,10 @@ double& Molecule::laplace() {return L;}
 // return the laplacian
 double Molecule::laplace() const {return L;}
 
+// return pointer to the potential
+double& Molecule::magnetisation() {return Magnetisation;}
+double Molecule::magnetisation() const {return Magnetisation;}
+
 // set temperature
 void Molecule::set_temperature(const double& temperature)
 {

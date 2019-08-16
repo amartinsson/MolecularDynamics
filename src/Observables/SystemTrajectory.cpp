@@ -98,10 +98,11 @@ void SystemTrajectory::append_positions(const char* file_name,
                 fprintf(file, ", %.10f, %.10f, %.10f, %.10f\n",
                 particle.second->Q(0,0), particle.second->Q(0,1),
                 particle.second->Q(1,0), particle.second->Q(1,1));
-            else
-                fprintf(file, "\n");
         }
 
+        // end with new line
+
+        fprintf(file, "\n");
         // close the file
         fclose(file);
     }

@@ -17,7 +17,8 @@ public:
     // constructor
     Molecule(const double& kt, const unsigned& nparts, const unsigned& dim)
         : DIM(dim), number_of_particles(nparts), kT(kt), Beta(1.0 / kt),
-          V(0.0) {Particles.reserve(number_of_particles);} // empty
+          V(0.0), Magnetisation(0.0)
+            {Particles.reserve(number_of_particles);} // empty
 
     // destructor
     ~Molecule();
@@ -35,6 +36,9 @@ public:
     // return pointer to the potential
     double& potential();
     double potential() const;
+    // return pointer to the magnetisation
+    double& magnetisation();
+    double magnetisation() const;
     // return pointer to the potential
     double& laplace();
     double laplace() const;
@@ -58,6 +62,8 @@ protected:
     double V;
     // laplacian
     double L;
+    // magnetisation
+    double Magnetisation;
 };
 
 /******************************************************************************
