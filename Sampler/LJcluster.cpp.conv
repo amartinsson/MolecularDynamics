@@ -222,9 +222,6 @@ int main(int argc, char* argv[])
     unsigned number_of_particles = 25*25;
 
     double temp = 0.5;
-    double temp_max = 1.5;
-    unsigned temp_switch = 100;
-    unsigned temp_nums = 25;
 
     double sigma = 1.0;
     double epsilon = 1.0;
@@ -252,6 +249,8 @@ int main(int argc, char* argv[])
     double burn_in_fraction = 0.1;
     bool with_npt = false;
 
+    int method = 0;
+
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
     {
@@ -275,24 +274,6 @@ int main(int argc, char* argv[])
             double arg_in = std::stod(arg2);
             temp = arg_in;
             printf("temperature set to: %1.2f\n", temp);
-        }
-        else if(arg == "--temp_max")
-        {
-            double arg_in = std::stod(arg2);
-            temp_max = arg_in;
-            printf("max temperature set to: %1.2f\n", temp);
-        }
-        else if(arg == "--temp_switch")
-        {
-            unsigned arg_in = std::stod(arg2);
-            temp_switch  = arg_in;
-            printf("Temperature Switching on every: %.0d steps\n", temp_switch);
-        }
-        else if(arg == "--temp_nums")
-        {
-            unsigned arg_in = std::stod(arg2);
-            temp_nums  = arg_in;
-            printf("NUmber of Simulated Temperatures set to: %.0d\n", temp_nums);
         }
         else if(arg == "--time")
         {
@@ -386,8 +367,42 @@ int main(int argc, char* argv[])
             with_npt = true;
             printf("Setting npt to: %d\n", with_npt);
         }
+        else if(arg == "--method")
+        {
+            int arg_in = std::stod(arg2);
+            method = arg_in;
+            if(method == 1) {
+                printf("Method set to: ABOBA\n");
+            }
+            else if(method == 2){
+                printf("Method set to: OBABO\n");
+            }
+        }
     }
 
+    if(method == 0) {
+        printf("Method set to: BAOAB\n");
+    }
+
+    // timestetps
+    if(world_rank % 4 == 0) {
+        time_step = 0.0037; // 8fs timestep
+    }
+    else if(world_rank % 4 == 1) {
+        time_step = 0.0019; // 4fs timestep
+    }
+    else if(world_rank % 4 == 2) {
+        time_step = 0.00093; // 2fs timestep
+    }
+    else if(world_rank % 4 == 3) {
+        time_step = 0.00046; // 1fs timestep
+    }
+    else {
+        printf("Error\n");
+        exit(-1);
+    }
+
+    printf("process %d has step: %f\n",world_rank, time_step);
     // initialise box size
     Matrix BoxS(2,2);
     if(sz > 0.0)
@@ -431,15 +446,20 @@ int main(int argc, char* argv[])
     // Make a Lennard Jones Force solver
     System* lennard_jones = new LennardJones(epsilon, sigma);
 
-    // // make integrator
-    BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
-                                  lennard_jones, SEED);
-    // // make integrator
-    // ABOBA* integrator = new ABOBA(1.0/temp, gamma, 0.0, time_step,
-                                      // lennard_jones, SEED);
     // make integrator
-    // OBABO* integrator = new OBABO(1.0/temp, gamma, 0.0, time_step,
-                                      // lennard_jones, SEED);
+    Langevin* integrator;
+    if(world_rank < 4) {
+        integrator =
+            new BAOAB(1.0/temp, gamma, 0.0, time_step, lennard_jones, SEED);
+    }
+    else if(world_rank >= 4 && world_rank < 8) {
+        integrator =
+            new ABOBA(1.0/temp, gamma, 0.0, time_step, lennard_jones, SEED);
+    }
+    else if(world_rank >= 8){
+        integrator =
+            new OBABO(1.0/temp, gamma, 0.0, time_step, lennard_jones, SEED);
+    }
 
     // set the integrator scheme
     integrator->set_npt_integrator_version(npt_scheme_nr);
@@ -452,16 +472,6 @@ int main(int argc, char* argv[])
     else
         integrator->integrate_with_grid(BoxS, cut_off, cluster,
                                         write_frequency, burn_in_steps);
-
-    // integrate with simulated tempering
-    // integrator->integrate_with_st(temp, temp_max, temp_nums, temp_switch, SEED + 10);
-    integrator->integrate_with_ot(temp, temp_max, temp_nums, temp_switch, SEED + 10);
-
-    // set the observable
-    // SimTempTemperatureObservable SimTemp =
-        // SimTempTemperatureObservable(&integrator->st_obj());
-    SimTempTemperatureObservable SimTemp =
-        SimTempTemperatureObservable(&integrator->ot_obj());
 
     if(rebuild_bool)
     {
@@ -518,19 +528,11 @@ int main(int argc, char* argv[])
         else
             integrator->grid_obj().update_temperature();
 
-        // update the simulated tempering
-        SimTemp.update();
-
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // exit(-1);
             // update the pressure and temperature
-
-            // print the simulated tempering step
-            SimTemp.print("simulatedtemperature", time_stamp,
-                          control_number + world_rank);
-
             if(with_npt)
             {
                 // print positions

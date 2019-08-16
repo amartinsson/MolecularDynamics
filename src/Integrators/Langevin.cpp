@@ -212,7 +212,7 @@ void Langevin::compute_force(Molecule* molecule_pt)
 
     // if we are running with ISST rescale the forces
     if(With_isst)
-        Isst_pt->apply_force_rescaling(molecule_pt);
+        Isst_pt->apply_force_rescaling();
 }
 
 // Langevin Stochastic Momentum based update
