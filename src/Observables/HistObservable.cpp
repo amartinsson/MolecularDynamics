@@ -4,10 +4,9 @@ using namespace::std;
 
 // constructor
 HistObservable::HistObservable(const double& low, const double& up,
-                               const int& n) : N(n)
+    const int& n)
+        : N(n), histogram(gsl_histogram_alloc(n))
 {
-    // allocate memory for histogram
-    histogram = gsl_histogram_alloc(n);
     // make the bins uniform between low and up
     gsl_histogram_set_ranges_uniform(histogram, low, up);
 }

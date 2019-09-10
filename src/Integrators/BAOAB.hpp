@@ -34,4 +34,5 @@ private:
 
     void nvt_integration(Molecule* molecule_pt);
     void npt_integration(Molecule* molecule_pt);
+    void update_replica_exchange(const double& h);
 };

@@ -33,6 +33,12 @@ void BAOAB::integrate_with_npt_grid(const Matrix& Szero, const double& cut_off,
 // integrator
 void BAOAB::integrate(Molecule* molecule_pt)
 {
+    // make sure integrator has correct temperature for replica exchange
+    if(Langevin::With_re) {
+        Langevin::update_integrator_temperature(
+                            Langevin::Re_pt->replica(0)->beta(), Time_Step);
+    }
+
     // update the step counter
     Step++;
 
@@ -46,6 +52,12 @@ void BAOAB::integrate(Molecule* molecule_pt)
 
     if(Langevin::With_ot)
         Langevin::update_ongulated_tempering(molecule_pt, Step, Time_Step);
+
+    if(Langevin::With_sa)
+        Langevin::update_simulated_annealing(Step, Time_Step);
+
+    if(Langevin::With_re)
+        this->update_replica_exchange(Time_Step);
 }
 
 void BAOAB::set_npt_integrator_version(const unsigned& version)
@@ -148,5 +160,26 @@ void BAOAB::npt_integration(Molecule* molecule_pt)
         // integrate forward
         Langevin::B_NPT(molecule_pt, 0.5 * Time_Step);
     }
+
+}
+
+void BAOAB::update_replica_exchange(const double& h)
+{
+    unsigned N = Langevin::Re_pt->replica.size();
+
+    // integrate forward for all replicas
+    for(unsigned i=1; i<N; i++) {
+        // get temperature
+        double rep_beta = Langevin::Re_pt->replica(i)->beta();
+
+        // set integrator temperature
+        Langevin::update_integrator_temperature(rep_beta, h);
+
+        // integrate replica forward
+        this->nvt_integration(Langevin::Re_pt->replica(i));
+    }
+
+    // propose the moves
+    Langevin::Re_pt->propose_moves(Step);
 
 }

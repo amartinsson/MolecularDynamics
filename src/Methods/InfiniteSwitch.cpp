@@ -74,8 +74,9 @@ double InfiniteSwitch::calculate_lambda_bar()
     double theta = *collective_pt;
 
     for(unsigned i=0; i<nint; i++) {
-        // double measure = omega_weight[i] * exp(-beta * V + lambda[i] * theta);
-        double measure = omega_weight[i] * exp(lambda[i] * theta);
+        // either of these will work, first should increase stability
+        // of exp calculation
+        double measure = omega_weight[i] * exp(-beta * V + lambda[i] * theta);
 
         lambda_bar_upper += gauss_weight[i] * lambda[i] * measure;
         lambda_bar_lower += gauss_weight[i] * measure;
@@ -90,19 +91,18 @@ void InfiniteSwitch::update_hull()
     // dereference values
     double theta = *collective_pt;
 
-    // do the integral first
-    double integral = 0.0;
-
     for(unsigned i=0; i<nint; i++) {
-        integral += gauss_weight[i] * omega_weight[i]
-                        *  exp(lambda[i] * theta);
-    }
+        // holder for value
+        double value = 0.0;
 
-    // update the hull estimate
-    for(unsigned i=0; i<nint; i++) {
-        double value = exp(lambda[i] * theta) / integral;
+        // inner loop over all the points
+        for(unsigned j=0; j<nint; j++) {
 
-        hull_estimate[i].observe(value);
+            value += gauss_weight[j] * omega_weight[j]
+                            * exp((lambda[j] - lambda[i]) * theta);
+        }
+
+        hull_estimate[i].observe(1.0 / value);
     }
 }
 
@@ -144,10 +144,21 @@ void InfiniteSwitch::initialize_force()
 // get observable weights
 vector<double> InfiniteSwitch::get_observable_weights()
 {
-    vector<double> weights(nint, 0.0);
+    // dereference values
+    double theta = *collective_pt;
+
+    vector<double> weights(nint, 1.0);
 
     for(unsigned i=0; i<nint; i++) {
-        weights[i] = hull_estimate[i].get_average();
+
+        double integral = 0.0;
+
+        for(unsigned j=0; j<nint; j++) {
+            integral += gauss_weight[j] * omega_weight[j]
+                            * exp((lambda[j] - lambda[i]) * theta);
+        }
+
+        weights[i] /= hull_estimate[i].get_average() * integral;
     }
 
     return weights;

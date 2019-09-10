@@ -23,6 +23,8 @@ public:
     void print_simbox(const char* file_name, const unsigned& index);
     // print function at time_index
     void append_positions(const char* file_name, const double& time);
+    void append_positions(const char* file_name, const unsigned& index,
+        const double& time);
 private:
     // Pointer to molecule object
     const Molecule* molecule_pt;

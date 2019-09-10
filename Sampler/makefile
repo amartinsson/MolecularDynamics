@@ -36,9 +36,9 @@ CUR_OBJS      := $(patsubst %.cpp, $(CUROBJDIR)/%.o, $(CUR_CPP_FILES))
 
 CURDEPS:= $(patsubst $(CUROBJDIR)/%.o,$(CURDEPDIR)/%.d,$(CUR_OBJS))
 
-#MAIN=LJcluster
+# MAIN=LJcluster
 # MAIN=DoubleWell
-#MAIN=MercedesBenz
+# MAIN=MercedesBenz
 MAIN=CurieWeiss
 
 #MercBenz: MercedesBenz.cpp ${OBJS} ${CUR_OBJS}

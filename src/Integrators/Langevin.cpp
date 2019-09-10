@@ -162,6 +162,13 @@ OngulatedTempering& Langevin::ot_obj() {
     return *Ot_pt;
 }
 
+SimulatedAnnealing& Langevin::sa_obj() {
+    return *Sa_pt;
+}
+
+ReplicaExchange& Langevin::re_obj() {
+    return *Re_pt;
+}
 
 void Langevin::npt_set_initial(Molecule* molecule_pt,
                                const char* initial_pos_filename,
@@ -197,22 +204,28 @@ void Langevin::npt_set_initial(Molecule* molecule_pt,
 void Langevin::compute_force(Molecule* molecule_pt)
 {
 
-    if(With_grid)
-    {
+    if(With_grid) {
         Grid_pt->update_particle_forces(System_pt, molecule_pt);
     }
-    else if(With_npt)
-    {
+    else if(With_npt) {
         NptGrid_pt->update_particle_forces(System_pt, molecule_pt);
     }
-    else
-    {
+    else {
         System_pt->compute_force(molecule_pt);
     }
 
     // if we are running with ISST rescale the forces
     if(With_isst)
         Isst_pt->apply_force_rescaling();
+
+    // // update the force for all the replicas
+    // if(With_re) {
+    //     unsigned N = Re_pt->replica.size();
+    //
+    //     for(unsigned i=1; i<N; i++) {
+    //         System_pt->compute_force(Re_pt->replica(i));
+    //     }
+    // }
 }
 
 // Langevin Stochastic Momentum based update
@@ -341,6 +354,24 @@ void Langevin::integrate_with_ot(const double& tmin,
                                    mod_switch, seed);
 }
 
+// set with Simulated Annealing
+void Langevin::integrate_with_sa(const double& tmax, const double& crate,
+    const unsigned& nsteps, Molecule* molecule_pt)
+{
+    With_sa = true;
+    // initialise the class
+    Sa_pt = new SimulatedAnnealing(tmax, crate, nsteps, molecule_pt);
+}
+
+void Langevin::integrate_with_re(const double& tmin, const double& tmax,
+    Molecule* molecule_pt, const unsigned& Ncopies, const unsigned& sfreq,
+        const int& seed)
+{
+    With_re = true;
+    // initialise the class
+    Re_pt = new ReplicaExchange(tmin, tmax, molecule_pt, Ncopies, sfreq, seed);
+}
+
 // check if to update temperature
 void Langevin::update_simulated_tempering(Molecule* molecule_pt,
                                           const unsigned& step,
@@ -359,6 +390,18 @@ void Langevin::update_ongulated_tempering(Molecule* molecule_pt,
     // update all the temperatures and variables
     Ot_pt->update_temperature(molecule_pt, step);
     update_integrator_temperature(1.0 / Ot_pt->get_temperature(), h);
+}
+
+void Langevin::update_simulated_annealing(const unsigned& step,
+    const double& h)
+{
+    Sa_pt->update_temperature(step);
+    update_integrator_temperature(Sa_pt->get_beta(), h);
+}
+
+void Langevin::update_replica_exchange(const double& h)
+{
+    printf("WARNGIN: Rep. Exch. not implimented for method!\n");
 }
 
 // update temperature

@@ -20,7 +20,7 @@ using namespace::std;
  *****************************************************************************/
 class HMC : public Hamilton, public MetropolisHastings {
 public:
-    HMC(const double& time_step, const double& beta,
+    HMC(const double& time_step, const double& beta, const unsigned& nHsteps,
         System* system_pt, const int& seed);
     // destructor
     ~HMC();
@@ -33,6 +33,8 @@ protected:
     double time_step;
     double H;
     double Hnp1;
+    // number of intermediate steps
+    unsigned nHsteps;
     // system for storing positions
     unordered_map<Particle*, Vector> position;
     unordered_map<Particle*, Vector> momentum;

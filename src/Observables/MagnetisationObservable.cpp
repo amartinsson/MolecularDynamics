@@ -7,12 +7,19 @@ MagnetisationObservable::MagnetisationObservable(Molecule* molecule_pt,
             : SystemObservable(recf, rect),
                 magDist(HistObservable(mmin, mmax, N)), molecule_pt(molecule_pt)
 {};
-
 // update function
 void MagnetisationObservable::update()
 {
     if(recStep()) {
         magDist.observe(molecule_pt->magnetisation());
+    }
+}
+
+// update function
+void MagnetisationObservable::update(const double& weight)
+{
+    if(recStep()) {
+        magDist.observe(molecule_pt->magnetisation(), weight);
     }
 }
 

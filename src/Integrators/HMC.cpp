@@ -3,10 +3,10 @@
 using namespace::std;
 
 // constructor
-HMC::HMC(const double& time_step, const double& beta,
+HMC::HMC(const double& time_step, const double& beta, const unsigned& nHsteps,
     System* system_pt, const int& seed)
         : Hamilton(system_pt), MetropolisHastings(beta, 0.0, system_pt, seed),
-            time_step(time_step) {
+            time_step(time_step), nHsteps(nHsteps) {
                 Hnp1 = 0.0;
                 H = 0.0;
             }
@@ -19,15 +19,27 @@ void HMC::integrate(Molecule* molecule_pt) {
     // save current positons
     log_current_position(molecule_pt);
 
+    // draw new momentum
+    for(auto& particle : molecule_pt->Particles) {
+        propsal_momentum(*particle.second);
+    }
+
     // solve for (q_np1, p_np1) using BAB and update hamiltoian
-    Hnp1 = 0.0;
-    hamiltoniain_forward(molecule_pt);
+    // for n Hamiltoniain steps
+    for(unsigned i=0; i<nHsteps; i++){
+        hamiltoniain_forward(molecule_pt);
+    }
+
+    // reverse the momentum
+    for(auto& particle : molecule_pt->Particles) {
+        particle.second->p = particle.second->p.neg();
+    }
 
     // calculate change in energy
     double dE = Hnp1 - H;
-    bool step = accept_reject(dE, proposal_ratio(molecule_pt));
+    bool accepted = accept_reject(dE, proposal_ratio(molecule_pt));
 
-    if(step) { // step was accepted
+    if(accepted) { // step was accepted
         // update hamiltoniain
         H = Hnp1;
     }
@@ -36,7 +48,7 @@ void HMC::integrate(Molecule* molecule_pt) {
             // reset position
             particle.second->q = position[particle.second];
             // flip the momentum
-            particle.second->p = momentum[particle.second].neg();
+            particle.second->p = momentum[particle.second];
         }
         // reset the force
         Hamilton::System_pt->compute_force(molecule_pt);
@@ -73,13 +85,14 @@ void HMC::log_current_position(Molecule* molecule_pt) {
 
 void HMC::propsal_momentum(Particle& particle) {
     // dereference beta
-    double beta = MetropolisHastings::beta;
+    // double beta = MetropolisHastings::beta;
 
     // draw normal random number
     Vector N = Vector(particle.p.size(), MetropolisHastings::normal_gen);
 
     // draw new momentum
-    particle.p = particle.m.inv() * N * beta;
+    // particle.p = particle.m.inv() * N * beta;
+    particle.p = particle.m * N;
 }
 
 double HMC::calculate_hamiltonian(const Particle& particle) {
@@ -98,6 +111,9 @@ void HMC::hamiltoniain_forward(Molecule* molecule_pt) {
 
     // solve for the force
     MetropolisHastings::system->compute_force(molecule_pt);
+
+    // reset the hamiltoniain
+    Hnp1 = 0.0;
 
     // Do final B step
     for(const auto& particle : molecule_pt->Particles) {

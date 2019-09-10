@@ -106,3 +106,32 @@ void SystemTrajectory::append_positions(const char* file_name,
         // close the file
         fclose(file);
     }
+
+// append function at time_index
+void SystemTrajectory::append_positions(const char* file_name,
+    const unsigned& index, const double& time) {
+        // open the file to write to
+        char filename[50];
+        sprintf(filename, "Observables/%s_%i.csv", file_name, index);
+        FILE* file = fopen(filename, "a");
+
+        fprintf(file, "%1.7e", time);
+
+        for(auto& particle : molecule_pt->Particles) {
+            // print all translational degrees of freedom
+            for(unsigned i=0; i<particle.second->q.size(); i++)
+                fprintf(file, ", %.4f", particle.second->q(i));
+
+            // print the rotational degrees of freedom
+            if(particle.second->rigid_body())
+                fprintf(file, ", %.10f, %.10f, %.10f, %.10f\n",
+                particle.second->Q(0,0), particle.second->Q(0,1),
+                particle.second->Q(1,0), particle.second->Q(1,1));
+        }
+
+        // end with new line
+
+        fprintf(file, "\n");
+        // close the file
+        fclose(file);
+    }

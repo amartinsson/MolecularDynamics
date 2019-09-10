@@ -26,6 +26,8 @@ public:
     void apply_force_rescaling();
     // get all the observable weights for recording in histograms
     vector<double> get_observable_weights();
+    // return the number of interpolation points
+    unsigned get_interpolation_points() const {return nint;}
 
 protected:
     // pointer to molecule

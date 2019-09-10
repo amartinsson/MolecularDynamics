@@ -16,6 +16,7 @@
 #include "SystemPotentialEnergy.hpp"
 #include "SystemConfigurationalTemperature.hpp"
 #include "MagnetisationObservable.hpp"
+#include "ISSTObservable.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -26,6 +27,7 @@ int main(int argc, char* argv[])
 
     double b = 1.0;
     unsigned number_of_particles = 10;
+    unsigned nint = 25;
 
     double time_step = 0.1;
     double gamma = 1.0;
@@ -68,6 +70,12 @@ int main(int argc, char* argv[])
             unsigned arg_in = std::stod(arg2);
             TIME  = arg_in;
             printf("Total Simulation Time set to: %.0d\n", TIME);
+        }
+        else if(arg == "--ntemp")
+        {
+            unsigned arg_in = std::stod(arg2);
+            nint  = arg_in;
+            printf("Total number of temperatures set to: %.0d\n", nint);
         }
         else if(arg == "--plan")
         {
@@ -166,9 +174,22 @@ int main(int argc, char* argv[])
                                     write_frequency, burn_in_steps);
 
     // set to integrate with isst
-    unsigned nint = 10;
     double isstTau = 1.0;
-    integrator->integrate_with_isst(cluster, temp, temp_max, nint, time_step, isstTau);
+    integrator->integrate_with_isst(cluster, temp, temp_max, nint,
+                                        time_step, isstTau);
+
+    // set up for isst observables
+    IsstWeightObservable <MagnetisationObservable> isstMagnet =
+        IsstWeightObservable<MagnetisationObservable> (&integrator->isst_obj(),
+                                        magnet, write_frequency, burn_in_steps);
+
+    // initialise all the observables
+    // stupid work around because of deep copy issues
+    for(unsigned i=0; i<nint; i++) {
+        isstMagnet.obs[i] = *new MagnetisationObservable(cluster, -1.0, 1.0, 100,
+                                    write_frequency, burn_in_steps);
+    }
+
 
     for(unsigned i=0; i<number_of_steps; i++) {
         // integrate forward
@@ -188,8 +209,16 @@ int main(int argc, char* argv[])
 
         // update the magnetisation
         magnet.update();
+
+        // update the isst magnetisation
+        isstMagnet.update();
     }
 
     // print the magnetisation
     magnet.print("magnetisation", 0);
+
+    // print the isst magnetisations
+    isstMagnet.print("isstMagnet");
+
+
 } // end main

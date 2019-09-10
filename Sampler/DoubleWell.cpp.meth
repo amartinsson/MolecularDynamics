@@ -17,6 +17,8 @@
 #include "SystemEnergy.hpp"
 #include "SystemPotentialEnergy.hpp"
 #include "SystemConfigurationalTemperature.hpp"
+#include "SystemVirialTemperature.hpp"
+#include "ReplicaExchangeObservable.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -36,9 +38,16 @@ int main(int argc, char* argv[])
     double burn_in_fraction = 0.0;
 
     double sigma = 1.0;
+    unsigned nHsteps = 2;
 
     double px = 0.0;
     double py = 0.0;
+
+    double crate = 1.0;
+    double tmax = temp;
+
+    double tmin = 0.5;
+    unsigned mod_switch = 10;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -56,7 +65,26 @@ int main(int argc, char* argv[])
         {
             double arg_in = std::stod(arg2);
             temp = arg_in;
+            tmax = temp;
             printf("temperature set to: %1.2f\n", temp);
+        }
+        else if(arg == "--tmax")
+        {
+            double arg_in = std::stod(arg2);
+            tmax = arg_in;
+            printf("max temperature set to: %1.2f\n", tmax);
+        }
+        else if(arg == "--tmin")
+        {
+            double arg_in = std::stod(arg2);
+            tmin = arg_in;
+            printf("min temperature set to: %1.2f\n", tmin);
+        }
+        else if(arg == "--smod")
+        {
+            unsigned arg_in = std::stod(arg2);
+            mod_switch = arg_in;
+            printf("ST switch freq set to: %.0d\n", mod_switch);
         }
         else if(arg == "--time")
         {
@@ -95,6 +123,12 @@ int main(int argc, char* argv[])
             sigma = arg_in;
             printf("sigma in proposal set to: %1.2f\n", sigma);
         }
+        else if(arg == "--nHamilton")
+        {
+            unsigned arg_in = std::stod(arg2);
+            nHsteps = arg_in;
+            printf("Number of Hamiltoniain substeps set to: %.0d\n", nHsteps);
+        }
         else if(arg == "--px")
         {
             double arg_in = std::stod(arg2);
@@ -104,6 +138,12 @@ int main(int argc, char* argv[])
         {
             double arg_in = std::stod(arg2);
             py = arg_in;
+        }
+        else if(arg == "--crate")
+        {
+            double arg_in = std::stod(arg2);
+            crate = arg_in;
+            printf("c in Simulated Annealing Temperature set to: %1.2f\n", crate);
         }
     }
 
@@ -120,10 +160,10 @@ int main(int argc, char* argv[])
 
     // set mass and position
     m_0.diag(1.0);
-    // q_0(0) = -1.0;
-    // q_0(1) = -1.0;
-    q_0(0) = 0.0;
-    q_0(1) = 0.0;
+    q_0(0) = -1.0;
+    q_0(1) = -1.0;
+    // q_0(0) = 0.0;
+    // q_0(1) = 0.0;
 
     p_0(0) = px;
     p_0(1) = py;
@@ -137,32 +177,49 @@ int main(int argc, char* argv[])
     double_well->compute_force(singelton);
 
     // // make integrator
-    // BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
-    //                               double_well, SEED);
+    BAOAB* integrator = new BAOAB(1.0/temp, gamma, 0.0, time_step,
+                                  double_well, SEED);
     // make integrator
     // MetropolisHastings* integrator = new MetropolisHastings(1.0/temp, sigma,
-    //                                         double_well, SEED);
+                                            // double_well, SEED);
     // make integrator
     // BAB* integrator = new BAB(time_step, double_well);
     // make integrator
-    HMC* integrator = new HMC(time_step, 1.0/temp, double_well, SEED);
+    // HMC* integrator = new HMC(time_step, 1.0/temp, nHsteps, double_well, SEED);
 
     // make system trajectory object
-    SystemTrajectory traj =
-        SystemTrajectory(singelton);
+    // SystemTrajectory traj = SystemTrajectory(singelton);
+
     // SystemTemperature stemp =
     //     SystemTemperature(singelton, write_frequency, burn_in_steps);
-    SystemConfigurationalTemperature stemp =
-        SystemConfigurationalTemperature(singelton, write_frequency,
-                                         burn_in_steps);
+    // SystemConfigurationalTemperature stemp =
+    //     SystemConfigurationalTemperature(singelton, write_frequency,
+    //                                      burn_in_steps);
+
+    SystemVirialTemperature stemp =
+        SystemVirialTemperature(singelton, write_frequency, burn_in_steps);
+
     SystemEnergy energy =
         SystemEnergy(singelton, write_frequency, burn_in_steps);
     // SystemPotentialEnergy energy =
     //     SystemPotentialEnergy(singelton, write_frequency, burn_in_steps);
 
+    // Integrate with Simulated Annealing
+    // integrator->integrate_with_sa(tmax, crate, number_of_steps, singelton);
+    // Integrate with Simulated Tempering
+    // integrator->integrate_with_st(tmin, tmax, 10, mod_switch, SEED);
+    integrator->integrate_with_re(tmin, tmax, singelton, 10, 10, SEED+1);
+
+    // make replica excange observable
+    RETrajectoryObservable traj = RETrajectoryObservable(&integrator->re_obj(),
+        write_frequency, burn_in_steps);
+
     for(unsigned i=0; i<number_of_steps; i++) {
         // integrate forward
         integrator->integrate(singelton);
+
+        // if(i == 100)
+            // exit(-1);
 
         // append to trajectory
         double t = (double)i / (double)number_of_steps * TIME;

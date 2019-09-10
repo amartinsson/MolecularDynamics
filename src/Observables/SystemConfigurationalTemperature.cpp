@@ -43,7 +43,7 @@ void SystemConfigurationalTemperature::update()
 void SystemConfigurationalTemperature::update_temperature() {
     // make temporary temperature
     double k = 0.0;
-
+    
     for(const auto& particle : system->Particles) {
         k += particle.second->f.dot(particle.second->f);
     }

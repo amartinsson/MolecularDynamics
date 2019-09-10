@@ -13,6 +13,8 @@
 #include "Particle.hpp"
 #include "SimulatedTempering.hpp"
 #include "OngulatedTempering.hpp"
+#include "SimulatedAnnealing.hpp"
+#include "ReplicaExchange.hpp"
 #include "System.hpp"
 #include "Array.hpp"
 
@@ -27,6 +29,7 @@ public:
              const double& o_step_size, System* system_pt, const int& seed);
     // destructor
     ~Langevin();
+
     // integrator
     void integrate(Molecule* molecule_pt);
     // set to integrate with isst
@@ -52,6 +55,8 @@ public:
     InfiniteSwitchSimulatedTempering& isst_obj();
     SimulatedTempering& st_obj();
     OngulatedTempering& ot_obj();
+    SimulatedAnnealing& sa_obj();
+    ReplicaExchange& re_obj();
 
     // set to integrate with simulated tempering
     void integrate_with_st(const double& tmin, const double& tmax,
@@ -60,6 +65,13 @@ public:
     // set to integrate with ongulated tempering
     void integrate_with_ot(const double& tmin, const double& tmax,
         const double& n_temperatures, const unsigned& mod_switch,
+            const int& seed);
+    // set to integrate with simulated annealing
+    void integrate_with_sa(const double& tmax, const double& crate,
+        const unsigned& nsteps, Molecule* molecule_pt);
+    // set to integrate with replica exchange
+    void integrate_with_re(const double& tmin, const double& tmax,
+        Molecule* molecule_pt, const unsigned& Ncopies, const unsigned& sfreq,
             const int& seed);
 
     virtual void set_npt_integrator_version(const unsigned& npt_scheme_nr) = 0;
@@ -91,6 +103,10 @@ protected:
     // check if to update temperature
     void update_ongulated_tempering(Molecule* molecule_pt, const unsigned& step,
         const double& h);
+    // check if to update simulated annealing
+    void update_simulated_annealing(const unsigned& step, const double& h);
+    // update ReplicaExchange
+    void update_replica_exchange(const double& h);
     // compute the force in the correct way
     void compute_force(Molecule* molecule_pt);
 
@@ -100,6 +116,14 @@ protected:
 
     bool With_st;
     bool With_ot;
+    bool With_sa;
+    bool With_re;
+
+    // integrator methods
+    ReplicaExchange* Re_pt;
+
+    // update temperature
+    void update_integrator_temperature(const double& beta, const double& h);
 
 private:
     double Beta;
@@ -117,7 +141,6 @@ private:
     double Target_pressure;
     double Npt_mass;
 
-
     NormalGenerator normal_gen;
 
     // class pointers
@@ -125,8 +148,10 @@ private:
     InfiniteSwitchSimulatedTempering* Isst_pt;
     Grid* Grid_pt;
     NptGrid* NptGrid_pt;
+
     SimulatedTempering* St_pt;
     OngulatedTempering* Ot_pt;
+    SimulatedAnnealing* Sa_pt;
 
     // rotation steps
     void A_rot(Particle& particle, const double& h);
@@ -138,8 +163,6 @@ private:
     void B_NPT_box(const double& h);
     void O_NPT_box();
 
-    // update temperature
-    void update_integrator_temperature(const double& beta, const double& h);
 };
 
 #endif

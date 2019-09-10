@@ -50,14 +50,12 @@ Vector CurieWeiss::get_force(const double& m, const Vector& theta)
     // only works for 1D so far
     Vector retf(1);
 
-    retf(0) = -m * sin(theta(0)) - b * sin(theta(0));
+    retf(0) = -(m + b) * sin(theta(0));
 
     return retf;
 }
 
 void CurieWeiss::map_periodic(Particle& particle)
 {
-    if(fabs(particle.q(0)) >= 2.0 * M_PI) {
-        particle.q(0) /= 2,0 * M_PI;
-    }
+    particle.q(0) = fmod(particle.q(0), 2.0 * M_PI);
 }

@@ -61,7 +61,7 @@ Vector MetropolisHastings::proposal_move(const Vector& q) {
     Vector N = Vector(q.size(), normal_gen);
 
     // generate new position
-    qprime = q + N * pow(sigma, 2.0);
+    qprime = q + N * sigma;
 
     // return the newly suggested position
     return qprime;
