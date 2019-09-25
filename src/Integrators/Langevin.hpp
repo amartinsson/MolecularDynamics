@@ -9,6 +9,8 @@
 #include "Generator.hpp"
 #include "Grid.hpp"
 #include "InfiniteSwitchSimulatedTempering.hpp"
+#include "InfiniteSwitchSimulatedMagnetisation.hpp"
+#include "DoubleInfiniteSwitchMagTemp.hpp"
 #include "NptGrid.hpp"
 #include "Particle.hpp"
 #include "SimulatedTempering.hpp"
@@ -32,10 +34,10 @@ public:
 
     // integrator
     void integrate(Molecule* molecule_pt);
-    // set to integrate with isst
-    void integrate_with_isst(Molecule* molecule_pt, const double& tmin,
-                             const double& tmax, const unsigned& nint,
-                             const double& t_step, const double& tau);
+    // set to integrate with infinite switch
+    void integrate_with_infinite_switch(InfiniteSwitch* scheme);
+    // set to integrate with double infinite switch
+    void integrate_with_double_infinite_switch(DoubleInfiniteSwitch* scheme);
     // set with grid
     void integrate_with_grid(const Matrix& Szero, const double& cut_off,
                              Molecule* molecule_pt, const int& recf,
@@ -52,10 +54,13 @@ public:
     Grid& grid_obj();
 
     // return method objects
-    InfiniteSwitchSimulatedTempering& isst_obj();
+    InfiniteSwitch& is_obj();
+    DoubleInfiniteSwitch& dis_obj();
+
     SimulatedTempering& st_obj();
     OngulatedTempering& ot_obj();
     SimulatedAnnealing& sa_obj();
+
     ReplicaExchange& re_obj();
 
     // set to integrate with simulated tempering
@@ -110,7 +115,8 @@ protected:
     // compute the force in the correct way
     void compute_force(Molecule* molecule_pt);
 
-    bool With_isst;
+    bool with_is;
+    bool with_dis;
     bool With_grid;
     bool With_npt;
 
@@ -145,7 +151,9 @@ private:
 
     // class pointers
     System* System_pt;
-    InfiniteSwitchSimulatedTempering* Isst_pt;
+    InfiniteSwitch* is_pt;
+    DoubleInfiniteSwitch* dis_pt;
+
     Grid* Grid_pt;
     NptGrid* NptGrid_pt;
 

@@ -7,6 +7,7 @@
 #include "Molecules.hpp"
 #include "DoubleWell.hpp"
 #include "InfiniteSwitchSimulatedTempering.hpp"
+#include "InfiniteSwitchSimulatedAppliedField.hpp"
 #include "SimulatedTempering.hpp"
 
 /* Observables to include */
@@ -15,16 +16,21 @@
 #include "SystemEnergy.hpp"
 #include "SystemPotentialEnergy.hpp"
 #include "SystemConfigurationalTemperature.hpp"
+#include "ISObservable.hpp"
+#include "DISObservable.hpp"
 
 int main(int argc, char* argv[])
 {
     // parameters
     int SEED = 1234;
-    unsigned dimension = 2;
+    unsigned dimension = 1;
     double temp = 0.25;
 
     double a = 4.0;
-    double b = 1.0;
+    double b = 0.0;
+
+    // double a = 4.0;
+    // double b = 2.0;
 
     double time_step = 0.1;
     double gamma = 1.0;
@@ -39,6 +45,9 @@ int main(int argc, char* argv[])
     double py = 0.0;
 
     double temp_max = 2.0;
+    double b_max = 1.0;
+
+    unsigned nint = 25;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -63,6 +72,12 @@ int main(int argc, char* argv[])
             double arg_in = std::stod(arg2);
             temp_max = arg_in;
             printf("max temperature set to: %1.2f\n", temp_max);
+        }
+        else if(arg == "--ntemp")
+        {
+            unsigned arg_in = std::stod(arg2);
+            nint  = arg_in;
+            printf("Total number of temperatures set to: %.0d\n", nint);
         }
         else if(arg == "--time")
         {
@@ -111,6 +126,12 @@ int main(int argc, char* argv[])
             double arg_in = std::stod(arg2);
             py = arg_in;
         }
+        else if(arg == "--b_max")
+        {
+            double arg_in = std::stod(arg2);
+            b_max = arg_in;
+            printf("max external field set to: %1.4f\n", b_max);
+        }
     }
 
     // calculate the number of steps
@@ -126,13 +147,13 @@ int main(int argc, char* argv[])
 
     // set mass and position
     m_0.diag(1.0);
-    // q_0(0) = -1.0;
-    // q_0(1) = -1.0;
-    q_0(0) = 0.0;
-    q_0(1) = 0.0;
-
-    p_0(0) = px;
-    p_0(1) = py;
+    // // q_0(0) = -1.0;
+    // // q_0(1) = -1.0;
+    // q_0(0) = 0.0;
+    // q_0(1) = 0.0;
+    //
+    // p_0(0) = px;
+    // p_0(1) = py;
 
     // make crystal molecule with number_of_particles
     Molecule* singelton = new Singelton(q_0, p_0, m_0, temp, dimension);
@@ -147,8 +168,12 @@ int main(int argc, char* argv[])
                                   double_well, SEED);
 
     // make system trajectory object
-    SystemTrajectory traj =
-        SystemTrajectory(singelton);
+    vector<double> min = {-3.0};
+    vector<double> max = {3.0};
+    vector<int> N = {100};
+
+    SystemHistogramTrajectory traj =
+        SystemHistogramTrajectory(singelton, min, max, N);
 
     SystemConfigurationalTemperature stemp =
         SystemConfigurationalTemperature(singelton, write_frequency,
@@ -156,11 +181,51 @@ int main(int argc, char* argv[])
     SystemEnergy energy =
         SystemEnergy(singelton, write_frequency, burn_in_steps);
 
-    // set to integrate with isst
-    unsigned nint = 10;
     double isstTau = 1.0;
-    integrator->integrate_with_isst(singelton, temp, temp_max, nint, time_step, isstTau);
-    
+
+    // ----------------- Infinite Switch Simulation --------------------------//
+    InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(singelton, temp,
+                                temp_max, nint, time_step, isstTau);
+
+    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedAppliedField(singelton,
+    //                             -b_max, b_max, nint, time_step, isstTau);
+
+    // set integrator to integrate with generalised infinite switch method
+    integrator->integrate_with_infinite_switch(giss);
+
+    // set up for isst observables
+    IsWeightObservable <SystemHistogramTrajectory> isPos =
+        IsWeightObservable<SystemHistogramTrajectory> (&integrator->is_obj(),
+                                    traj, write_frequency, burn_in_steps);
+
+
+    // This breaks if we use more than 20 temperatures, for some reason not
+    // enough memory is allocated at some point.
+    for(unsigned i=0; i<nint; i++) {
+        isPos.obs[i] = *new SystemHistogramTrajectory(singelton, min, max, N);
+    }
+
+
+    // // ----------------- Double Infinite Switch Simulation -------------------//
+    // DoubleInfiniteSwitch* diss = new DoubleInfiniteSwitchMagTemp(singelton, temp,
+    //                                 temp_max, -b_max, b_max, nint, nint,
+    //                                     time_step, isstTau);
+    //
+    // // integrate with double generalised infinite switch
+    // integrator->integrate_with_double_infinite_switch(diss);
+    //
+    // // set up for infinite switch magnet
+    // DisWeightObservable <SystemHistogramTrajectory> isPos =
+    //     DisWeightObservable<SystemHistogramTrajectory> (&integrator->dis_obj(),
+    //                                     traj, write_frequency, burn_in_steps);
+    // // initialise all the observables
+    // for(unsigned i=0; i<nint; i++) {
+    //     for(unsigned j=0; j<nint; j++) {
+    //         isPos.obs[i][j] =
+    //                     *new SystemHistogramTrajectory(singelton, min, max, N);
+    //     }
+    // }
+
     for(unsigned i=0; i<number_of_steps; i++) {
         // integrate forward
         integrator->integrate(singelton);
@@ -168,6 +233,10 @@ int main(int argc, char* argv[])
         // append to trajectory
         double t = (double)i / (double)number_of_steps * TIME;
         traj.append_positions("trajectory", t);
+        traj.update();
+
+        // update the position in the infinite switch
+        isPos.update();
 
         // update the temperature
         stemp.update();
@@ -177,4 +246,11 @@ int main(int argc, char* argv[])
         energy.update();
         energy.print("energy", t);
     }
+
+    // print the magnetisation
+    traj.print("position");
+
+    // print the isst magnetisations
+    isPos.print("isPosition");
+
 } // end main

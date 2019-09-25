@@ -1,22 +1,22 @@
-#ifndef ISSTOBSERVABLE_HPP
-#define ISSTOBSERVABLE_HPP
+#ifndef ISSOBSERVABLE_HPP
+#define ISSOBSERVABLE_HPP
 
 #include "AverageObservable.hpp"
 #include "SystemObservable.hpp"
-#include "InfiniteSwitchSimulatedTempering.hpp"
+#include "InfiniteSwitch.hpp"
 
 using namespace::std;
 
 /******************************************************************************
                 Abstract SimulatedTempering Observable Base Class
  *****************************************************************************/
-class IsstObservable : public SystemObservable
+class IsObservable : public SystemObservable
 {
 public:
-    IsstObservable(InfiniteSwitchSimulatedTempering* method, const int& recf,
+    IsObservable(InfiniteSwitch* method, const int& recf,
                                  const int& rect);
     // empty destructor
-    ~IsstObservable(){};
+    ~IsObservable(){};
     // virtual function for updating
     virtual void update() {/* empty */};
     // get the average and instant vaalues
@@ -25,22 +25,22 @@ public:
     virtual double get_instant() {/* empty */};
 
 protected:
-    InfiniteSwitchSimulatedTempering* method;
+    InfiniteSwitch* method;
 };
 
 /******************************************************************************
                 Simulated Tempering Temperature index Observable
  *****************************************************************************/
 template<class T>
-class IsstWeightObservable : public IsstObservable
+class IsWeightObservable : public IsObservable
 {
 public:
-    // IsstWeightObservable(InfiniteSwitchSimulatedTempering* method,
+    // IsWeightObservable(InfiniteSwitchSimulatedTempering* method,
     //     SystemObservable* ObsType, const int& recf, const int& rect);
-    IsstWeightObservable(InfiniteSwitchSimulatedTempering* method,
+    IsWeightObservable(InfiniteSwitch* method,
         T& ObsType, const int& recf, const int& rect);
     // empty destructor
-    ~IsstWeightObservable() {};
+    ~IsWeightObservable() {};
     // virtual function for updating
     void update();
     // get the average and instant vaalues
@@ -50,7 +50,8 @@ public:
     // print function at time_index
     void print(const char* file_name);
     // holder for all the histograms
-    T* obs;
+    // T* obs;
+    vector<T> obs;
 
 private:
 
@@ -59,18 +60,23 @@ private:
 
 // constructor
 template<class T>
-IsstWeightObservable<T>::IsstWeightObservable(
-        InfiniteSwitchSimulatedTempering* method, T& ObsType,
+IsWeightObservable<T>::IsWeightObservable(
+        InfiniteSwitch* method, T& ObsType,
             const int& recf, const int& rect)
-                : IsstObservable(method, recf, rect),
+                : IsObservable(method, recf, rect),
                     N(method->get_interpolation_points())
 {
-    obs = (T*) malloc(N * sizeof(T));
+    // make break if the allocated memory isn't large enough,
+    // dont know why this is.
+    // cout << "size of ObsType: " << sizeof(ObsType) << endl;
+    // obs = (T*) malloc(N * sizeof(ObsType));
+    obs.reserve(N);
+    // cout << "size of obs: " << sizeof(obs) << endl;
 };
 
 // function for updating
 template<class T>
-void IsstWeightObservable<T>::update()
+void IsWeightObservable<T>::update()
 {
     // decode the observable weights
     vector<double> weight = method->get_observable_weights();
@@ -82,7 +88,7 @@ void IsstWeightObservable<T>::update()
 
 // function for printing all the weights
 template<class T>
-void IsstWeightObservable<T>::print(const char* file_name)
+void IsWeightObservable<T>::print(const char* file_name)
 {
     for(unsigned i=0; i<N; i++) {
         obs[i].print(file_name, i);

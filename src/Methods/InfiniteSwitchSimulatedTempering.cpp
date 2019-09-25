@@ -8,7 +8,8 @@ using namespace::std;
 InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
     Molecule* molecule_pt, const double& T_min, const double& T_max,
         const unsigned& nint, const double& time_step, const double& tau)
-    : InfiniteSwitch(molecule_pt, 1.0/T_max-1.0/T_max, 1.0/T_min-1.0/T_max, nint, time_step/tau)
+    : InfiniteSwitch(molecule_pt, 1.0/T_min-1.0/T_min, 1.0/T_min-1.0/T_max,
+            nint, time_step/tau)
 {
     // initialize the collective variables
     this->initialize_collecivet_variable();
@@ -20,11 +21,24 @@ InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
 void InfiniteSwitchSimulatedTempering::initialize_collecivet_variable()
 {
     // set the collective variable as potential
-    InfiniteSwitch::collective_pt = &InfiniteSwitch::molecule_pt->potential();
+    collective_pt = &InfiniteSwitch::molecule_pt->potential();
 
     // add to the map for the gradients of the potential
     for(const auto& particle : InfiniteSwitch::molecule_pt->Particles) {
-        InfiniteSwitch::grad_collective_pt.insert(make_pair(particle.second,
-                                                        &particle.second->f));
+        grad_collective_pt.insert(make_pair(
+                particle.second, &particle.second->f));
     }
+}
+
+Vector InfiniteSwitchSimulatedTempering::get_collective_grad(Particle* particle)
+{
+    return (*grad_collective_pt.at(particle)).neg();
+}
+
+double InfiniteSwitchSimulatedTempering::get_collective() {
+    return *collective_pt;
+}
+
+Matrix InfiniteSwitchSimulatedTempering::get_collective_virial_grad() {
+    return npt_pt->virial.neg();
 }

@@ -1,11 +1,11 @@
-#include "InfiniteSwitchSimulatedMagnetisation.hpp"
+#include "InfiniteSwitchSimulatedAppliedField.hpp"
 
 using namespace::std;
 
 // /******************************************************************************
-//                     Infinite Switch Simulated Magnetisation
+//                     Infinite Switch Simulated AppliedField
 //  *****************************************************************************/
-InfiniteSwitchSimulatedMagnetisation::InfiniteSwitchSimulatedMagnetisation(
+InfiniteSwitchSimulatedAppliedField::InfiniteSwitchSimulatedAppliedField(
     Molecule* molecule_pt, const double& b_min, const double& b_max,
         const unsigned& nint, const double& time_step, const double& tau)
     : InfiniteSwitch(molecule_pt, b_min, b_max, nint, time_step/tau),
@@ -18,18 +18,20 @@ InfiniteSwitchSimulatedMagnetisation::InfiniteSwitchSimulatedMagnetisation(
     InfiniteSwitch::initialize_force();
 }
 
-void InfiniteSwitchSimulatedMagnetisation::initialize_collecivet_variable()
+void InfiniteSwitchSimulatedAppliedField::initialize_collecivet_variable()
 {
-    // set the collective variable as potential
-    collective_pt =
-        &InfiniteSwitch::molecule_pt->magnetisation();
+    // set the collective variable as the magnetisation,
+    // this is somewhat hacky and needs to be calculated in the
+    // system
+    // currently tested for double well for field of (x+1)
+    collective_pt = &InfiniteSwitch::molecule_pt->magnetisation();
 }
 
-Vector InfiniteSwitchSimulatedMagnetisation::get_collective_grad(Particle* particle)
+Vector InfiniteSwitchSimulatedAppliedField::get_collective_grad(Particle* particle)
 {
     return dummy_gradient;
 }
 
-double InfiniteSwitchSimulatedMagnetisation::get_collective() {
+double InfiniteSwitchSimulatedAppliedField::get_collective() {
     return *collective_pt;
 }

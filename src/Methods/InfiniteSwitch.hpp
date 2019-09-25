@@ -8,6 +8,7 @@
 #include "Array.hpp"
 #include "LegendreRuleFast.hpp"
 #include "Molecules.hpp"
+#include "NptGrid.hpp"
 
 using namespace::std;
 
@@ -19,7 +20,8 @@ class InfiniteSwitch
 public:
     InfiniteSwitch(Molecule* molecule_pt,
         const double& lambda_min, const double& lambda_max,
-        const unsigned& nint, const double& time_step);
+        const unsigned& nint, const double& time_step,
+        const unsigned& threshold=0);
     // destructor
     ~InfiniteSwitch();
     // get the thermal rescaling factor
@@ -29,25 +31,41 @@ public:
     // return the number of interpolation points
     unsigned get_interpolation_points() const {return nint;}
 
+    // must have an initialization for the collective variable
+    virtual double get_collective() = 0;
+    virtual Vector get_collective_grad(Particle* particle) = 0;
+    virtual Matrix get_collective_virial_grad() = 0;
+
+    // initialize method to use npt or not
+    void initialize_with_npt(NptGrid* npt_grid_pt);
+
 protected:
     // pointer to molecule
-    // const Molecule* molecule_pt;
     Molecule* molecule_pt;
-    // collective variable stuff
-    const double* collective_pt; // pointer to collective variable
-    unordered_map<Particle*, Vector*> grad_collective_pt;
+
+    // pointer to npt grid
+    NptGrid* npt_pt;
 
     // initialize the force
     void initialize_force();
+
+    // initialize with NPT
+    void initialize_with_npt();
 
 private:
     // pointer to the potential
     const double* potential_pt;
 
+    // boolean to use npt or not
+    bool with_npt;
+
     // vector holders
     double* gauss_weight;
     vector<double> omega_weight;
     double* lambda;
+
+    unsigned Threshold;
+    unsigned StepCount;
 
     // vector average holders
     AverageObservable* hull_estimate;
@@ -72,6 +90,8 @@ private:
     double calculate_lambda_bar();
     // rescaler the weights directly
     void normalize_weights();
+    // apply the force rescaling on all parts
+    void apply_force_rescaling_all();
 };
 
 #endif

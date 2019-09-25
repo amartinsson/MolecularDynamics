@@ -10,6 +10,8 @@ void DoubleWell::compute_force(Molecule* molecule_pt) {
     molecule_pt->potential() = 0.0;
     // zero the laplacian
     molecule_pt->laplace() = 0.0;
+    // zero the magnetisation
+    molecule_pt->magnetisation() = 0.0;
 
     for(auto& particle : molecule_pt->Particles) {
         // calculate the new force
@@ -19,6 +21,8 @@ void DoubleWell::compute_force(Molecule* molecule_pt) {
         molecule_pt->potential() += get_potential(particle.second->q);
         // add contribution to laplacian
         molecule_pt->laplace() += get_laplace(particle.second->q);
+        // add contribution to magnetisation
+        molecule_pt->magnetisation() += get_applied_field(particle.second->q);
     }
 }
 
@@ -48,6 +52,23 @@ double DoubleWell::get_potential(const Vector& x) {
 
     // return the potential scalar
     return V;
+}
+
+// function which returns the applied field
+double DoubleWell::get_applied_field(const double& x) {
+    return x + 1.0;
+}
+
+// function which retruns the applied field
+double DoubleWell::get_applied_field(const Vector& x) {
+    // make scalar to return
+    double B = 0.0;
+
+    for(unsigned i=0; i<x.size(); i++) {
+        B += get_applied_field(x(i));
+    }
+
+    return B;
 }
 
 // function for the laplacian

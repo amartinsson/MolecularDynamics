@@ -58,6 +58,9 @@ public:
     // inverse of 2 x 2 matrix
     Matrix inv() const;
 
+    // negative of the Matrix
+    Matrix neg() const;
+
     // multiply two matrices
     Matrix operator* (const Matrix& m);
 

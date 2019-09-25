@@ -135,3 +135,108 @@ void SystemTrajectory::append_positions(const char* file_name,
         // close the file
         fclose(file);
     }
+
+// constructor
+SystemHistogramTrajectory::SystemHistogramTrajectory(
+    const Molecule* molecule_pt, const vector<double>& min, const vector<double>& max,
+        const vector<int>& N) : SystemTrajectory(molecule_pt)
+{
+    if(molecule_pt->dim() != min.size()) {
+        printf("ERROR: need to know all min-val in SystemHistogramTrajectory\n");
+        exit(-1);
+    }
+    else if(molecule_pt->dim() != max.size()) {
+        printf("ERROR: need to know all max-val in SystemHistogramTrajectory\n");
+        exit(-1);
+    }
+    else if(molecule_pt->dim() != N.size()) {
+        printf("ERROR: need to know all N bins in SystemHistogramTrajectory\n");
+        exit(-1);
+    }
+
+    // make all the histograms
+    for(unsigned i=0; i<molecule_pt->dim(); i++) {
+        posDist.push_back(new HistObservable(min[i], max[i], N[i]));
+    }
+}
+
+// destructor
+SystemHistogramTrajectory::~SystemHistogramTrajectory()
+{
+    for(unsigned i=0; i<molecule_pt->dim(); i++) {
+        delete posDist[i];
+    }
+}
+// update the hisgoram
+void SystemHistogramTrajectory::update()
+{
+    for(auto& particle : molecule_pt->Particles) {
+        // print all translational degrees of freedom
+        for(unsigned i=0; i<particle.second->q.size(); i++) {
+            posDist[i]->observe(particle.second->q(i));
+        }
+    }
+}
+
+// update the hisgoram
+void SystemHistogramTrajectory::update(const double& weight)
+{
+    for(auto& particle : molecule_pt->Particles) {
+        // print all translational degrees of freedom
+        for(unsigned i=0; i<particle.second->q.size(); i++) {
+            posDist[i]->observe(particle.second->q(i), weight);
+        }
+    }
+}
+// print the final histogram
+void SystemHistogramTrajectory::print(const char* file_name)
+{
+    for(unsigned i=0; i<molecule_pt->dim(); i++) {
+        // convert the filename to a string
+        std::string name(file_name);
+
+        // open the file to write to
+        char filename[50];
+        sprintf(filename, "Observables/%s_%d.csv", (name).c_str(), i);
+        FILE* file = fopen(filename, "a");
+
+        // get the number of bins
+        int N = posDist[i]->get_nbins();
+
+        for(int j=0; j<N; j++)
+            fprintf(file, "%1.7e, %1.7e, %1.7e\n",
+                    posDist[i]->get_bin_center(j),
+                    posDist[i]->get_value(j),
+                    posDist[i]->get_pdf(j));
+
+        // close the file
+        fclose(file);
+    }
+}
+
+// print the final histogram
+void SystemHistogramTrajectory::print(const char* file_name,
+    const unsigned& index)
+{
+    for(unsigned i=0; i<molecule_pt->dim(); i++) {
+        // convert the filename to a string
+        std::string name(file_name);
+
+        // open the file to write to
+        char filename[50];
+        sprintf(filename, "Observables/%s_%d_%d.csv", (name).c_str(), index, i);
+        FILE* file = fopen(filename, "a");
+
+        // get the number of bins
+        int N = posDist[i]->get_nbins();
+
+        for(int j=0; j<N; j++)
+            fprintf(file, "%1.7e, %1.7e, %1.7e\n",
+                    posDist[i]->get_bin_center(j),
+                    posDist[i]->get_value(j),
+                    posDist[i]->get_pdf(j));
+
+        // close the file
+        fclose(file);
+    }
+}

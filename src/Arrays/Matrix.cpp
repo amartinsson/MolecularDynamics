@@ -272,7 +272,7 @@ Matrix Matrix::operator* (const Matrix& m)
 {
     if(m.size()[0] != dimy)
     {
-        printf("Matrix dimensions must agree!\n");
+        printf("Matrix dimensions must agree in Matrix * Matrix!\n");
         exit(-1);
     }
 
@@ -310,7 +310,7 @@ Vector Matrix::operator* (const Vector& v)
 {
     if(v.size() != dimy)
     {
-        printf("Dimensions must agree!\n");
+        printf("Dimensions must agree in Matrix * Vector!\n");
         exit(-1);
     }
 
@@ -406,6 +406,19 @@ double Matrix::det() const
                 + this->get(0,2) * (this->get(1,0) * this->get(2,1)
                                     - this->get(1,1) * this->get(2,0));
     }
+}
+
+// get the negative of the matrix
+Matrix Matrix::neg() const
+{
+    Matrix Mret(dimx, dimy);
+
+#pragma omp simd collapse(2)
+    for(unsigned i=0; i<dimx; i++)
+        for(unsigned j=0; j<dimy; j++)
+            Mret(i, j) = -this->get(i, j);
+
+    return Mret;
 }
 
 // calculate the invers of a 2x2 matrix

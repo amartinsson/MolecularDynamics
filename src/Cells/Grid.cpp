@@ -10,6 +10,7 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
                 : S(2, 2), Sp(2, 2), break_experiment(false), RecFreq(recf),
                     RecThres(rect), number_of_particles(molecule_pt->nparticle())
 {
+
     if(Szero.size()[0] > 2)
     {
         S.resize(3, 3);
@@ -21,6 +22,8 @@ Grid::Grid(const Matrix& Szero, const double& cut_off,
     }
     else
         number_of_cells_z = 0;
+
+
 
     // initialse the box dimensions
     S = Szero;
@@ -105,7 +108,6 @@ void Grid::add_particles_to_grid(Molecule* molecule_pt)
 
         // enforce the periodc boundary condition on the particle
         enforce_periodic_particle_boundary_condition(*particle);
-
         // get the box coordinate based on particle positon
         vector<int> cell_coordinate = get_cell_coordinate(*particle);
 
@@ -167,7 +169,6 @@ void Grid::enforce_periodic_particle_boundary_condition(Particle& particle)
     // if((q_tildebf(0) != q_tilde(0)) || (q_tildebf(1) != q_tilde(1)) || (q_tildebf(2) != q_tilde(2)))
     //     printf("(%1.2e, %1.2e, %1.2e) => (%1.2e, %1.2e, %1.2e)\n",
     //     q_tilde(0), q_tilde(1), q_tilde(2), q_tildebf(0), q_tildebf(1), q_tildebf(2));
-
     // recalculate position
     particle.q = S * q_tilde;
 
@@ -199,6 +200,7 @@ Cell* Grid::get_cell(const int& i, const int& j, const int& k)
 // of a particle in the box.
 Vector Grid::get_box_coordinate(const Particle& particle)
 {
+
   // rescale the coordiinate
   Vector q_tilde = S.inv() * particle.q;
 
@@ -266,8 +268,10 @@ void Grid::initialise_particles_on_grid(Molecule* molecule_pt)
 
     // set random initial conditions
     set_random_particles_initial_condition(molecule_pt);
+
     // add the particles to the grid
     add_particles_to_grid(molecule_pt);
+
 }
 
 void Grid::set_to_calculate_radial_dist(const double& rmin, const double& rmax,
@@ -615,7 +619,6 @@ for(int i=0; i<particles_in_dir; i++) // x ditection
                             if(i % 2 == 0)
                                 alpha = M_PI/3.0;
                         }
-
                         // set rotation
                         RotMatrix Rot(alpha);
                         particle->Q = Rot;

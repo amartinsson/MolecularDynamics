@@ -24,7 +24,7 @@ public:
     ~Molecule();
 
     // return dimension
-    unsigned dim();
+    unsigned dim() const;
     // return number of particles in molecule
     unsigned nparticle();
     // return temperature

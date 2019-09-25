@@ -11,7 +11,7 @@ Molecule::~Molecule()
 }
 
 // return dimension
-unsigned Molecule::dim() {return DIM;}
+unsigned Molecule::dim() const {return DIM;}
 
 // return number of particles in molecule
 unsigned Molecule::nparticle() {return number_of_particles;}

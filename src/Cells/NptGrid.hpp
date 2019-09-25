@@ -37,6 +37,7 @@ public:
     void set_box_momentum(const Vector& p_tilde, Particle& particle);
     // get the mass of the grid
     double get_mass();
+    double get_target_pressure() const {return target_pressure;}
     // enforces the relaative positoon of the particles
     void enforce_constant_relative_particle_pos(const Matrix& Sold);
     // returns the box force in direction i

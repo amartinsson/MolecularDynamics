@@ -1,5 +1,5 @@
-#ifndef INFINITESWITCHSIMULATEDTEMPERING_HPP
-#define INFINITESWITCHSIMULATEDTEMPERING_HPP
+#ifndef PRESSUREINFINITESWITCHSIMULATION_HPP
+#define PRESSUREINFINITESWITCHSIMULATION_HPP
 
 #include <vector>
 #include <omp.h>
@@ -13,12 +13,12 @@ using namespace::std;
 /******************************************************************************
                     Infinite Switch Simulated Tempering
  *****************************************************************************/
-class InfiniteSwitchSimulatedTempering : public InfiniteSwitch
+class PressureInfiniteSwitchSimulation : public InfiniteSwitch
 {
 public:
-    InfiniteSwitchSimulatedTempering(Molecule* molecule_pt,
-        const double& T_min, const double& T_max,
-            const unsigned& nint, const double& time_step, const double& tau);
+    PressureInfiniteSwitchSimulation(Molecule* molecule_pt, NptGrid* npt_pt,
+        const double& P_min, const double& P_max, const unsigned& nint,
+            const double& time_step, const double& tau);
 
     // get the gradient of the particle
     double get_collective();
@@ -29,10 +29,9 @@ private:
     void initialize_collecivet_variable();
 
     // collective variable stuff
-    const double* collective_pt; // pointer to collective variable
-    // this is a map between the forces and the gradient of the
-    // collective variable for each particle
-    unordered_map<Particle*, Vector*> grad_collective_pt;
+    const double* collective_pt;
+    // this should be a dim length zero vector
+    Vector dummy_grad;
 };
 
 #endif

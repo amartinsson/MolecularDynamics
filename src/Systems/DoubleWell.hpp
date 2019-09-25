@@ -28,6 +28,9 @@ protected:
     double a;
     double b;
 
+    // function for applied field
+    double get_applied_field(const double& x);
+    double get_applied_field(const Vector& x);
     // function for the potential
     double get_potential(const double& x);
     double get_potential(const Vector& x);

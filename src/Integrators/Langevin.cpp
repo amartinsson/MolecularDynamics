@@ -19,7 +19,9 @@ Langevin::Langevin(const double& beta, const double& gamma,
     System_pt = system_pt;
 
     // set booleans
-    With_isst = false;
+    with_is = false;
+    with_dis = false;
+
     With_grid = false;
     With_npt = false;
 
@@ -49,7 +51,6 @@ Langevin::~Langevin()
     delete &Target_pressure;
     delete &Npt_mass;
 
-    delete &With_isst;
     delete &With_grid;
     delete &With_npt;
 
@@ -139,19 +140,20 @@ void Langevin::B_NPT_box(const double& h)
     NptGrid_pt->Sp -= (NptGrid_pt->virial + Sd * det * Target_pressure) * h;
 }
 
-NptGrid& Langevin::npt_obj()
-{
+NptGrid& Langevin::npt_obj() {
     return *NptGrid_pt;
 }
 
-Grid& Langevin::grid_obj()
-{
+Grid& Langevin::grid_obj() {
     return *Grid_pt;
 }
 
-InfiniteSwitchSimulatedTempering& Langevin::isst_obj()
-{
-    return *Isst_pt;
+InfiniteSwitch& Langevin::is_obj() {
+    return *is_pt;
+}
+
+DoubleInfiniteSwitch& Langevin::dis_obj() {
+    return *dis_pt;
 }
 
 SimulatedTempering& Langevin::st_obj() {
@@ -215,8 +217,13 @@ void Langevin::compute_force(Molecule* molecule_pt)
     }
 
     // if we are running with ISST rescale the forces
-    if(With_isst)
-        Isst_pt->apply_force_rescaling();
+    if(with_is) {
+        is_pt->apply_force_rescaling();
+    }
+
+    if(with_dis) {
+        dis_pt->apply_force_rescaling();
+    }
 
     // // update the force for all the replicas
     // if(With_re) {
@@ -318,14 +325,24 @@ void Langevin::integrate_with_npt_grid(const Matrix& Szero,
     OstepZbox = sqrt((1.0 - OstepCbox * OstepCbox) * 1.0 / Beta);
 }
 
-// set with isst
-void Langevin::integrate_with_isst(Molecule* molecule_pt, const double& tmin,
-                                   const double& tmax, const unsigned& nint,
-                                   const double& t_step, const double& tau)
+
+void Langevin::integrate_with_infinite_switch(InfiniteSwitch* scheme)
 {
-    With_isst = true;
-    Isst_pt = new InfiniteSwitchSimulatedTempering(molecule_pt, tmin, tmax,
-                                                   nint, t_step, tau);
+    with_is = true;
+
+    is_pt = scheme;
+
+    // if we're integrating with npt, initialize isst with it.
+    if(With_npt) {
+        is_pt->initialize_with_npt(NptGrid_pt);
+    }
+}
+
+void Langevin::integrate_with_double_infinite_switch(DoubleInfiniteSwitch* scheme)
+{
+    with_dis = true;
+
+    dis_pt = scheme;
 }
 
 // set with simulation tempering

@@ -236,7 +236,7 @@ Vector Vector::operator- (const Vector& other) const
 }
 
 // addition and subtraction
-Vector Vector::neg () const
+Vector Vector::neg() const
 {
 
     Vector retVec(dimx);
