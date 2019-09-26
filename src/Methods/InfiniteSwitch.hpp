@@ -34,6 +34,7 @@ public:
     // must have an initialization for the collective variable
     virtual double get_collective() = 0;
     virtual Vector get_collective_grad(Particle* particle) = 0;
+    virtual Matrix get_collective_grad_rot(Particle* particle) = 0;
     virtual Matrix get_collective_virial_grad() = 0;
 
     // initialize method to use npt or not

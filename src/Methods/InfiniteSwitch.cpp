@@ -73,18 +73,12 @@ void InfiniteSwitch::apply_force_rescaling_all()
         // get the gradient of the collective variable
         Vector grad = get_collective_grad(particle.second);
 
-        // printf("\tV: %f, particle: %f, %f\n", *potential_pt, particle.second->f(0), particle.second->f(1));
-
         // add to the rescaling of the force
         particle.second->f += grad * kT * lambda_bar;
 
-
-        if(particle.second->rigid_body() == true) {
-            // NOTE THIS IS ONLY CORRECT FOR ISST
-            // printf("ERROR: Infinite Switch with rigid_body not implimented\n");
-            // exit(-1);
-            // particle.second->tau += particle.second->tau * kT * lambda_bar;
-            particle.second->tau -= particle.second->tau * kT * lambda_bar;
+        if(particle.second->rigid_body() == true) {            
+            particle.second->tau += get_collective_grad_rot(particle.second) *
+                                        kT * lambda_bar;
         }
     }
 

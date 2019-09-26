@@ -11,6 +11,7 @@
 #include "SystemTrajectory.hpp"
 
 #include "InfiniteSwitchSimulatedTempering.hpp"
+#include "PressureInfiniteSwitchSimulation.hpp"
 
 #include "SystemTrajectory.hpp"
 #include "SystemTemperature.hpp"
@@ -52,7 +53,8 @@ int main(int argc, char* argv[])
     double gamma = 1.0;
     double gamma_rot = 1.0;
 
-    double target_pressure = 0.1;
+    double target_pressure = 0.15;
+    double pressure_min = 0.1;
 
     unsigned write_frequency = 100;
     double box_mass = 100.0;
@@ -87,6 +89,12 @@ int main(int argc, char* argv[])
             double arg_in = std::stod(arg2);
             target_pressure = arg_in;
             printf("pressure set to: %1.2f\n", target_pressure);
+        }
+        else if(arg == "--press_min")
+        {
+            double arg_in = std::stod(arg2);
+            pressure_min = arg_in;
+            printf("min tempering pressure set to: %1.2f\n", pressure_min);
         }
         else if(arg == "--temperature")
         {
@@ -292,8 +300,7 @@ int main(int argc, char* argv[])
     if(with_npt)
     {
         // integrator->npt_obj().set_to_calculate_order_param(cluster, 1.0);
-        integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6,
-                                                                  sigma);
+        integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, sigma);
                                                                   // pow(2.0, 1.0/6.0) * sigma);
         integrator->npt_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
     }
@@ -301,7 +308,7 @@ int main(int argc, char* argv[])
     {
         // integrator->grid_obj().set_to_calculate_order_param(cluster, 1.0);
                                             // pow(2.0, 1.0/6.0) * sigma);
-        integrator->grid_obj().set_to_calculate_sphere_order_param(cluster, 6,
+        integrator->grid_obj().set_to_calculate_sphere_order_param(cluster, 3,
                                                                    sigma);
                                                     // pow(2.0, 1.0/6.0) * sigma);
         integrator->grid_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
@@ -317,9 +324,13 @@ int main(int argc, char* argv[])
     printf("Print every %d steps after %d\n", write_frequency, burn_in_steps);
 
     // ----------------- Infinite Switch Simulation --------------------------//
-    InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp,
-                                temp_max, nint, time_step, 1.0);
+    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp,
+    //                             temp_max, nint, time_step, 1.0);
 
+    InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
+            &integrator->npt_obj(), pressure_min, target_pressure, nint,
+                time_step, 1.0);
+    //
     // set integrator to integrate with generalised infinite switch method
     integrator->integrate_with_infinite_switch(giss);
 
@@ -328,13 +339,11 @@ int main(int argc, char* argv[])
         // integrate forward
         integrator->integrate(cluster);
 
-        if(i == 2 * burn_in_steps) {
-            printf("Adding ISST on step %i\n", i);
-            // set integrator to integrate with generalised infinite switch method
-            integrator->integrate_with_infinite_switch(giss);
-        }
-
-        printf("V = %f\n", cluster->potential());
+        // if(i == 2 * burn_in_steps) {
+        //     printf("Adding ISST on step %i\n", i);
+        //     // set integrator to integrate with generalised infinite switch method
+        //     integrator->integrate_with_infinite_switch(giss);
+        // }
 
         // double F1 = 0.0;
         // double F2 = 0.0;
@@ -365,6 +374,8 @@ int main(int argc, char* argv[])
 
         if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         {
+            printf("V = %f\n", cluster->potential());
+
             double time_stamp = TIME * double(i) / double(number_of_steps);
             // exit(-1);
             // update the pressure and temperature
@@ -387,8 +398,12 @@ int main(int argc, char* argv[])
                 integrator->npt_obj().Volume_pt->print("volume", time_stamp,
                                                        control_number + world_rank);
                 // print order
-                integrator->npt_obj().SphereOrder_pt->print("order", time_stamp,
+                integrator->npt_obj().SphereOrder_pt->print("sphere", time_stamp,
                                                        control_number + world_rank);
+
+               // print order
+               // integrator->npt_obj().Order_pt->print("order", time_stamp,
+               //                                        control_number + world_rank);
                                                             // i / write_frequency);
 
                 // double temp = integrator->npt_obj().Temperature_pt->get_average();

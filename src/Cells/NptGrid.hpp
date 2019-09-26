@@ -97,7 +97,7 @@ private:
     // of the particle position and momentum cannot change.
     void enforce_relative_particle(const Matrix& Sold);
     // reset the observables for the next step
-    void reset_observables();
+    // void reset_observables();
 
 };
 

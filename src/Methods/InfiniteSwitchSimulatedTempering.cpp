@@ -22,17 +22,20 @@ void InfiniteSwitchSimulatedTempering::initialize_collecivet_variable()
 {
     // set the collective variable as potential
     collective_pt = &InfiniteSwitch::molecule_pt->potential();
-
-    // add to the map for the gradients of the potential
-    for(const auto& particle : InfiniteSwitch::molecule_pt->Particles) {
-        grad_collective_pt.insert(make_pair(
-                particle.second, &particle.second->f));
-    }
 }
 
-Vector InfiniteSwitchSimulatedTempering::get_collective_grad(Particle* particle)
-{
-    return (*grad_collective_pt.at(particle)).neg();
+Vector InfiniteSwitchSimulatedTempering
+    ::get_collective_grad(Particle* particle) {
+
+    // return the negative of the force i.e gradient
+    return particle->f.neg();
+}
+
+Matrix InfiniteSwitchSimulatedTempering
+    ::get_collective_grad_rot(Particle* particle) {
+
+    // return the negative of tau i.e gradient
+    return particle->tau.neg();
 }
 
 double InfiniteSwitchSimulatedTempering::get_collective() {

@@ -89,15 +89,13 @@ void NptGrid::update_pressure_temperature()
     Pressure_pt->update();
 }
 
-// set up the observables for the next step
-void NptGrid::reset_observables()
-{
-    // call parent function
-    Grid::reset_observables();
-
-
-
-}
+// // set up the observables for the next step
+// void NptGrid::reset_observables()
+// {
+//     // call parent function
+//     Grid::reset_observables();
+//
+// }
 
 // enforce the constraint that the relative distances
 // of the particle position and momentum cannot change.

@@ -23,6 +23,7 @@ public:
     // get the gradient of the particle
     double get_collective();
     Vector get_collective_grad(Particle* particle);
+    Matrix get_collective_grad_rot(Particle* particle);
     Matrix get_collective_virial_grad();
 
 private:
