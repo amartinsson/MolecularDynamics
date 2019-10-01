@@ -34,6 +34,9 @@ private:
     // this is a map between the forces and the gradient of the
     // collective variable for each particle
     unordered_map<Particle*, Vector*> grad_collective_pt;
+
+    // base reference for calulating the collective variable from
+    double BaseRef;
 };
 
 #endif

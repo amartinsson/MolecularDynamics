@@ -253,7 +253,8 @@ int main(int argc, char* argv[])
                                           temp, number_of_particles, dimension);
 
     // Make a Mercedes Benz Force solver
-    double epsilon = 0.1;
+    // double epsilon = 0.1; // used in some papers
+    double epsilon = 0.4; // used in the best paper
     double sigma = 0.7;
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
@@ -324,8 +325,8 @@ int main(int argc, char* argv[])
     printf("Print every %d steps after %d\n", write_frequency, burn_in_steps);
 
     // ----------------- Infinite Switch Simulation --------------------------//
-    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp,
-    //                             temp_max, nint, time_step, 1.0);
+    InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp,
+                                temp_max, nint, time_step, 1.0);
 
     // InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
     //         &integrator->npt_obj(), pressure_min, target_pressure, nint,
@@ -339,11 +340,11 @@ int main(int argc, char* argv[])
         // integrate forward
         integrator->integrate(cluster);
 
-        // if(i == 2 * burn_in_steps) {
-        //     printf("Adding ISST on step %i\n", i);
-        //     // set integrator to integrate with generalised infinite switch method
-        //     integrator->integrate_with_infinite_switch(giss);
-        // }
+        if(i == 2 * burn_in_steps) {
+            printf("Adding ISST on step %i\n", i);
+            // set integrator to integrate with generalised infinite switch method
+            integrator->integrate_with_infinite_switch(giss);
+        }
 
         // double F1 = 0.0;
         // double F2 = 0.0;

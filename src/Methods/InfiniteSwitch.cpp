@@ -1,4 +1,6 @@
 #include "InfiniteSwitch.hpp"
+#include <algorithm>
+#include <numeric>
 
 using namespace::std;
 
@@ -76,7 +78,7 @@ void InfiniteSwitch::apply_force_rescaling_all()
         // add to the rescaling of the force
         particle.second->f += grad * kT * lambda_bar;
 
-        if(particle.second->rigid_body() == true) {            
+        if(particle.second->rigid_body() == true) {
             particle.second->tau += get_collective_grad_rot(particle.second) *
                                         kT * lambda_bar;
         }
@@ -117,6 +119,9 @@ double InfiniteSwitch::calculate_lambda_bar()
 
     double theta = get_collective();
 
+    vector<double> lbar_u(nint, 0.0);
+    vector<double> lbar_l(nint, 0.0);
+
     for(unsigned i=0; i<nint; i++) {
         // version one
         // // either of these will work, first should increase stability
@@ -131,19 +136,38 @@ double InfiniteSwitch::calculate_lambda_bar()
         // // omega_weight[i] * gauss_weight[i] * lambda[i],
         // // lambda[i] * theta);
         // //
-        // // printf("measure[%i] = %f\n", i, measure);
+        // printf("%i exp[%f]\n", i, lambda[i] * theta + log(omega_weight[i] * gauss_weight[i] * lambda[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
         // lambda_bar_upper += gauss_weight[i] * lambda[i] * measure;
         // lambda_bar_lower += gauss_weight[i] * measure;
 
-        lambda_bar_upper += exp(lambda[i] * theta + log(omega_weight[i] * gauss_weight[i] * lambda[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
-        lambda_bar_lower += exp(lambda[i] * theta + log(omega_weight[i] * gauss_weight[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
+        // lambda_bar_upper += exp(lambda[i] * theta + log(omega_weight[i] * gauss_weight[i] * lambda[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
+        // lambda_bar_lower += exp(lambda[i] * theta + log(omega_weight[i] * gauss_weight[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
+
+        lbar_u[i] = exp(lambda[i] * theta + log(omega_weight[i] * gauss_weight[i] * lambda[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
+        lbar_l[i] = exp(lambda[i] * theta + log(omega_weight[i] * gauss_weight[i]) - (lambda[0] * theta + log(omega_weight[0] * gauss_weight[0] * lambda[0])));
     }
+
+    // sort in ascending order
+    sort(lbar_u.begin(), lbar_u.end());
+    sort(lbar_l.begin(), lbar_l.end());
+
+    double su = 0.0;
+    double sl = 0.0;
+
+    accumulate(lbar_u.begin(), lbar_u.end(), su);
+    accumulate(lbar_l.begin(), lbar_l.end(), sl);
+
+    double upper = log(lbar_u[nint-1]) + log(1.0 + su / lbar_u[nint-1]);
+    double lower = log(lbar_l[nint-1]) + log(1.0 + sl / lbar_l[nint-1]);
+
 
     // exit(-1);
 
-    // printf("rescale: \t%f\n", lambda_bar_upper / lambda_bar_lower);
+    // printf("rescale: %e, (trick) %e\n", lambda_bar_upper / lambda_bar_lower, exp(upper - lower));
+    // printf("(trick) %e\n",exp(upper - lower));
 
-    return lambda_bar_upper / lambda_bar_lower;
+    // return lambda_bar_upper / lambda_bar_lower;
+    return exp(upper - lower);
 }
 
 // update the hull estimate
@@ -170,22 +194,37 @@ void InfiniteSwitch::update_hull()
 
     for(unsigned i=0; i<nint; i++) {
         // holder for value
-        double value = 0.0;
+        // double value = 0.0;
+
+        vector<double> v(nint, 0.0);
 
         // inner loop over all the points
         for(unsigned j=0; j<nint; j++) {
 
-            // value += gauss_weight[j] * omega_weight[j]
-            //                 * exp((lambda[j] - lambda[i]) * theta);
-            value += exp((lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
-            // printf("\texp(%f)\n", (lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
-            // value += (lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]);
-            // printf("\t%f\n", (lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
-            // printf("\texp(%f)\n", (lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
+
+            // good for large distance between end points
+            // value += exp((lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
+
+            // value += gauss_weight[j] * omega_weight[j] * exp((lambda[j] - lambda[i]) * theta);
+            // printf("\t %i exp[%f]\n", i, (lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
+
+            v[j] = exp((lambda[j] - lambda[i]) * theta + log(gauss_weight[j] * omega_weight[j]));
         }
 
+        // sort in ascending order
+        sort(v.begin(), v.end());
+
+        double s = 0.0;
+
+        accumulate(v.begin(), v.end(), s);
+
+        double value2 = log(v[nint-1]) + log(1.0 + s/v[nint-1]);
+
+        // printf("value = %e, value(trick) = %e\n", value, exp(value2));
+        // printf("value(trick) = %e\n", exp(-value2));
         // printf("---- value[%d] %e\n", i, 1.0 / value);
-        hull_estimate[i].observe(1.0 / value);
+        // hull_estimate[i].observe(1.0 / value);
+        hull_estimate[i].observe(exp(-value2));
     }
     // exit(-1);
 }

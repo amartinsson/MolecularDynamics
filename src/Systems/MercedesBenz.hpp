@@ -36,6 +36,7 @@ private:
 
     // Gaussian function
     double G(const double& x);
+    double dG(const double& x);
 };
 
 #endif

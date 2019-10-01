@@ -9,13 +9,16 @@ InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
     Molecule* molecule_pt, const double& T_min, const double& T_max,
         const unsigned& nint, const double& time_step, const double& tau)
     : InfiniteSwitch(molecule_pt, 1.0/T_min-1.0/T_min, 1.0/T_min-1.0/T_max,
-            nint, time_step/tau)
+            nint, time_step/tau), BaseRef(0.0)
 {
     // initialize the collective variables
     this->initialize_collecivet_variable();
 
     // initialize the force
-    InfiniteSwitch::initialize_force();
+    // InfiniteSwitch::initialize_force();
+
+    // BaseRef = get_collective();
+    // printf("using baseref in ISST: %e\n", BaseRef);
 }
 
 void InfiniteSwitchSimulatedTempering::initialize_collecivet_variable()
@@ -39,7 +42,14 @@ Matrix InfiniteSwitchSimulatedTempering
 }
 
 double InfiniteSwitchSimulatedTempering::get_collective() {
-    return *collective_pt;
+
+    if(BaseRef == 0.0) {
+        BaseRef = (*collective_pt);
+        printf("using baseref in ISST: %e\n", BaseRef);
+    }
+
+    // return *collective_pt;
+    return *collective_pt - BaseRef;
 }
 
 Matrix InfiniteSwitchSimulatedTempering::get_collective_virial_grad() {
