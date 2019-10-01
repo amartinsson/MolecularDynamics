@@ -2,7 +2,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
-#include <mpi.h>
+// #include <mpi.h>
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
@@ -26,15 +26,15 @@ using namespace::std;
 int main(int argc, char* argv[])
 {
     // Initialize the MPI environment
-    MPI_Init(NULL, NULL);
+    // MPI_Init(NULL, NULL);
 
     // Get the number of processes
-    int world_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    int world_size = 0;
+    // MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // Get the rank of the process
-    int world_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    int world_rank = 0;
+    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     printf("Hello from process %d\n", world_rank);
 
     // parameters
@@ -327,12 +327,12 @@ int main(int argc, char* argv[])
     // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp,
     //                             temp_max, nint, time_step, 1.0);
 
-    InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
-            &integrator->npt_obj(), pressure_min, target_pressure, nint,
-                time_step, 1.0);
+    // InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
+    //         &integrator->npt_obj(), pressure_min, target_pressure, nint,
+    //             time_step, 1.0);
     //
     // set integrator to integrate with generalised infinite switch method
-    integrator->integrate_with_infinite_switch(giss);
+    // integrator->integrate_with_infinite_switch(giss);
 
     for(unsigned i=0; i<number_of_steps; i++)
     {
@@ -483,9 +483,9 @@ int main(int argc, char* argv[])
         integrator->grid_obj().Radial_pt->print("rdist", 0.0,
                                        control_number + world_rank);
     // have mpi process wait if it blew up
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     // Finalize the MPI environment.
-    MPI_Finalize();
+    // MPI_Finalize();
 
 } // end main
