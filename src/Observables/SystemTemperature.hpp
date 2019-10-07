@@ -26,6 +26,13 @@ public:
     // update the temperature -- can be overridden by other temperatures
     void update_temperature();
 
+    void reset(const int& recf, const int& rect) {
+
+        SystemObservable::reset(recf, rect);
+
+        Temp->clear();
+    }
+
 protected:
     // local pointer to molecule object
     Molecule* system;

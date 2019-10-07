@@ -36,6 +36,15 @@ public:
     double get_average();
     // get instant
     double get_instant();
+    // reset
+    void reset(const int& recf, const int& rect) {
+
+        SystemObservable::reset(recf, rect);
+
+        number_density->clear();
+
+        radialDist.clear();
+    }
 
 private:
     // observation for radial distribution

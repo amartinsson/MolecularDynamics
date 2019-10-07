@@ -37,6 +37,24 @@ void SystemEnergy::update() {
     }
 }
 
+// update only for potential energy
+void SystemEnergy::update_potential() {
+    if(recStep()) {
+        // get potential energy and Kinetic energy
+        double V = molecule_pt->potential();
+
+        // add this to observation
+        Energy->observe(V);
+    }
+}
+
+void SystemEnergy::reset(const int& recf, const int& rect) {
+
+    SystemObservable::reset(recf, rect);
+
+    Energy->clear();
+}
+
 // calculate the kinetic energy
 double SystemEnergy::kinetic() {
     // holder for kinetic energy

@@ -24,6 +24,9 @@ public:
     double get_average();
     // update function
     void update();
+    void update_potential();
+    // reset
+    void reset(const int& recf, const int& rect);
 
 protected:
     // private momentum temperature

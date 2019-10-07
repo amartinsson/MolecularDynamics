@@ -28,6 +28,15 @@ public:
     virtual double get_average()=0;
     // get the instant value
     virtual double get_instant()=0;
+    // reset
+    void reset(const int& Recf, const int& Rect)
+    {
+        RecFreq = Recf;
+        RecThresh = Rect;
+
+        RecCount = 0;
+        RecTotCount = 0;
+    }
 
 
 protected:

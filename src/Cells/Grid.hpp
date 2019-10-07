@@ -56,6 +56,8 @@ public:
     void set_to_calculate_sphere_order_param(Molecule* molecule_pt,
                                              const int& lmax,
                                              const double& cutoff);
+    // set the intial condition to be hexagonal
+    void set_particles_hexagonal(Molecule* molecule_pt);
     // access to observables
     SystemTemperature* Temperature_pt;
     SystemVolume* Volume_pt;

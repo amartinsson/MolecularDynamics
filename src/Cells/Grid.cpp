@@ -582,9 +582,11 @@ for(int i=0; i<particles_in_dir; i++) // x ditection
                     particle->q(0) = double(i) * separation_in_x
                                         + 0.5 * separation_in_x
                                         + (k % 2 == 0) * 0.5 * separation_in_x;
+
                     particle->q(1) = double(j) * separation_in_y
                                         + 0.5 * separation_in_y
                                         + (i % 2 == 0) * 0.5 * separation_in_y;
+
                     if(particle->q.size() > 2)
                         particle->q(2) = double(k) * separation_in_z
                                             + 0.5 * separation_in_z;
@@ -630,6 +632,76 @@ for(int i=0; i<particles_in_dir; i++) // x ditection
             }
         }
 }
+
+// set the initialcondition as hexagonal grid
+void Grid::set_particles_hexagonal(Molecule* molecule_pt)
+{
+    int particles_in_dir = (int)ceil(pow(number_of_particles, 1.0 / 2));
+
+    // hexagonal separation
+    double separation_in_x = S(0,0) / (1.5 * double(particles_in_dir));
+    double separation_in_y = S(1,1) / double(particles_in_dir);
+
+    // particle counter
+    unsigned pc = 0;
+
+    // loop over each direction
+  for(int i=0; i<particles_in_dir; i++) {
+
+      double xpos = 0.0;
+
+      for(int j=0; j<particles_in_dir; j++) {
+          if(pc < number_of_particles) {
+
+              // derefernce the particle
+              Particle* particle = &molecule_pt->particle(pc);
+
+              if(i % 2 == 0) { // even rows
+                  // if even add 2 - given that j != 0
+                  // if odd add 1 - given that j != 0
+
+                  xpos += 2.0 * separation_in_x * (j % 2 == 0 && j != 0) + separation_in_x * (j % 2 != 0 && j != 0);
+                  
+                  particle->q(0) = separation_in_x + xpos;
+              }
+              else { // uneven rows
+                  // if even add 1 - given that j != 0
+                  // if odd add 2 - given that j != 0
+
+                  xpos += separation_in_x * (j % 2 == 0 && j != 0) + 2.0 * separation_in_x * (j % 2 != 0 && j != 0);
+
+                  particle->q(0) = 0.5 * separation_in_x + xpos;
+
+              }
+
+              particle->q(1) = 0.5 * separation_in_y + i * separation_in_y;
+
+              if(particle->rigid_body() != false)
+              {
+                  double alpha = 0.0;
+
+                  // rotate only uneven particles
+                  if(j % 2 == 0)
+                  {
+                      if(i % 2 != 0 && i != 0)
+                          alpha = M_PI/3.0;
+                  }
+                  else if(j % 2 == 1)
+                  {
+                      if(i % 2 == 0)
+                          alpha = M_PI/3.0;
+                  }
+                  // set rotation
+                  RotMatrix Rot(alpha);
+                  particle->Q = Rot;
+              }
+
+              pc++;
+          }
+      }
+  }
+}
+
 
 // update the position of all the particles on the grid
 void Grid::update_particles_on_grid()

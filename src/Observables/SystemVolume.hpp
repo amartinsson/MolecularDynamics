@@ -24,6 +24,12 @@ public:
     double get_average();
     // update function
     void update();
+    // reset
+    void reset(const int& recf, const int& rect) {
+        SystemObservable::reset(recf, rect);
+
+        Volume->clear();
+    }
 
 private:
     // private momentum temperature

@@ -113,3 +113,8 @@ double HistObservable::get_lower_bin(const int& i)
 
     return lower;
 }
+
+void HistObservable::clear()
+{
+    gsl_histogram_reset(histogram);
+}

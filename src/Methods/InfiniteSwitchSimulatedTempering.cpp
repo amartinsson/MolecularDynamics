@@ -54,4 +54,5 @@ double InfiniteSwitchSimulatedTempering::get_collective() {
 
 Matrix InfiniteSwitchSimulatedTempering::get_collective_virial_grad() {
     return npt_pt->virial.neg();
+    // return npt_pt->virial;
 }

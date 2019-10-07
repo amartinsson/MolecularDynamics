@@ -83,17 +83,21 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
     //
     //       // derivative terms
     //       Vector p(2);
-    //       p(0) = -pow(dr(1), 2.0) * pow(r, -3.0);
-    //       p(1) = dr(0) * dr(1) * pow(r, -3.0);
+    //       // p(0) = -pow(dr(1), 2.0) * pow(r, -3.0);
+    //       // p(1) = dr(0) * dr(1) * pow(r, -3.0);
+    //       p(0) = (pow(u(0), 2.0) - 1.0) / r;
+    //       p(1) = u(0) * u(1) / r;
     //       dhi_dx(i) = arm.dot(p);
     //
-    //       p(0) = dr(0) * dr(1) * pow(r, -3.0);
-    //       p(1) = -pow(dr(0), 2.0) * pow(r, -3.0);
+    //       // p(0) = dr(0) * dr(1) * pow(r, -3.0);
+    //       // p(1) = -pow(dr(0), 2.0) * pow(r, -3.0);
+    //       p(0) = u(0) * u(1) / r;
+    //       p(1) = (pow(u(1), 2.0) - 1.0) / r;
     //       dhi_dy(i) = arm.dot(p);
     //
     //       // log arm
-    //       armi(i,0) = arm(0);
-    //       armi(i,1) = arm(1);
+    //       armi(i, 0) = arm(0);
+    //       armi(i, 1) = arm(1);
     //
     //       // particle j
     //       arme(0) = particle_j->arm(i,0);
@@ -106,17 +110,21 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
     //       h_j(i) = arm.dot(u);
     //
     //       // derivative terms
-    //       p(0) = pow(dr(1), 2.0) * pow(r, -3.0);
-    //       p(1) = -dr(0) * dr(1) * pow(r, -3.0);
+    //       p(0) = (pow(u(0), 2.0) - 1.0) / r;
+    //       p(1) = u(0) * u(1) / r;
+    //       // p(0) = pow(dr(1), 2.0) * pow(r, -3.0);
+    //       // p(1) = -dr(0) * dr(1) * pow(r, -3.0);
     //       dhj_dx(i) = arm.dot(p);
     //
-    //       p(0) = -dr(0) * dr(1) * pow(r, -3.0);
-    //       p(1) = pow(dr(0), 2.0) * pow(r, -3.0);
+    //       p(0) = u(0) * u(1) / r;
+    //       p(1) = (pow(u(1), 2.0) - 1.0) / r;
+    //       // p(0) = -dr(0) * dr(1) * pow(r, -3.0);
+    //       // p(1) = pow(dr(0), 2.0) * pow(r, -3.0);
     //       dhj_dy(i) = arm.dot(p);
     //
     //       // log arm
-    //       armj(i,0) = arm(0);
-    //       armj(i,1) = arm(1);
+    //       armj(i, 0) = arm(0);
+    //       armj(i, 1) = arm(1);
     //   }
     //
     //   // calculate forces in each direction
@@ -136,15 +144,58 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
     //                  + Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * dhj_dy(l);
     //
     //         // rotational forces
-    //         dV_dQi(0,0) += Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * dG(h_i(k) - 1.0) * armi(k, 0) * u(0);
-    //         dV_dQi(0,1) += Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * dG(h_i(k) - 1.0) * armi(k, 0) * u(1);
-    //         dV_dQi(1,0) += Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * dG(h_i(k) - 1.0) * armi(k, 1) * u(0);
-    //         dV_dQi(1,1) += Epsilon_HB * G(r - R_HB) * G(h_j(l) + 1.0) * dG(h_i(k) - 1.0) * armi(k, 1) * u(1);
+    //         Vector armk(2);
+    //         Vector arml(2);
     //
-    //         dV_dQj(0,0) += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * armj(l, 0) * u(0);
-    //         dV_dQj(0,1) += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * armj(l, 0) * u(1);
-    //         dV_dQj(1,0) += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * armj(l, 1) * u(0);
-    //         dV_dQj(1,1) += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * armj(l, 1) * u(1);
+    //         armk(0) = armi(k, 0);
+    //         armk(1) = armi(k, 1);
+    //
+    //         arml(0) = armj(l, 0);
+    //         arml(1) = armj(l, 1);
+    //
+    //         Matrix Q(2,2);
+    //
+    //         // ------------------------------------------------------ particle i
+    //         // (0, 0)
+    //         Q(0,0) = 1.0;
+    //         dV_dQi(0,0) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+    //         Q(0,0) = 0.0;
+    //
+    //         // (0, 1)
+    //         Q(0,1) = 1.0;
+    //         dV_dQi(0,1) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+    //         Q(0,1) = 0.0;
+    //
+    //         // (1, 0)
+    //         Q(1,0) = 1.0;
+    //         dV_dQi(1,0) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+    //         Q(1,0) = 0.0;
+    //
+    //         // (1, 1)
+    //         Q(1,1) = 1.0;
+    //         dV_dQi(1,1) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+    //         Q(1,1) = 0.0;
+    //
+    //         // ------------------------------------------------------ particle j
+    //         // (0, 0)
+    //         Q(0,0) = 1.0;
+    //         dV_dQj(0,0) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+    //         Q(0,0) = 0.0;
+    //
+    //         // (0, 1)
+    //         Q(0,1) = 1.0;
+    //         dV_dQj(0,1) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+    //         Q(0,1) = 0.0;
+    //
+    //         // (1, 0)
+    //         Q(1,0) = 1.0;
+    //         dV_dQj(1,0) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+    //         Q(1,0) = 0.0;
+    //
+    //         // (1, 1)
+    //         Q(1,1) = 1.0;
+    //         dV_dQj(1,1) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+    //         Q(1,1) = 0.0;
     //
     //         #pragma omp atomic
     //         molecule_pt->potential() += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0);
@@ -156,8 +207,6 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
     // // this means that the foce is the negative of the gradient in this direction
     // F(0) -= dHB_dx;
     // F(1) -= dHB_dy;
-    // // F(0) += dHB_dx;
-    // // F(1) += dHB_dy;
     //
     // // add translational forces for particles
     // #pragma omp atomic
@@ -174,19 +223,24 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
     //
     // Matrix rest = particle_i->Q.T() * dV_dQi;
     // Matrix res = rest - rest.T();
-    // double tau_i = res(0,1);
+    //
+    //
+    // // printf("Q_i:\t%1.3e %1.3e\n\t%1.3e %1.3e\n", particle_i->Q(0,0), particle_i->Q(0,1), particle_i->Q(1,0), particle_i->Q(1,1));
+    // // printf("dV_dQi:\t%1.3e %1.3e\n\t%1.3e %1.3e\n", dV_dQi(0,0), dV_dQi(0,1), dV_dQi(1,0), dV_dQi(1,1));
+    // // printf("res:\t%1.3e %1.3e\n\t%1.3e %1.3e\n", res(0,0), res(0,1), res(1,0), res(1,1));
+    // double tau_i = res(0, 1);
     //
     // rest = particle_j->Q.T() * dV_dQj;
     // res = rest - rest.T();
-    // double tau_j = res(0,1);
+    // double tau_j = res(0, 1);
     //
     // // all ready accounted for the minus sign in the tau = - rot^-1(A - A^T)
     // // part of the force
     // #pragma omp atomic
-    // particle_i->tau(0,0) += tau_i;
+    // particle_i->tau(0,0) -= tau_i;
     //
     // #pragma omp atomic
-    // particle_j->tau(0,0) += tau_j;
+    // particle_j->tau(0,0) -= tau_j;
 
     // OLD STUFF !!!
     //------------------------------------------------------------------------

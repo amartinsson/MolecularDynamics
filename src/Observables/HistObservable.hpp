@@ -35,6 +35,8 @@ public:
     double get_pdf(const int& i);
     // get the lower bin
     double get_lower_bin(const int& i);
+    // clear the histogram
+    void clear();
 private:
     // gsl histogram structure
     gsl_histogram* histogram;

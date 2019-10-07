@@ -38,6 +38,23 @@ public:
     // get the mass of the grid
     double get_mass();
     double get_target_pressure() const {return target_pressure;}
+
+    void reset_target_pressure(const double& new_pressure,
+    const int& recf, const int& rect) {
+
+        // set the new target pressure
+        target_pressure = new_pressure;
+
+        // reset the observables
+        RecThres = rect;
+        RecFreq = recf;
+
+        Volume_pt->reset(RecFreq, RecThres);
+        Temperature_pt->reset(RecFreq, RecThres);
+        Pressure_pt->reset(RecFreq, RecThres);
+
+        Radial_pt->reset(RecFreq, RecThres);
+    };
     // enforces the relaative positoon of the particles
     void enforce_constant_relative_particle_pos(const Matrix& Sold);
     // returns the box force in direction i
@@ -57,7 +74,6 @@ public:
     Matrix nablaK;
     // tracking for average observables
     SystemPressure* Pressure_pt;
-
 
 private:
 
