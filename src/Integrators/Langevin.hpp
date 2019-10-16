@@ -144,9 +144,6 @@ private:
     double OstepCbox;
     double OstepZbox;
 
-    double Target_pressure;
-    double Npt_mass;
-
     NormalGenerator normal_gen;
 
     // class pointers

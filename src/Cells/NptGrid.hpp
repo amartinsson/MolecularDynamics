@@ -36,7 +36,7 @@ public:
     // position given by q tilde
     void set_box_momentum(const Vector& p_tilde, Particle& particle);
     // get the mass of the grid
-    double get_mass();
+    double get_mass() const {return box_mass;}
     double get_target_pressure() const {return target_pressure;}
 
     void reset_target_pressure(const double& new_pressure,

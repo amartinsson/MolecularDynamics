@@ -48,9 +48,6 @@ Langevin::~Langevin()
     delete[] &OstepCbox;
     delete[] &OstepZbox;
 
-    delete &Target_pressure;
-    delete &Npt_mass;
-
     delete &With_grid;
     delete &With_npt;
 
@@ -73,7 +70,9 @@ void Langevin::A_1_NPT(const double& h)
     // make references
     Matrix Sold = NptGrid_pt->S;
 
-    NptGrid_pt->S += NptGrid_pt->Sp * (h / Npt_mass);
+    double npt_mass = NptGrid_pt->get_mass();
+
+    NptGrid_pt->S += NptGrid_pt->Sp * (h / npt_mass);
 
     // need to rescale the particles such that they are
     // in the same position with repsect to the cell
@@ -135,9 +134,11 @@ void Langevin::B_NPT_box(const double& h)
     Matrix Sd = NptGrid_pt->S;
     double det = NptGrid_pt->S.det();
 
+    double Target_Pressure = NptGrid_pt->get_target_pressure();
+
     Sd = Sd.inv().off_diag_zero();
 
-    NptGrid_pt->Sp -= (NptGrid_pt->virial + Sd * det * Target_pressure) * h;
+    NptGrid_pt->Sp -= (NptGrid_pt->virial + Sd * det * Target_Pressure) * h;
 }
 
 NptGrid& Langevin::npt_obj() {
@@ -269,12 +270,13 @@ void Langevin::O_NPT_box()
 {
     // get the dimension of momentum
     int dim = NptGrid_pt->Sp.size()[0];
+    double npt_mass = NptGrid_pt->get_mass();
 
     // make an upper triangular random matrix
     Matrix N(dim, dim, normal_gen);
 
     NptGrid_pt->Sp = NptGrid_pt->Sp * OstepCbox
-                    + N * OstepZbox * sqrt(Npt_mass);
+                    + N * OstepZbox * sqrt(npt_mass);
 }
 
 // Integrator function
@@ -309,8 +311,7 @@ void Langevin::integrate_with_npt_grid(const Matrix& Szero,
 {
     // set parameters
     With_npt = true;
-    Target_pressure = target_press;
-    Npt_mass = mass;
+    // Target_pressure = target_press;
     GammaNpt = gamma_npt;
     // make new npt grid
     NptGrid_pt = new NptGrid(Szero, cut_off, molecule_pt, mass,

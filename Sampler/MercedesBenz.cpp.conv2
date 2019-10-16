@@ -5,7 +5,7 @@
 // bmass =15
 // S_x = 23
 // nparticles = 256
-// blan = 5.0
+// blan = 10.0
 
 
 
@@ -27,7 +27,7 @@
 #include "SystemTrajectory.hpp"
 #include "SystemTemperature.hpp"
 #include "SystemEnergy.hpp"
-#include "SystemPotentialEnergy.hpp"
+#include "SystemPotentialEnergy.hpp"experiments so I'll have 
 #include "SystemConfigurationalTemperature.hpp"
 #include "ISObservable.hpp"
 #include "DISObservable.hpp"
@@ -280,6 +280,8 @@ int main(int argc, char* argv[])
 
         traj.print_positions("frame", i/write_frequency);
         traj.print_simbox("simbox", i/write_frequency);
+
+        // exit(-1);
 
         // if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
         if(i % write_frequency == 0 && i > burn_in_steps)
