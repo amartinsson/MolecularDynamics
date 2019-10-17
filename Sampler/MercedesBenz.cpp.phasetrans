@@ -276,9 +276,7 @@ int main(int argc, char* argv[])
             // update the energy
             energy.update_potential();
 
-
-            // if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
-            if(i > burn_in_steps)
+            if(i % write_frequency == 0 && i > burn_in_steps)
             {
                 double time_stamp = TIME * double(i - burn_in_steps) / double(number_of_steps);
 
@@ -306,7 +304,7 @@ int main(int argc, char* argv[])
         // print the distribution function
         integrator->npt_obj().Radial_pt->print("rdist", 0.0, press);
 
-        // decrease the number of steps per pressure
+        // set the burn_in to zero
         if(press == 0) {
             burn_in_steps = 0;
         }
