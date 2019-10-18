@@ -462,34 +462,19 @@ void Langevin::A_rot(Particle &particle, const double& h)
     double I = 0.0;
     double alpha = 0.0;
 
+    // calculate the new angle
     pi = particle.pi(0,0);
     I = particle.I(0,0);
     alpha = h * pi / I;
 
-    // printf("ERROR: NEED TO CHECK THAT THIS IS CORRECT -- ARE THEY SPINNING IN THE RIGHT DIRECTION\n");
-    // exit(-1);
-
+    // make rotation matrix
     RotMatrix R(alpha);
 
-    // printf("R(%1.3f):\t%2.3f, %2.3f\n", alpha, R(0,0), R(0,1));
-    // printf("\t%2.3f, %2.3f\n", R(1,0), R(1,1));
-    // clockwise spinning:
-    // R^T * Q
-    // anti-clockwise spinning:
-    // R * Q
-
     // multiply matrices together
-    // Matrix Q_np1 = R.T() * particle.Q;
     Matrix Q_np1 = particle.Q * R.T();
-    // Matrix Q_np1 = R * particle.Q;
 
-    // printf("Q was:\t%2.3f, %2.3f\n", particle.Q(0,0), particle.Q(0,1));
-    // printf("\t%2.3f, %2.3f\n", particle.Q(1,0), particle.Q(1,1));
-
+    // update the Q matrix
     particle.Q = Q_np1;
-
-    // printf("\tQ new:\t%2.3f, %2.3f\n", particle.Q(0,0), particle.Q(0,1));
-    // printf("\t\t%2.3f, %2.3f\n", particle.Q(1,0), particle.Q(1,1));
 }
 
 void Langevin::B_rot(Particle& particle, const double& h)
@@ -512,29 +497,6 @@ bool Langevin::cell_blow_up()
     if(With_npt)
         if(state != NptGrid_pt->break_experiment)
             state = NptGrid_pt->break_experiment;
-            // printf("With npt grid is %d \n", With_npt);
-// printf("detecting %d\n",  state != NptGrid_pt->break_experiment);
-    // check for blow up event
-
-    // if(With_grid)
-    //     if(state != Grid_pt->break_experiment)
-    //     {
-    //         state = Grid_pt->break_experiment;
-    //     }
-    // else if(With_npt)
-    // {
-    //     printf("Got Here %d \n");
-    //     // printf("state was set to %d from %d\n", state, NptGrid_pt->break_experiment);
-    //     // if(state != NptGrid_pt->break_experiment)
-    //     // {
-    //     //     state = NptGrid_pt->break_experiment;
-    //     // }
-    // }
-    // else
-    // {
-    //     printf("Error: Calling unnessecary function");
-    //     exit(-1);
-    // }
 
     // return the state
     return state;

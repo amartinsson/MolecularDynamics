@@ -284,10 +284,6 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
       // unit vector in r direction
       Vector u = dr / r;
 
-      // arms for each particle
-      Matrix armi = particle_i->arm;
-      Matrix armj = particle_j->arm;
-
       // make the h vecors
       Vector h_i(3);
       Vector h_j(3);
@@ -304,9 +300,12 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
 
       #pragma omp simd collapse(1)
       for(unsigned i=0; i<3; i++) {
-          // particle i
+
+          // holders for rotated arm and unrotated arm
           Vector arm(2);
           Vector arme(2);
+
+          // particle i
           arme(0) = particle_i->arm(i,0);
           arme(1) = particle_i->arm(i,1);
 
@@ -327,10 +326,6 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
           p(1) = (pow(u(1), 2.0) - 1.0) / r;
           dhi_dy(i) = arm.dot(p);
 
-          // log arm
-          armi(i, 0) = arm(0);
-          armi(i, 1) = arm(1);
-
           // particle j
           arme(0) = particle_j->arm(i,0);
           arme(1) = particle_j->arm(i,1);
@@ -349,10 +344,6 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
           p(0) = u(0) * u(1) / r;
           p(1) = (pow(u(1), 2.0) - 1.0) / r;
           dhj_dy(i) = arm.dot(p);
-
-          // log arm
-          armj(i, 0) = arm(0);
-          armj(i, 1) = arm(1);
       }
 
       // calculate forces in each direction
@@ -375,58 +366,67 @@ Vector MercedesBenz::compute_force(Molecule* molecule_pt,
             Vector armk(2);
             Vector arml(2);
 
-            armk(0) = armi(k, 0);
-            armk(1) = armi(k, 1);
+            armk(0) = particle_i->arm(k, 0);
+            armk(1) = particle_i->arm(k, 1);
 
-            arml(0) = armj(l, 0);
-            arml(1) = armj(l, 1);
+            arml(0) = particle_j->arm(l, 0);
+            arml(1) = particle_j->arm(l, 1);
 
             Matrix Q(2,2);
 
             // ------------------------------------------------------ particle i
             // (0, 0)
             Q(0,0) = 1.0;
-            dV_dQi(0,0) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+            dV_dQi(0,0) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0)
+                * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
             Q(0,0) = 0.0;
 
             // (0, 1)
             Q(0,1) = 1.0;
-            dV_dQi(0,1) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+            dV_dQi(0,1) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0)
+                * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
             Q(0,1) = 0.0;
 
             // (1, 0)
             Q(1,0) = 1.0;
-            dV_dQi(1,0) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+            dV_dQi(1,0) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0)
+                * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
             Q(1,0) = 0.0;
 
             // (1, 1)
             Q(1,1) = 1.0;
-            dV_dQi(1,1) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0) * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
+            dV_dQi(1,1) +=  Epsilon_HB * G(r - R_HB) * dG(h_i(k) - 1.0)
+                * G(h_j(l) + 1.0) * (Q.T() * armk).dot(u);
             Q(1,1) = 0.0;
 
             // ------------------------------------------------------ particle j
             // (0, 0)
             Q(0,0) = 1.0;
-            dV_dQj(0,0) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+            dV_dQj(0,0) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0)
+                * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
             Q(0,0) = 0.0;
 
             // (0, 1)
             Q(0,1) = 1.0;
-            dV_dQj(0,1) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+            dV_dQj(0,1) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0)
+                * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
             Q(0,1) = 0.0;
 
             // (1, 0)
             Q(1,0) = 1.0;
-            dV_dQj(1,0) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+            dV_dQj(1,0) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0)
+                * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
             Q(1,0) = 0.0;
 
             // (1, 1)
             Q(1,1) = 1.0;
-            dV_dQj(1,1) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
+            dV_dQj(1,1) +=  Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0)
+                * dG(h_j(l) + 1.0) * (Q.T() * arml).dot(u);
             Q(1,1) = 0.0;
 
             #pragma omp atomic
-            molecule_pt->potential() += Epsilon_HB * G(r - R_HB) * G(h_i(k) - 1.0) * G(h_j(l) + 1.0);
+            molecule_pt->potential() += Epsilon_HB * G(r - R_HB)
+                * G(h_i(k) - 1.0) * G(h_j(l) + 1.0);
           }
       }
 

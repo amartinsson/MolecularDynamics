@@ -661,7 +661,7 @@ void Grid::set_particles_hexagonal(Molecule* molecule_pt)
                   // if odd add 1 - given that j != 0
 
                   xpos += 2.0 * separation_in_x * (j % 2 == 0 && j != 0) + separation_in_x * (j % 2 != 0 && j != 0);
-                  
+
                   particle->q(0) = separation_in_x + xpos;
               }
               else { // uneven rows

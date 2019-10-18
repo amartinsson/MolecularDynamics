@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
     double temp = 0.1;
 
     double momIntertia = 0.01126;
+    // double momIntertia = 0.001126;
 
     double sx = 30.0;
     double sy = 30.0;
@@ -202,12 +203,14 @@ int main(int argc, char* argv[])
                                           temp, number_of_particles, dimension);
 
     // Make a Mercedes Benz Force solver
-    // double epsilon = 0.1; // used in the MB paper
-    double epsilon = 0.4; // used in the best paper
     double sigma = 0.7;
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
     double r_hb = 1.0;
+    double epsilon = 0.4 * fabs(epsilon_hb);
+    // double epsilon = -0.1;
+    // double epsilon = 0.1; // used in the MB paper
+    // double epsilon = 0.4; // used in the best paper
 
     System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb, sigma_hb, r_hb);
 
@@ -242,6 +245,10 @@ int main(int argc, char* argv[])
     // set the particles on a hexagonal grid
     integrator->npt_obj().set_particles_hexagonal(cluster);
 
+    traj.print_positions("frame", 0);
+    traj.print_simbox("simbox", 0);
+    // exit(-1);
+
     for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
     {
         // integrate forward
@@ -261,19 +268,21 @@ int main(int argc, char* argv[])
         }
 
 
-        // double tForceX = 0.0;
-        // double tForceY = 0.0;
+        double tForceX = 0.0;
+        double tForceY = 0.0;
+
+        double tTau = 0.0;
+
+        for(auto& particle : cluster->Particles) {
+            tForceX += particle.second->f(0);
+            tForceX += particle.second->f(1);
+
+            tTau += particle.second->tau(0,0);
+        }
+
+        printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
         //
-        // double tTau = 0.0;
-        //
-        // for(auto& particle : cluster->Particles) {
-        //     tForceX += particle.second->f(0);
-        //     tForceX += particle.second->f(1);
-        //
-        //     tTau += particle.second->tau(0,0);
-        // }
-        //
-        // // printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
+        // printf("Particle 0 = [%1.3e, %1.3e]\n", cluster->particle(0).f(0), cluster->particle(0).f(1));
 
         // update the energy
         energy.update_potential();
