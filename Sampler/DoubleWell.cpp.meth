@@ -208,6 +208,7 @@ int main(int argc, char* argv[])
     // integrator->integrate_with_sa(tmax, crate, number_of_steps, singelton);
     // Integrate with Simulated Tempering
     // integrator->integrate_with_st(tmin, tmax, 10, mod_switch, SEED);
+    // Integrate with Replica Exchange
     integrator->integrate_with_re(tmin, tmax, singelton, 10, 10, SEED+1);
 
     // make replica excange observable

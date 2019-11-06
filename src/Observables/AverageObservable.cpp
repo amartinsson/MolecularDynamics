@@ -60,3 +60,9 @@ double AverageObservable::get_variance()
     // return the variance
     return Average_sq - Average * Average;
 };
+
+// return the number of observations
+int AverageObservable::get_nobservations()
+{
+    return n_observs;
+};

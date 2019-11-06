@@ -16,6 +16,8 @@ void DoubleWell::compute_force(Molecule* molecule_pt) {
     for(auto& particle : molecule_pt->Particles) {
         // calculate the new force
         particle.second->f = get_force(particle.second->q);
+        // calculate the new laplacian
+        particle.second->laplace = get_laplace(particle.second->q);
 
         // add contribution to potential
         molecule_pt->potential() += get_potential(particle.second->q);

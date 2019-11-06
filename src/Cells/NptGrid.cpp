@@ -127,6 +127,11 @@ void NptGrid::enforce_relative_particle(const Matrix& Sold)
 
                     (*particle).q = qScale * (*particle).q;
                     (*particle).p = pScale * (*particle).p;
+
+                    // test enforce rotation of particle
+                    if((*particle).rigid_body()) {
+                        (*particle).Q = qScale * (*particle).Q;
+                    }
                 }
 }
 

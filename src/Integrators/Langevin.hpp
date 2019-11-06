@@ -11,6 +11,7 @@
 #include "InfiniteSwitchSimulatedTempering.hpp"
 #include "InfiniteSwitchSimulatedMagnetisation.hpp"
 #include "DoubleInfiniteSwitchMagTemp.hpp"
+#include "AdaptiveBiasingForce.hpp"
 #include "NptGrid.hpp"
 #include "Particle.hpp"
 #include "SimulatedTempering.hpp"
@@ -38,6 +39,8 @@ public:
     void integrate_with_infinite_switch(InfiniteSwitch* scheme);
     // set to integrate with double infinite switch
     void integrate_with_double_infinite_switch(DoubleInfiniteSwitch* scheme);
+    // set tot integrate with AdaptiveBiasingForce
+    void integrate_with_abf(AdaptiveBiasingForce* scheme);
     // set with grid
     void integrate_with_grid(const Matrix& Szero, const double& cut_off,
                              Molecule* molecule_pt, const int& recf,
@@ -56,6 +59,7 @@ public:
     // return method objects
     InfiniteSwitch& is_obj();
     DoubleInfiniteSwitch& dis_obj();
+    AdaptiveBiasingForce& abf_obj();
 
     SimulatedTempering& st_obj();
     OngulatedTempering& ot_obj();
@@ -117,6 +121,7 @@ protected:
 
     bool with_is;
     bool with_dis;
+    bool with_abf;
     bool With_grid;
     bool With_npt;
 
@@ -150,6 +155,7 @@ private:
     System* System_pt;
     InfiniteSwitch* is_pt;
     DoubleInfiniteSwitch* dis_pt;
+    AdaptiveBiasingForce* abf_pt;
 
     Grid* Grid_pt;
     NptGrid* NptGrid_pt;

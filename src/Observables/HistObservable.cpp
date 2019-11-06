@@ -118,3 +118,16 @@ void HistObservable::clear()
 {
     gsl_histogram_reset(histogram);
 }
+
+// finds the index of the bi which x falls in
+int HistObservable::find_index(const double& x)
+{
+    size_t index;
+    // printf("Allocating %1.3e in Histogram\n", x);
+    if(gsl_histogram_find(histogram, x, &index)) {
+        printf("couldn't locate %1.3e in Histogram!\n",x);
+        exit(-1);
+    }
+
+    return index;
+}

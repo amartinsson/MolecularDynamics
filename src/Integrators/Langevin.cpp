@@ -157,6 +157,10 @@ DoubleInfiniteSwitch& Langevin::dis_obj() {
     return *dis_pt;
 }
 
+AdaptiveBiasingForce& Langevin::abf_obj() {
+    return *abf_pt;
+}
+
 SimulatedTempering& Langevin::st_obj() {
     return *St_pt;
 }
@@ -224,6 +228,10 @@ void Langevin::compute_force(Molecule* molecule_pt)
 
     if(with_dis) {
         dis_pt->apply_force_rescaling();
+    }
+
+    if(with_abf) {
+        abf_pt->apply_force_rescaling();
     }
 
     // // update the force for all the replicas
@@ -344,6 +352,13 @@ void Langevin::integrate_with_double_infinite_switch(DoubleInfiniteSwitch* schem
     with_dis = true;
 
     dis_pt = scheme;
+}
+
+void Langevin::integrate_with_abf(AdaptiveBiasingForce* scheme)
+{
+    with_abf = true;
+
+    abf_pt = scheme;
 }
 
 // set with simulation tempering

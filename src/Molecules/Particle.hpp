@@ -50,6 +50,7 @@ public:
     Vector p;
     Vector f;
     Matrix m;
+    double laplace;
 
     // rotation data
     Matrix Q;

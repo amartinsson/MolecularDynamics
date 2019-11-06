@@ -35,6 +35,8 @@ public:
     double get_pdf(const int& i);
     // get the lower bin
     double get_lower_bin(const int& i);
+    // find the index of the value x
+    int find_index(const double& x);
     // clear the histogram
     void clear();
 private:

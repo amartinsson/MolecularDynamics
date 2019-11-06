@@ -22,12 +22,14 @@ public:
     double get_instant();
     // return the variance of the observable
     double get_variance();
+    // return the number of observations
+    int get_nobservations();
 
-double n_observs;
 private:
     double Average;
     double Average_sq;
 
+    double n_observs;
     double instant_value;
 };
 
