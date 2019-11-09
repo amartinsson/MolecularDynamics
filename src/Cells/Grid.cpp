@@ -1002,7 +1002,7 @@ void Grid::read_position_initial(Molecule* molecule_pt,
 
       particle = &molecule_pt->particle(k);
 
-// printf("reading in: %f %f %f\n", parsed_row[0], parsed_row[1], parsed_row[2]);
+// printf("reading in: %f %f\n", parsed_row[0], parsed_row[1]);
       // set position
       particle->q(0) = parsed_row[0];
       particle->q(1) = parsed_row[1];

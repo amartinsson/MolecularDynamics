@@ -247,6 +247,7 @@ printf("about to read\n");
         sprintf(momentum, "dummy");
         integrator->npt_set_initial(cluster, position, momentum, volume);
 
+
         printf("Read in:\n\t%2.3f,%2.3f\n\t%2.3f,%2.3f\n",
         integrator->npt_obj().S(0,0), integrator->npt_obj().S(0,1), integrator->npt_obj().S(1,0), integrator->npt_obj().S(1,1));
     }
@@ -266,11 +267,12 @@ printf("about to read\n");
     SystemEnergy energy = SystemEnergy(cluster, write_frequency, burn_in_steps);
 
     // set the particles on a hexagonal grid
-    integrator->npt_obj().set_particles_hexagonal(cluster);
+    if(rebuild_bool == false) {
+        integrator->npt_obj().set_particles_hexagonal(cluster);
+    }
 
     traj.print_positions("frame", 0);
     traj.print_simbox("simbox", 0);
-    // exit(-1);
 
     for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
     {
