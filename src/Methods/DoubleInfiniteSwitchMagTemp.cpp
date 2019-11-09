@@ -9,10 +9,10 @@ DoubleInfiniteSwitchMagTemp::DoubleInfiniteSwitchMagTemp(Molecule* molecule_pt,
     const double& T_min, const double& T_max,
         const double& b_min, const double& b_max,
             const unsigned& nTint, const unsigned& nBint,
-                const double& time_step, const double& tau)
-    : DoubleInfiniteSwitch(molecule_pt, 1.0/T_min-1.0/T_min, 1.0/T_min-1.0/T_max,
+                const double& time_step, const double& tau, const double& T_ref)
+    : DoubleInfiniteSwitch(molecule_pt, 1.0/T_ref-1.0/T_min, 1.0/T_ref-1.0/T_max,
             b_min, b_max, nTint, nBint, time_step/tau),
-                dummy_gradient(molecule_pt->dim(), 1.0)
+                    dummy_gradient(molecule_pt->dim(), 1.0)
 {
     // initialize the collective variables
     this->initialize_collecivet_variables();
@@ -43,7 +43,7 @@ double  DoubleInfiniteSwitchMagTemp::get_collective_one()
 
 double  DoubleInfiniteSwitchMagTemp::get_collective_two()
 {
-    return *collective_two_pt;
+    return molecule_pt->nparticle() * (*collective_two_pt);
 }
 
 // get the gradient of the collective variables
@@ -55,5 +55,19 @@ Vector  DoubleInfiniteSwitchMagTemp::get_collective_grad_one(Particle* particle)
 
 Vector  DoubleInfiniteSwitchMagTemp::get_collective_grad_two(Particle* particle)
 {
-    return dummy_gradient;
+    // this is not correct, this is the derivative of the magnetisation w.r.t
+    // the angle. This means that the gradient should be \nabla_{\theta_i} m
+    // which is cosine: cosine of N * theta?
+
+    return dummy_gradient * (-1.0) * sin(particle->q(0))
+            * molecule_pt->nparticle();
+}
+
+double DoubleInfiniteSwitchMagTemp::get_mid_beta() {
+
+    double beta_mid = get_mid_lambda_one();
+
+    printf("getting mid beta = %f\n", beta_mid);
+
+    return beta_mid;
 }

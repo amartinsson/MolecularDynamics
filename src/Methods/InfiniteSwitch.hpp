@@ -53,6 +53,8 @@ protected:
     // initialize with NPT
     void initialize_with_npt();
 
+    double get_mid_lambda();
+
 private:
     // pointer to the potential
     const double* potential_pt;

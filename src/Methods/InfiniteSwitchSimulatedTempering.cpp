@@ -7,8 +7,9 @@ using namespace::std;
 //  *****************************************************************************/
 InfiniteSwitchSimulatedTempering::InfiniteSwitchSimulatedTempering(
     Molecule* molecule_pt, const double& T_min, const double& T_max,
-        const unsigned& nint, const double& time_step, const double& tau)
-    : InfiniteSwitch(molecule_pt, 1.0/T_min-1.0/T_min, 1.0/T_min-1.0/T_max,
+        const unsigned& nint, const double& time_step, const double& tau,
+        const double& T_ref)
+    : InfiniteSwitch(molecule_pt, 1.0/T_ref-1.0/T_min, 1.0/T_ref-1.0/T_max,
             nint, time_step/tau), BaseRef(0.0)
 {
     // initialize the collective variables
@@ -55,4 +56,13 @@ double InfiniteSwitchSimulatedTempering::get_collective() {
 Matrix InfiniteSwitchSimulatedTempering::get_collective_virial_grad() {
     return npt_pt->virial.neg();
     // return npt_pt->virial;
+}
+
+double InfiniteSwitchSimulatedTempering::get_mid_beta() {
+
+    double beta_mid = get_mid_lambda();
+
+    printf("getting mid beta = %f\n", beta_mid);
+
+    return beta_mid;
 }

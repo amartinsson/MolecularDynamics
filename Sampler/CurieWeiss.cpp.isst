@@ -41,6 +41,7 @@ int main(int argc, char* argv[])
     double qx = 0.0;
 
     double temp_max = 2.0;
+    double temp_min = temp;
     double b_max = 1.0;
 
   // cehck inouts
@@ -59,7 +60,14 @@ int main(int argc, char* argv[])
         {
             double arg_in = std::stod(arg2);
             temp = arg_in;
+            temp_min = temp;
             printf("temperature set to: %1.2f\n", temp);
+        }
+        else if(arg == "--temp_min")
+        {
+            double arg_in = std::stod(arg2);
+            temp_min = arg_in;
+            printf("min temperature set to: %1.2f\n", temp_min);
         }
         else if(arg == "--temp_max")
         {
@@ -73,7 +81,7 @@ int main(int argc, char* argv[])
             TIME  = arg_in;
             printf("Total Simulation Time set to: %.0d\n", TIME);
         }
-        else if(arg == "--ntemp")
+        else if(arg == "--nint")
         {
             unsigned arg_in = std::stod(arg2);
             nint  = arg_in;
@@ -205,10 +213,53 @@ int main(int argc, char* argv[])
     //         write_frequency, burn_in_steps);
     //     }
 
-    // ----------------- Double Infinite Switch Simulation -------------------//
-    DoubleInfiniteSwitch* diss = new DoubleInfiniteSwitchMagTemp(cluster, temp,
+    // // ----------------- Double Infinite Switch Simulation -------------------//
+    // DoubleInfiniteSwitch* diss = new DoubleInfiniteSwitchMagTemp(cluster, temp,
+    //                                 temp_max, -b_max, b_max, nint, nint,
+    //                                     time_step, isstTau);
+    //
+    // // integrate with double generalised infinite switch
+    // integrator->integrate_with_double_infinite_switch(diss);
+    //
+    // // set up for infinite switch magnet
+    // DisWeightObservable <MagnetisationObservable> isMagnet =
+    //     DisWeightObservable<MagnetisationObservable> (&integrator->dis_obj(),
+    //                                     magnet, write_frequency, burn_in_steps);
+    // // initialise all the observables
+    // for(unsigned i=0; i<nint; i++) {
+    //     for(unsigned j=0; j<nint; j++) {
+    //         isMagnet.obs[i][j] =
+    //             *new MagnetisationObservable(cluster, -1.0, 1.0, 100,
+    //                                          write_frequency, burn_in_steps);
+    //     }
+    // }
+
+    // // ----------------- Infinite Switch Simulation ------------------------- //
+    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
+    //                             temp_max, nint, time_step, isstTau, temp);
+    //
+    // // InfiniteSwitch* giss = new InfiniteSwitchSimulatedAppliedField(cluster,
+    // //                             -b_max, b_max, nint, time_step, isstTau);
+    //
+    // // set integrator to integrate with generalised infinite switch method
+    // integrator->integrate_with_infinite_switch(giss);
+    //
+    // // set up for isst observables
+    // IsWeightObservable <MagnetisationObservable> isMagnet =
+    //     IsWeightObservable<MagnetisationObservable> (&integrator->is_obj(),
+    //                                     magnet, write_frequency, burn_in_steps);
+    //
+    // // stupid work around because of deep copy issues
+    // for(unsigned i=0; i<nint; i++) {
+    //     isMagnet.obs[i] = *new MagnetisationObservable(cluster, -1.0, 1.0, 100,
+    //         write_frequency, burn_in_steps);
+    //     }
+
+
+    // ----------------- Double Infinite Switch Simulation ------------------ //
+    DoubleInfiniteSwitch* diss = new DoubleInfiniteSwitchMagTemp(cluster, temp_min,
                                     temp_max, -b_max, b_max, nint, nint,
-                                        time_step, isstTau);
+                                        time_step, isstTau, temp);
 
     // integrate with double generalised infinite switch
     integrator->integrate_with_double_infinite_switch(diss);

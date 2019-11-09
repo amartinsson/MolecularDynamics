@@ -18,13 +18,15 @@ class InfiniteSwitchSimulatedTempering : public InfiniteSwitch
 public:
     InfiniteSwitchSimulatedTempering(Molecule* molecule_pt,
         const double& T_min, const double& T_max,
-            const unsigned& nint, const double& time_step, const double& tau);
+            const unsigned& nint, const double& time_step, const double& tau,
+                const double& T_ref);
 
     // get the gradient of the particle
     double get_collective();
     Vector get_collective_grad(Particle* particle);
     Matrix get_collective_grad_rot(Particle* particle);
     Matrix get_collective_virial_grad();
+    double get_mid_beta();
 
 private:
     void initialize_collecivet_variable();

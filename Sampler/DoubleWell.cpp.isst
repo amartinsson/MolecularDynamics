@@ -6,9 +6,13 @@
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
 #include "DoubleWell.hpp"
+
 #include "InfiniteSwitchSimulatedTempering.hpp"
 #include "InfiniteSwitchSimulatedAppliedField.hpp"
 #include "SimulatedTempering.hpp"
+
+#include "AbfPotential.hpp"
+#include "AbfTilt.hpp"
 
 /* Observables to include */
 #include "SystemTrajectory.hpp"
@@ -48,6 +52,10 @@ int main(int argc, char* argv[])
     double b_max = 1.0;
 
     unsigned nint = 25;
+    int abf_threshold = 10;
+
+    double Vmin = 0.0;
+    double Vmax = 10.0;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -73,7 +81,7 @@ int main(int argc, char* argv[])
             temp_max = arg_in;
             printf("max temperature set to: %1.2f\n", temp_max);
         }
-        else if(arg == "--ntemp")
+        else if(arg == "--nint")
         {
             unsigned arg_in = std::stod(arg2);
             nint  = arg_in;
@@ -132,6 +140,24 @@ int main(int argc, char* argv[])
             b_max = arg_in;
             printf("max external field set to: %1.4f\n", b_max);
         }
+        else if(arg == "--abfthres")
+        {
+            int arg_in = std::stod(arg2);
+            abf_threshold = arg_in;
+            printf("abf threshold set to: %.0d\n", abf_threshold);
+        }
+        else if(arg == "--Vmin")
+        {
+            double arg_in = std::stod(arg2);
+            Vmin = arg_in;
+            printf("abf: Vmin set to: %1.2f\n", Vmin);
+        }
+        else if(arg == "--Vmax")
+        {
+            double arg_in = std::stod(arg2);
+            Vmax = arg_in;
+            printf("abf: Vmax set to: %1.2f\n", Vmax);
+        }
     }
 
     // calculate the number of steps
@@ -147,7 +173,7 @@ int main(int argc, char* argv[])
 
     // set mass and position
     m_0.diag(1.0);
-    // // q_0(0) = -1.0;
+    // q_0(0) = 1.0;
     // // q_0(1) = -1.0;
     // q_0(0) = 0.0;
     // q_0(1) = 0.0;
@@ -183,9 +209,12 @@ int main(int argc, char* argv[])
 
     double isstTau = 1.0;
 
-    // ----------------- Infinite Switch Simulation --------------------------//
+    // ----------------- Infinite Switch Simulation ------------------------- //
     InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(singelton, temp,
                                 temp_max, nint, time_step, isstTau);
+
+    // update the temperature, to be performed at the central temperature
+    // of the tempering scheme.
 
     // InfiniteSwitch* giss = new InfiniteSwitchSimulatedAppliedField(singelton,
     //                             -b_max, b_max, nint, time_step, isstTau);
@@ -206,7 +235,7 @@ int main(int argc, char* argv[])
     }
 
 
-    // // ----------------- Double Infinite Switch Simulation -------------------//
+    // // ----------------- Double Infinite Switch Simulation ------------------ //
     // DoubleInfiniteSwitch* diss = new DoubleInfiniteSwitchMagTemp(singelton, temp,
     //                                 temp_max, -b_max, b_max, nint, nint,
     //                                     time_step, isstTau);
@@ -226,9 +255,22 @@ int main(int argc, char* argv[])
     //     }
     // }
 
+    // ----------------- Adaptive Force Biasing Simulation ------------------ //
+    // AdaptiveBiasingForce* abf = new AbfPotential(singelton, Vmin, Vmax, nint,
+    //                                                 time_step, abf_threshold);
+    //
+    // AdaptiveBiasingForce* abf = new AbfTilt(singelton, Vmin, Vmax, nint,
+    //                                                 time_step, abf_threshold);
+
+    // set the integrator to integrate with abf
+    // integrator->integrate_with_abf(abf);
+
+    // -------------------------- Integration loop -------------------------- //
+
     for(unsigned i=0; i<number_of_steps; i++) {
         // integrate forward
         integrator->integrate(singelton);
+        // exit(-1);
 
         // append to trajectory
         double t = (double)i / (double)number_of_steps * TIME;
@@ -252,5 +294,8 @@ int main(int argc, char* argv[])
 
     // print the isst magnetisations
     isPos.print("isPosition");
+
+    // abf->~AbfPotential();
+    // abf->~AdaptiveBiasingForce();
 
 } // end main

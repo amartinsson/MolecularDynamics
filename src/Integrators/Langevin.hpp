@@ -89,6 +89,10 @@ public:
                                  const double& target_press,
                                  const double& gamma_box, const int& recf,
                                  const int& rect) = 0;
+                                 
+     // update temperature
+     void update_integrator_temperature(const double& beta, const double& h);
+
 protected:
 
     void A(Particle& particle, const double& h);
@@ -133,8 +137,6 @@ protected:
     // integrator methods
     ReplicaExchange* Re_pt;
 
-    // update temperature
-    void update_integrator_temperature(const double& beta, const double& h);
 
 private:
     double Beta;

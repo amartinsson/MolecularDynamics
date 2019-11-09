@@ -323,3 +323,7 @@ vector<double> InfiniteSwitch::get_observable_weights()
 
     return weights;
 }
+
+double InfiniteSwitch::get_mid_lambda() {
+    return lambda[nint/2];
+}

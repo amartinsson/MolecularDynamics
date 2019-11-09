@@ -52,6 +52,9 @@ protected:
     // initialize the force
     void initialize_force();
 
+    double get_mid_lambda_one();
+    double get_mid_lambda_two();
+
 private:
     // pointer to the potential
     const double* potential_pt;

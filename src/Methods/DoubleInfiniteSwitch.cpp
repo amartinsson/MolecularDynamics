@@ -239,3 +239,12 @@ Matrix DoubleInfiniteSwitch::get_observable_weights()
 
     return weights;
 }
+
+
+double DoubleInfiniteSwitch::get_mid_lambda_one() {
+    return lambda_one[nOneint / 2];
+}
+
+double DoubleInfiniteSwitch::get_mid_lambda_two() {
+    return lambda_two[nTwoint / 2];
+}

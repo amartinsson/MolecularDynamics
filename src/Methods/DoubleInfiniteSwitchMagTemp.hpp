@@ -20,7 +20,8 @@ public:
         const double& T_min, const double& T_max,
             const double& b_min, const double& b_max,
                 const unsigned& nTint, const unsigned& nBint,
-                    const double& time_step, const double& tau);
+                    const double& time_step, const double& tau,
+                        const double& T_ref);
 
     ~DoubleInfiniteSwitchMagTemp() {};
 
@@ -31,6 +32,7 @@ public:
     Vector get_collective_grad_one(Particle* particle);
     Vector get_collective_grad_two(Particle* particle);
 
+    double get_mid_beta();
 
 private:
     void initialize_collecivet_variables();
