@@ -966,7 +966,10 @@ void Grid::update_particle_forces(System* system_pt, Molecule* molecule_pt)
 
         S(k, 0) = parsed_row[0];
         S(k, 1) = parsed_row[1];
-        S(k, 2) = parsed_row[2];
+
+        if(S.size()[0] > 2) {
+            S(k, 2) = parsed_row[2];
+        }
 
         // increment row counter
         k++;
@@ -999,6 +1002,7 @@ void Grid::read_position_initial(Molecule* molecule_pt,
 
       particle = &molecule_pt->particle(k);
 
+// printf("reading in: %f %f %f\n", parsed_row[0], parsed_row[1], parsed_row[2]);
       // set position
       particle->q(0) = parsed_row[0];
       particle->q(1) = parsed_row[1];
@@ -1036,40 +1040,53 @@ void Grid::read_position_initial(Molecule* molecule_pt,
                                   const char* initial_mom_filename)
  {
     // loop over the box file stream
-    std::ifstream input(initial_mom_filename);
-    std::string line;
+    // std::ifstream input(initial_mom_filename);
+    // std::string line;
 
-    Particle* particle = NULL;
-    unsigned k = 0;
+    // Particle* particle = NULL;
+    // unsigned k = 0;
 
-   // loop over all the lines in the box
-   while(std::getline(input, line))
-   {
-       std::stringstream lineStream(line);
-       std::string line_stuff;
-       std::vector<double> parsed_row;
+    for(auto& particle : molecule_pt->Particles) {
+        particle.second->p(0) = 0.0;
+        particle.second->p(1) = 0.0;
 
-       while(std::getline(lineStream, line_stuff, ','))
-       {
-           double test = strtod(line_stuff.c_str(), NULL);
-           parsed_row.push_back(test);
-       }
+        if(particle.second->p.size() > 2) {
+            particle.second->p(2) = 0.0;
+        }
 
-       particle = &molecule_pt->particle(k);
+         if(particle.second->rigid_body()) {
+             particle.second->pi(0,0) = 0.0;
+         }
+    }
 
-       // set position
-       particle->p(0) = parsed_row[0];
-       particle->p(1) = parsed_row[1];
-
-       if(particle->p.size() > 2)
-         particle->p(2) = parsed_row[2];
-
-       // if we rotates
-       if(particle->rigid_body())
-           particle->pi(0, 0) = parsed_row[2];
-
-       // increment particle counter
-       k++;
-
-      }
+   // // loop over all the lines in the box
+   // while(std::getline(input, line))
+   // {
+   //     // std::stringstream lineStream(line);
+   //     // std::string line_stuff;
+   //     // std::vector<double> parsed_row;
+   //     //
+   //     // while(std::getline(lineStream, line_stuff, ','))
+   //     // {
+   //     //     double test = strtod(line_stuff.c_str(), NULL);
+   //     //     parsed_row.push_back(test);
+   //     // }
+   //
+   //     particle = &molecule_pt->particle(k);
+   //
+   //     // set position
+   //     particle->p(0) = parsed_row[0];
+   //     particle->p(1) = parsed_row[1];
+   //
+   //     if(particle->p.size() > 2)
+   //       particle->p(2) = parsed_row[2];
+   //
+   //     // if we rotates
+   //     if(particle->rigid_body())
+   //         particle->pi(0, 0) = parsed_row[2];
+   //
+   //     // increment particle counter
+   //     k++;
+   //
+   //    }
   }

@@ -163,6 +163,12 @@ int main(int argc, char* argv[])
             SEED = arg_in;
             printf("Seed set to: %.0d\n", SEED);
         }
+        else if(arg == "--rbuild")
+        {
+            bool arg_in = std::stod(arg2);
+            rebuild_bool  = true;
+            printf("Rebuilding.. %.0d\n", rebuild_bool);
+        }
     }
 
     // initialise box size
@@ -217,6 +223,7 @@ int main(int argc, char* argv[])
     // make integrator
     BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step, mercedes_benz, SEED);
 
+
     // calculate the cut off
     double cut_off = 4.0 * r_hb;
 
@@ -227,6 +234,22 @@ int main(int argc, char* argv[])
 
     // integrate with npt grid
     integrator->integrate_with_npt_grid(BoxS, cut_off, cluster, box_mass, target_pressure, npt_langevin_friction, write_frequency, burn_in_steps);
+
+printf("about to read\n");
+    if(rebuild_bool == true)
+    {
+        char position[50];
+        char volume[50];
+        char momentum[50];
+
+        sprintf(position, "Observables/Initial/position_0.csv");
+        sprintf(volume, "Observables/Initial/volume_0.csv");
+        sprintf(momentum, "dummy");
+        integrator->npt_set_initial(cluster, position, momentum, volume);
+
+        printf("Read in:\n\t%2.3f,%2.3f\n\t%2.3f,%2.3f\n",
+        integrator->npt_obj().S(0,0), integrator->npt_obj().S(0,1), integrator->npt_obj().S(1,0), integrator->npt_obj().S(1,1));
+    }
 
     // calculate the order parameter
     integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, 1.225 * sigma);
