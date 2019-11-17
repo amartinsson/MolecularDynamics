@@ -11,11 +11,17 @@ void SystemTrajectory::set_simbox(const Matrix& s) { S = &s;}
 
 // print function at time_index
 void SystemTrajectory::print_positions(const char* file_name,
-    const unsigned& index) {
+    const unsigned& index, const unsigned& index2) {
         // open the file to write to
         char filename[50];
-        sprintf(filename, "Observables/Frames/%s_%i.csv", file_name,
-                index);
+        if(index2 == 0) {
+            sprintf(filename, "Observables/Frames/%s_%i.csv", file_name,
+            index);
+        }
+        else {
+            sprintf(filename, "Observables/Frames/%s_%i_%i.csv", file_name,
+                index, index2);
+        }
         FILE* file = fopen(filename, "w");
 
         for(auto& particle : molecule_pt->Particles) {
@@ -42,11 +48,17 @@ void SystemTrajectory::print_positions(const char* file_name,
 
 // print the simbox trajectory
 void SystemTrajectory::print_simbox(const char* file_name,
-    const unsigned& index) {
+    const unsigned& index, const unsigned& index2) {
         // open the file to write to
         char filename[50];
-        sprintf(filename, "Observables/Frames/%s_%i.csv", file_name,
-                index);
+        if(index2 == 0) {
+            sprintf(filename, "Observables/Frames/%s_%i.csv", file_name,
+            index);
+        }
+        else {
+            sprintf(filename, "Observables/Frames/%s_%i_%i.csv", file_name,
+                index, index2);
+        }
         FILE* file = fopen(filename, "w");
 
         // loop over to print the simbox

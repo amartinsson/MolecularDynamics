@@ -1,8 +1,19 @@
+//
+// Parameters that are stable:
+// temperature = 0.05
+// pressure = 0.1
+// bmass =15
+// S_x = 23
+// nparticles = 256
+// blan = 10.0
+
+
+
+
 #include <vector>
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
-// #include <mpi.h>
 
 #include "BAOAB.hpp"
 #include "Molecules.hpp"
@@ -25,25 +36,22 @@ using namespace::std;
 
 int main(int argc, char* argv[])
 {
-    // Initialize the MPI environment
-    // MPI_Init(NULL, NULL);
-
     // Get the number of processes
     int world_size = 0;
-    // MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // Get the rank of the process
     int world_rank = 0;
-    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    printf("Hello from process %d\n", world_rank);
 
     // parameters
     int SEED = 1234;
     unsigned dimension = 2;
     unsigned number_of_particles = 20*20;
     double temp = 0.1;
+    double temp_min = 0.05;
+    double temp_max = 0.15;
 
     double momIntertia = 0.01126;
+    // double momIntertia = 0.001126;
 
     double sx = 30.0;
     double sy = 30.0;
@@ -53,8 +61,8 @@ int main(int argc, char* argv[])
     double gamma = 1.0;
     double gamma_rot = 1.0;
 
-    double target_pressure = 0.15;
-    double pressure_min = 0.1;
+    double target_pressure = 0.1;
+    double pressure_min = 0.15;
 
     unsigned write_frequency = 100;
     double box_mass = 100.0;
@@ -67,10 +75,8 @@ int main(int argc, char* argv[])
     unsigned control_number = 0;
 
     double burn_in_fraction = 0.1;
-    bool with_npt = false;
 
     unsigned nint = 10;
-    double temp_max = 0.2;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -94,13 +100,31 @@ int main(int argc, char* argv[])
         {
             double arg_in = std::stod(arg2);
             pressure_min = arg_in;
-            printf("min tempering pressure set to: %1.2f\n", pressure_min);
+            printf("min pressure set to: %1.2f\n", pressure_min);
         }
         else if(arg == "--temperature")
         {
             double arg_in = std::stod(arg2);
             temp = arg_in;
             printf("temperature set to: %1.2f\n", temp);
+        }
+        else if(arg == "--temp_min")
+        {
+            double arg_in = std::stod(arg2);
+            temp_min = arg_in;
+            printf("min temperature set to: %1.2f\n", temp_min);
+        }
+        else if(arg == "--temp_max")
+        {
+            double arg_in = std::stod(arg2);
+            temp_max = arg_in;
+            printf("max temperature set to: %1.2f\n", temp_max);
+        }
+        else if(arg == "--nint")
+        {
+            unsigned arg_in = std::stod(arg2);
+            nint  = arg_in;
+            printf("number of interpolation points: %.0d\n", nint);
         }
         else if(arg == "--time")
         {
@@ -118,25 +142,9 @@ int main(int argc, char* argv[])
         {
             double arg_in = std::stod(arg2);
             sx = arg_in;
+            sy = sqrt(3.0) / 2.0 * sx;
             printf("S_x set to: %1.2f\n", sx);
-        }
-        else if(arg == "--S_y")
-        {
-            double arg_in = std::stod(arg2);
-            sy = arg_in;
             printf("S_y set to: %1.2f\n", sy);
-        }
-        else if(arg == "--S_z")
-        {
-            double arg_in = std::stod(arg2);
-            sz = arg_in;
-            printf("S_z set to: %1.2f\n", sz);
-        }
-        else if(arg == "--rbuild")
-        {
-            bool arg_in = std::stod(arg2);
-            rebuild_bool  = arg_in;
-            printf("Rebuilding.. %.0d\n", rebuild_bool);
         }
         else if(arg == "--bmass")
         {
@@ -177,41 +185,17 @@ int main(int argc, char* argv[])
             write_frequency = arg_in;
             printf("write frequency set to: %.0d\n", write_frequency);
         }
-        else if(arg == "--nptnr")
-        {
-            unsigned arg_in = std::stod(arg2);
-            npt_scheme_nr = arg_in;
-            printf("NPT integration scheme set to: %.0d\n", npt_scheme_nr);
-        }
-        else if(arg == "--cntrl")
-        {
-            unsigned arg_in = std::stod(arg2);
-            control_number = arg_in;
-            printf("Control number set to: %.0d\n", control_number);
-        }
         else if(arg == "--seed")
         {
             int arg_in = std::stod(arg2);
             SEED = arg_in;
             printf("Seed set to: %.0d\n", SEED);
         }
-        else if(arg == "--npt")
+        else if(arg == "--rbuild")
         {
-            int arg_in = std::stod(arg2);
-            with_npt = true;
-            printf("Setting npt to: %d\n", with_npt);
-        }
-        else if(arg == "--ntemp")
-        {
-            unsigned arg_in = std::stod(arg2);
-            nint  = arg_in;
-            printf("Total number of temperatures set to: %.0d\n", nint);
-        }
-        else if(arg == "--temp_max")
-        {
-            double arg_in = std::stod(arg2);
-            temp_max = arg_in;
-            printf("max temperature set to: %1.2f\n", temp_max);
+            bool arg_in = std::stod(arg2);
+            rebuild_bool  = true;
+            printf("Rebuilding.. %.0d\n", rebuild_bool);
         }
     }
 
@@ -253,117 +237,103 @@ int main(int argc, char* argv[])
                                           temp, number_of_particles, dimension);
 
     // Make a Mercedes Benz Force solver
-    // double epsilon = 0.1; // used in some papers
-    double epsilon = 0.4; // used in the best paper
     double sigma = 0.7;
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
     double r_hb = 1.0;
+    double epsilon = 0.1 * fabs(epsilon_hb);
+    // double epsilon = -0.1;
+    // double epsilon = 0.1; // used in the MB paper
+    // double epsilon = 0.4; // used in the best paper
 
-    System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb,
-                                             sigma_hb, r_hb);
+    System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb, sigma_hb, r_hb);
 
     // make integrator
-    BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step,
-                                  mercedes_benz, SEED);
+    BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step, mercedes_benz, SEED);
+
 
     // calculate the cut off
-    // double cut_off = 4.0 * pow(2.0, 1.0/6.0) * sigma;
     double cut_off = 4.0 * r_hb;
 
     // set the boundaries for the rmin rmax calculations
-    double rmin = 0.0; //0.95 * sigma;
+    double rmin = 0.0;
     double rmax = cut_off;
     int nrdist = 200;
 
-    printf("getting here\n");
-    if(with_npt)
-        integrator->integrate_with_npt_grid(BoxS, cut_off, cluster,
-                                            box_mass, target_pressure,
-                                            npt_langevin_friction,
-                                            write_frequency, burn_in_steps);
-    else
-        integrator->integrate_with_grid(BoxS, cut_off, cluster,
-                                        write_frequency, burn_in_steps);
+    // integrate with npt grid
+    integrator->integrate_with_npt_grid(BoxS, cut_off, cluster, box_mass, target_pressure, npt_langevin_friction, write_frequency, burn_in_steps);
 
-    if(rebuild_bool)
+printf("about to read\n");
+    if(rebuild_bool == true)
     {
         char position[50];
         char volume[50];
         char momentum[50];
 
-        sprintf(position, "Observables/Initial/positions_%i.csv", world_rank);
-        sprintf(volume, "Observables/Initial/volume_%i.csv", world_rank);
-        sprintf(momentum, "Observables/Initial/momentum_%i.csv", world_rank);
+        sprintf(position, "Observables/Initial/position_0.csv");
+        sprintf(volume, "Observables/Initial/volume_0.csv");
+        sprintf(momentum, "dummy");
         integrator->npt_set_initial(cluster, position, momentum, volume);
+
+
+        printf("Read in:\n\t%2.3f,%2.3f\n\t%2.3f,%2.3f\n",
+        integrator->npt_obj().S(0,0), integrator->npt_obj().S(0,1), integrator->npt_obj().S(1,0), integrator->npt_obj().S(1,1));
     }
 
-    if(with_npt)
-    {
-        // integrator->npt_obj().set_to_calculate_order_param(cluster, 1.0);
-        integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, sigma);
-                                                                  // pow(2.0, 1.0/6.0) * sigma);
-        integrator->npt_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
-    }
-    else
-    {
-        // integrator->grid_obj().set_to_calculate_order_param(cluster, 1.0);
-                                            // pow(2.0, 1.0/6.0) * sigma);
-        integrator->grid_obj().set_to_calculate_sphere_order_param(cluster, 3,
-                                                                   sigma);
-                                                    // pow(2.0, 1.0/6.0) * sigma);
-        integrator->grid_obj().set_to_calculate_radial_dist(rmin,rmax,nrdist);
-    }
+    // calculate the order parameter
+    integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, 1.225 * sigma);
 
+    // calculate the radial distribution
+    integrator->npt_obj().set_to_calculate_radial_dist(rmin, rmax, nrdist);
 
     // make system trajectory object
     SystemTrajectory traj = SystemTrajectory(cluster);
 
-    if(with_npt)
-        traj.set_simbox(integrator->npt_obj().S);
+    traj.set_simbox(integrator->npt_obj().S);
 
-    printf("Print every %d steps after %d\n", write_frequency, burn_in_steps);
+    // energy recorder
+    SystemEnergy energy = SystemEnergy(cluster, write_frequency, burn_in_steps);
+
+    // set the particles on a hexagonal grid
+    if(rebuild_bool == false) {
+        integrator->npt_obj().set_particles_hexagonal(cluster);
+    }
+
+    traj.print_positions("frame", 0);
+    traj.print_simbox("simbox", 0);
 
     // ----------------- Infinite Switch Simulation --------------------------//
-    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp,
-    //                             temp_max, nint, time_step, 1.0);
+    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
+    //                             temp_max, nint, time_step, 1.0, temp);
 
-    // InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
-    //         &integrator->npt_obj(), pressure_min, target_pressure, nint,
-    //             time_step, 1.0);
-    //
+    InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
+            &integrator->npt_obj(), pressure_min, target_pressure, nint,
+                time_step, 1.0);
+
     // set integrator to integrate with generalised infinite switch method
-    // integrator->integrate_with_infinite_switch(giss);
+    integrator->integrate_with_infinite_switch(giss);
 
-    for(unsigned i=0; i<number_of_steps; i++)
+    //     // set up for isst observables
+    // IsWeightObservable <SystemHistogramTrajectory> isPos =
+    //     IsWeightObservable<SystemHistogramTrajectory> (&integrator->is_obj(),
+    //                                 traj, write_frequency, burn_in_steps);
+    //
+    //
+    // // This breaks if we use more than 20 temperatures, for some reason not
+    // // enough memory is allocated at some point.
+    // for(unsigned i=0; i<nint; i++) {
+    //     isPos.obs[i] = *new SystemHistogramTrajectory(cluster, min, max, N);
+    // }
+
+    for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
     {
         // integrate forward
         integrator->integrate(cluster);
 
-        // if(i == 2 * burn_in_steps) {
-        //     printf("Adding ISST on step %i\n", i);
-        //     // set integrator to integrate with generalised infinite switch method
-        //     integrator->integrate_with_infinite_switch(giss);
-        // }
 
-        // double F1 = 0.0;
-        // double F2 = 0.0;
-        // double TAU = 0.0;
-        // for(const auto& particle : cluster->Particles)
-        // {
-        //     F1 += particle.second->f(0);
-        //     F2 += particle.second->f(1);
-        //     TAU += particle.second->tau(0,0);
-        // }
-        //
-        // printf("Total Force = (%2.5f, %2.5f), Tau = %f\n", F1, F2, TAU);
-
-
+        // printf("V = %f\n", cluster->potential());
         // update pressure temperature// update pressure temperature
-        if(with_npt)
-            integrator->npt_obj().update_pressure_temperature();
-        else
-            integrator->grid_obj().update_temperature();
+        integrator->npt_obj().update_pressure_temperature();
 
         if(integrator->cell_blow_up())
         {
@@ -373,120 +343,60 @@ int main(int argc, char* argv[])
             break;
         }
 
-        if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
-        {
-            printf("V = %f\n", cluster->potential());
 
-            double time_stamp = TIME * double(i) / double(number_of_steps);
-            // exit(-1);
-            // update the pressure and temperature
-            if(with_npt)
-            {
-                // print positions
-                Matrix simbox = integrator->npt_obj().S;
-                traj.print_positions("frame", i / write_frequency);
-                traj.print_simbox("simbox", i / write_frequency);
+        double tForceX = 0.0;
+        double tForceY = 0.0;
 
-                // print temperature
-                integrator->npt_obj().Temperature_pt->print("temperature",
-                                                            time_stamp,
-                                                            control_number + world_rank);
-                // print pressure
-                integrator->npt_obj().Pressure_pt->print("pressure",
-                                                         time_stamp,
-                                                         control_number + world_rank);
-                // print volume
-                integrator->npt_obj().Volume_pt->print("volume", time_stamp,
-                                                       control_number + world_rank);
-                // print order
-                integrator->npt_obj().SphereOrder_pt->print("sphere", time_stamp,
-                                                       control_number + world_rank);
+        double tTau = 0.0;
 
-               // print order
-               // integrator->npt_obj().Order_pt->print("order", time_stamp,
-               //                                        control_number + world_rank);
-                                                            // i / write_frequency);
+        for(auto& particle : cluster->Particles) {
+            tForceX += particle.second->f(0);
+            tForceX += particle.second->f(1);
 
-                // double temp = integrator->npt_obj().Temperature_pt->get_average();
-                // double itemp = integrator->npt_obj().Temperature_pt->get_instant();
-                // printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
-                //
-                // // print pressure
-                // double instant_pressure = integrator->npt_obj().Pressure_pt->get_instant();
-                // double pressure = integrator->npt_obj().Pressure_pt->get_average();
-                // printf("Pressure %.0d\t %1.5f %1.3f\n", i, pressure, instant_pressure);
-                //
-                // //print volume
-                // double vol = integrator->npt_obj().Volume_pt->get_average();
-                // double ivol = integrator->npt_obj().Volume_pt->get_average();
-                // printf("Density \t     %1.5f\n", number_of_particles / vol * pow(sigma, 3.0));
-                //
-                // double iorder = integrator->npt_obj().SphereOrder_pt->get_instant();
-                // double order = integrator->npt_obj().SphereOrder_pt->get_average();
-                // printf("Order \t %1.5f %1.5f\n", order, iorder);
-            }
-            else
-            {
-                // print positions
-                Matrix simbox = integrator->grid_obj().S;
-                // traj.print_positions("frame", i / write_frequency);
-                // traj.print_simbox("simbox", i / write_frequency);
-
-                // print temperature
-                integrator->grid_obj().Temperature_pt->print("temperature",
-                                                            time_stamp,// 0);
-                                                            control_number + world_rank);
-                // print volume
-                integrator->grid_obj().Volume_pt->print("volume", time_stamp,
-                                                       control_number + world_rank);
-                // print order
-                integrator->grid_obj().SphereOrder_pt->print("order", time_stamp,
-                                                control_number + world_rank);
-                // // break
-                // double temp = integrator->grid_obj().Temperature_pt->get_average();
-                // double itemp = integrator->grid_obj().Temperature_pt->get_instant();
-                // printf("Temperature \t %1.5f %1.3f\n", temp,itemp);
-                //
-                // //print volume
-                // double vol = integrator->grid_obj().Volume_pt->get_average();
-                // double ivol = integrator->grid_obj().Volume_pt->get_average();
-                // // print_volume(volume, simbox, time_stamp, control_number + world_rank);
-                // printf("Density \t     %1.5f\n", number_of_particles / vol * pow(sigma, 3.0));
-                //
-                // double iorder = integrator->grid_obj().SphereOrder_pt->get_instant();
-                // double order = integrator->grid_obj().SphereOrder_pt->get_average();
-                // printf("Order \t %1.5f %1.5f\n", order, iorder);
-            }
+            tTau += particle.second->tau(0,0);
         }
 
-        // if(i % int(0.2 * number_of_steps) == 0 | i == number_of_steps)
-        // {
-        //     if(with_npt)
-        //     {
-        //         Matrix simbox = integrator->npt_obj().S;
-        //         print_final(cluster, simbox, world_rank);
-        //     }
-        //     else
-        //     {
-        //         Matrix simbox = integrator->grid_obj().S;
-        //         print_final(cluster, simbox, world_rank);
-        //     }
+        // printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
         //
-        //
-        // }
+        // printf("Particle 0 = [%1.3e, %1.3e]\n", cluster->particle(0).f(0), cluster->particle(0).f(1));
+
+        // update the energy
+        energy.update_potential();
+        if(i % 1000 * write_frequency == 0) {
+
+            traj.print_positions("frame", i/write_frequency);
+            traj.print_simbox("simbox", i/write_frequency);
+        }
+
+        // exit(-1);
+
+        // if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
+        if(i % write_frequency == 0 && i > burn_in_steps)
+        {
+            double time_stamp = TIME * double(i - burn_in_steps) / double(number_of_steps);
+
+
+            // print temperature
+            integrator->npt_obj().Temperature_pt->print("temperature",
+                                                time_stamp,
+                                                control_number + world_rank);
+            // print pressure
+            integrator->npt_obj().Pressure_pt->print("pressure",
+                                                time_stamp,
+                                                control_number + world_rank);
+            // print volume
+            integrator->npt_obj().Volume_pt->print("volume", time_stamp,
+                                                control_number + world_rank);
+            // print volume
+            integrator->npt_obj().SphereOrder_pt->print("order", time_stamp,
+                                                control_number + world_rank);
+            // print potential energy
+            energy.print("potential", time_stamp, control_number + world_rank);
+        }
     }
 
     // print the distribution function
-    if(with_npt)
-        integrator->npt_obj().Radial_pt->print("rdist", 0.0,
-                                           control_number + world_rank);
-    else
-        integrator->grid_obj().Radial_pt->print("rdist", 0.0,
-                                       control_number + world_rank);
-    // have mpi process wait if it blew up
-    // MPI_Barrier(MPI_COMM_WORLD);
-
-    // Finalize the MPI environment.
-    // MPI_Finalize();
+    integrator->npt_obj().Radial_pt->print("rdist", 0.0,
+                                                control_number + world_rank);
 
 } // end main

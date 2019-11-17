@@ -19,9 +19,11 @@ public:
     // set the simbox to record Trajectory
     void set_simbox(const Matrix& s);
     // print function at time_index
-    void print_positions(const char* file_name, const unsigned& index);
+    void print_positions(const char* file_name, const unsigned& index,
+        const unsigned& index2 = 0);
     // print simbox
-    void print_simbox(const char* file_name, const unsigned& index);
+    void print_simbox(const char* file_name, const unsigned& index,
+        const unsigned& index2 = 0);
     // print function at time_index
     void append_positions(const char* file_name, const double& time);
     void append_positions(const char* file_name, const unsigned& index,

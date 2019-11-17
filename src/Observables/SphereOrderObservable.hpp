@@ -15,6 +15,22 @@ using namespace::std;
 
 /******************************************************************************
                         Abstract System Observable Base Class
+@article{auer_quantitative_2004,
+	title = {{QUANTITATIVE} {PREDICTION} {OF} {CRYSTAL}-{NUCLEATION} {RATES} {FOR} {SPHERICAL} {COLLOIDS}: {A} {Computational} {Approach}},
+	volume = {55},
+	shorttitle = {{QUANTITATIVE} {PREDICTION} {OF} {CRYSTAL}-{NUCLEATION} {RATES} {FOR} {SPHERICAL} {COLLOIDS}},
+	url = {https://doi.org/10.1146/annurev.physchem.55.091602.094402},
+	doi = {10.1146/annurev.physchem.55.091602.094402},
+	abstract = {This review discusses the recent progress that has been made in the application of computer simulations to study crystal nucleation in colloidal systems. We discuss the concept and the numerical methods that allow for a quantitative prediction of crystal-nucleation rates. The computed nucleation rates are predicted from first principles and can be directly compared with experiments. These techniques have been applied to study crystal nucleation in hard-sphere colloids, polydisperse hard-sphere colloids, weakly charged or slightly soft colloids, and hard-sphere colloids that are confined between two-plane hard walls.},
+	number = {1},
+	urldate = {2019-11-10},
+	journal = {Annual Review of Physical Chemistry},
+	author = {Auer, Stefan and Frenkel, Daan},
+	year = {2004},
+	pmid = {15117256},
+	pages = {333--361},
+	file = {Full Text PDF:/home/anton/Zotero/storage/DFRDZDTA/Auer and Frenkel - 2004 - QUANTITATIVE PREDICTION OF CRYSTAL-NUCLEATION RATE.pdf:application/pdf}
+}
  *****************************************************************************/
 class SphereOrderObservable : public SystemObservable
 {

@@ -163,6 +163,12 @@ int main(int argc, char* argv[])
             SEED = arg_in;
             printf("Seed set to: %.0d\n", SEED);
         }
+        else if(arg == "--rbuild")
+        {
+            bool arg_in = std::stod(arg2);
+            rebuild_bool  = true;
+            printf("Rebuilding.. %.0d\n", rebuild_bool);
+        }
     }
 
     // initialise box size
@@ -207,7 +213,7 @@ int main(int argc, char* argv[])
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
     double r_hb = 1.0;
-    double epsilon = 0.4 * fabs(epsilon_hb);
+    double epsilon = 0.1 * fabs(epsilon_hb);
     // double epsilon = -0.1;
     // double epsilon = 0.1; // used in the MB paper
     // double epsilon = 0.4; // used in the best paper
@@ -216,6 +222,7 @@ int main(int argc, char* argv[])
 
     // make integrator
     BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step, mercedes_benz, SEED);
+
 
     // calculate the cut off
     double cut_off = 4.0 * r_hb;
@@ -228,8 +235,25 @@ int main(int argc, char* argv[])
     // integrate with npt grid
     integrator->integrate_with_npt_grid(BoxS, cut_off, cluster, box_mass, target_pressure, npt_langevin_friction, write_frequency, burn_in_steps);
 
+printf("about to read\n");
+    if(rebuild_bool == true)
+    {
+        char position[50];
+        char volume[50];
+        char momentum[50];
+
+        sprintf(position, "Observables/Initial/position_0.csv");
+        sprintf(volume, "Observables/Initial/volume_0.csv");
+        sprintf(momentum, "dummy");
+        integrator->npt_set_initial(cluster, position, momentum, volume);
+
+
+        printf("Read in:\n\t%2.3f,%2.3f\n\t%2.3f,%2.3f\n",
+        integrator->npt_obj().S(0,0), integrator->npt_obj().S(0,1), integrator->npt_obj().S(1,0), integrator->npt_obj().S(1,1));
+    }
+
     // calculate the order parameter
-    integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, sigma);
+    integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, 1.225 * sigma);
 
     // calculate the radial distribution
     integrator->npt_obj().set_to_calculate_radial_dist(rmin, rmax, nrdist);
@@ -243,11 +267,12 @@ int main(int argc, char* argv[])
     SystemEnergy energy = SystemEnergy(cluster, write_frequency, burn_in_steps);
 
     // set the particles on a hexagonal grid
-    integrator->npt_obj().set_particles_hexagonal(cluster);
+    if(rebuild_bool == false) {
+        integrator->npt_obj().set_particles_hexagonal(cluster);
+    }
 
     traj.print_positions("frame", 0);
     traj.print_simbox("simbox", 0);
-    // exit(-1);
 
     for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
     {
@@ -280,15 +305,17 @@ int main(int argc, char* argv[])
             tTau += particle.second->tau(0,0);
         }
 
-        printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
+        // printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
         //
         // printf("Particle 0 = [%1.3e, %1.3e]\n", cluster->particle(0).f(0), cluster->particle(0).f(1));
 
         // update the energy
         energy.update_potential();
+        if(i % 1000 * write_frequency == 0) {
 
-        traj.print_positions("frame", i/write_frequency);
-        traj.print_simbox("simbox", i/write_frequency);
+            traj.print_positions("frame", i/write_frequency);
+            traj.print_simbox("simbox", i/write_frequency);
+        }
 
         // exit(-1);
 
@@ -300,21 +327,25 @@ int main(int argc, char* argv[])
 
             // print temperature
             integrator->npt_obj().Temperature_pt->print("temperature",
-                                                        time_stamp,
-                                                        control_number + world_rank);
+                                                time_stamp,
+                                                control_number + world_rank);
             // print pressure
             integrator->npt_obj().Pressure_pt->print("pressure",
-                                                     time_stamp,
-                                                     control_number + world_rank);
+                                                time_stamp,
+                                                control_number + world_rank);
             // print volume
             integrator->npt_obj().Volume_pt->print("volume", time_stamp,
-                                                   control_number + world_rank);
+                                                control_number + world_rank);
+            // print volume
+            integrator->npt_obj().SphereOrder_pt->print("order", time_stamp,
+                                                control_number + world_rank);
             // print potential energy
             energy.print("potential", time_stamp, control_number + world_rank);
         }
     }
 
     // print the distribution function
-    integrator->npt_obj().Radial_pt->print("rdist", 0.0, control_number + world_rank);
+    integrator->npt_obj().Radial_pt->print("rdist", 0.0,
+                                                control_number + world_rank);
 
 } // end main

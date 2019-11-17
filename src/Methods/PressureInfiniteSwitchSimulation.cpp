@@ -10,8 +10,8 @@ PressureInfiniteSwitchSimulation::PressureInfiniteSwitchSimulation(
         const double& P_max, const unsigned& nint, const double& time_step,
             const double& tau)
     : InfiniteSwitch(molecule_pt,
-        molecule_pt->beta() * (npt_pt->get_target_pressure() - P_max),
-            molecule_pt->beta() * (npt_pt->get_target_pressure() - P_min),
+        npt_pt->get_target_pressure() - P_max,
+            npt_pt->get_target_pressure() - P_min,
                 nint, time_step/tau), dummy_grad(molecule_pt->dim(), 0.0),
                     dummy_grad_rot(molecule_pt->particle(0).tau.size()[0],
                                     molecule_pt->particle(0).tau.size()[1])
@@ -39,7 +39,7 @@ Vector PressureInfiniteSwitchSimulation
 
 double PressureInfiniteSwitchSimulation::get_collective()
 {
-    return npt_pt->S.det();
+    return molecule_pt->beta() * npt_pt->S.det();
 }
 
 Matrix PressureInfiniteSwitchSimulation
@@ -53,9 +53,10 @@ Matrix PressureInfiniteSwitchSimulation::get_collective_virial_grad()
     Matrix Sd = npt_pt->S;
     // calculate the negative gradient so that
     // we can get the negative into the equations
-    double det = -npt_pt->S.det();
+    // double det = -npt_pt->S.det();
+    double det = npt_pt->S.det();
 
     Sd = Sd.inv().off_diag_zero();
 
-    return Sd * det;
+    return Sd * det *  molecule_pt->beta();
 }
