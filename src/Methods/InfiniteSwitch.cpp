@@ -327,3 +327,29 @@ vector<double> InfiniteSwitch::get_observable_weights()
 double InfiniteSwitch::get_mid_lambda() {
     return lambda[nint/2];
 }
+
+void InfiniteSwitch::print_weights(const char* file_name, const double& time)
+{
+    // convert the filename to a string
+    std::string name(file_name);
+
+    vector<double> weights = get_observable_weights();
+
+    // open the file to write to
+    char filename[50];
+    sprintf(filename, "Observables/%s.csv", (name).c_str());
+    FILE* file = fopen(filename, "a");
+
+    // print time
+    fprintf(file, "%1.7e", time);
+
+    for(const auto& weight : weights) {
+        fprintf(file, " %1.7e", weight);
+    }
+
+    // print endl
+    fprintf(file, "\n");
+
+    // close the file
+    fclose(file);
+}

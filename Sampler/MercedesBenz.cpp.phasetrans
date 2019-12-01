@@ -9,16 +9,11 @@
 #include "Array.hpp"
 #include "SystemTrajectory.hpp"
 
-#include "InfiniteSwitchSimulatedTempering.hpp"
-#include "PressureInfiniteSwitchSimulation.hpp"
-
 #include "SystemTrajectory.hpp"
 #include "SystemTemperature.hpp"
 #include "SystemEnergy.hpp"
 #include "SystemPotentialEnergy.hpp"
 #include "SystemConfigurationalTemperature.hpp"
-#include "ISObservable.hpp"
-#include "DISObservable.hpp"
 
 using namespace::std;
 
@@ -163,6 +158,12 @@ int main(int argc, char* argv[])
             SEED = arg_in;
             printf("Seed set to: %.0d\n", SEED);
         }
+        else if(arg == "--rbuild")
+        {
+            bool arg_in = std::stod(arg2);
+            rebuild_bool  = true;
+            printf("Rebuilding.. %.0d\n", rebuild_bool);
+        }
     }
 
     // initialise box size
@@ -203,11 +204,11 @@ int main(int argc, char* argv[])
                                           temp, number_of_particles, dimension);
 
     // Make a Mercedes Benz Force solver
-    double epsilon = 0.4; // used in the best paper
     double sigma = 0.7;
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
     double r_hb = 1.0;
+    double epsilon = 0.1 * fabs(epsilon_hb);
 
     System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb, sigma_hb, r_hb);
 
@@ -225,8 +226,25 @@ int main(int argc, char* argv[])
     // integrate with npt grid
     integrator->integrate_with_npt_grid(BoxS, cut_off, cluster, box_mass, target_pressure, npt_langevin_friction, write_frequency, burn_in_steps);
 
+    printf("about to read\n");
+    if(rebuild_bool == true)
+    {
+        char position[50];
+        char volume[50];
+        char momentum[50];
+
+        sprintf(position, "Observables/Initial/position_0.csv");
+        sprintf(volume, "Observables/Initial/volume_0.csv");
+        sprintf(momentum, "dummy");
+        integrator->npt_set_initial(cluster, position, momentum, volume);
+
+
+        printf("Read in:\n\t%2.3f,%2.3f\n\t%2.3f,%2.3f\n",
+        integrator->npt_obj().S(0,0), integrator->npt_obj().S(0,1), integrator->npt_obj().S(1,0), integrator->npt_obj().S(1,1));
+    }
+
     // calculate the order parameter
-    integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, sigma);
+    integrator->npt_obj().set_to_calculate_sphere_order_param(cluster, 6, 1.225 * sigma);
 
     // calculate the radial distribution
     integrator->npt_obj().set_to_calculate_radial_dist(rmin, rmax, nrdist);
@@ -239,11 +257,14 @@ int main(int argc, char* argv[])
     // energy recorder
     SystemEnergy energy = SystemEnergy(cluster, write_frequency, burn_in_steps);
 
+    // set the particles on a hexagonal grid
+    if(rebuild_bool == false) {
+        integrator->npt_obj().set_particles_hexagonal(cluster);
+    }
+
     // make delta pressure
     double delta_pressure = (pressure_max - target_pressure) / (double)npressure;
     printf("using delta pressure %f\n",delta_pressure);
-
-    integrator->npt_obj().set_particles_hexagonal(cluster);
 
     // // check that initial condition is correct
     // traj.print_positions("frame", 0);
@@ -251,14 +272,14 @@ int main(int argc, char* argv[])
     // exit(-1);
 
     // loop over pressure
-    for(unsigned press=0; press<npressure; press++) {
+    for(unsigned press=0; press < 2 * npressure + 1; press++) {
 
         printf("on pressure: %d = %1.3f... ", press, target_pressure);
 
         for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
         {
             // integrate forward
-            integrator->integrate(cluster);
+            // integrator->integrate(cluster);
 
 
             // printf("V = %f\n", cluster->potential());
@@ -276,6 +297,11 @@ int main(int argc, char* argv[])
             // update the energy
             energy.update_potential();
 
+            if(i % 1000 * write_frequency == 0) {
+                traj.print_positions("frame", i/write_frequency, press);
+                traj.print_simbox("simbox", i/write_frequency, press);
+            }
+
             if(i % write_frequency == 0 && i > burn_in_steps)
             {
                 double time_stamp = TIME * double(i - burn_in_steps) / double(number_of_steps);
@@ -291,6 +317,9 @@ int main(int argc, char* argv[])
                 // print volume
                 integrator->npt_obj().Volume_pt->print("volume", time_stamp,
                                                        press);
+               // print sphere order
+               integrator->npt_obj().SphereOrder_pt->print("order", time_stamp,
+                                                           press);
                 // print potential energy
                 energy.print("potential", time_stamp, press);
             }
@@ -309,7 +338,12 @@ int main(int argc, char* argv[])
             burn_in_steps = 0;
         }
 
-        target_pressure = target_pressure + delta_pressure;
+        if(press < npressure) {
+            target_pressure = target_pressure + delta_pressure;
+        }
+        else {
+            target_pressure = target_pressure - delta_pressure;
+        }
 
         integrator->npt_obj().reset_target_pressure(target_pressure, write_frequency, burn_in_steps);
 

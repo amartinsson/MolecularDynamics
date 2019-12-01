@@ -1,3 +1,15 @@
+//
+// Parameters that are stable:
+// temperature = 0.05
+// pressure = 0.1
+// bmass =15
+// S_x = 23
+// nparticles = 256
+// blan = 10.0
+
+
+
+
 #include <vector>
 #include <omp.h>
 #include <stdio.h>
@@ -9,11 +21,16 @@
 #include "Array.hpp"
 #include "SystemTrajectory.hpp"
 
+#include "InfiniteSwitchSimulatedTempering.hpp"
+#include "PressureInfiniteSwitchSimulation.hpp"
+
 #include "SystemTrajectory.hpp"
 #include "SystemTemperature.hpp"
 #include "SystemEnergy.hpp"
 #include "SystemPotentialEnergy.hpp"
 #include "SystemConfigurationalTemperature.hpp"
+#include "ISObservable.hpp"
+#include "DISObservable.hpp"
 
 using namespace::std;
 
@@ -30,8 +47,11 @@ int main(int argc, char* argv[])
     unsigned dimension = 2;
     unsigned number_of_particles = 20*20;
     double temp = 0.1;
+    double temp_min = 0.05;
+    double temp_max = 0.15;
 
     double momIntertia = 0.01126;
+    // double momIntertia = 0.001126;
 
     double sx = 30.0;
     double sy = 30.0;
@@ -42,7 +62,8 @@ int main(int argc, char* argv[])
     double gamma_rot = 1.0;
 
     double target_pressure = 0.1;
-    double pressure_max = 0.15;
+    double pressure_min = 0.15;
+    double pressure_max = 0.16;
 
     unsigned write_frequency = 100;
     double box_mass = 100.0;
@@ -55,7 +76,8 @@ int main(int argc, char* argv[])
     unsigned control_number = 0;
 
     double burn_in_fraction = 0.1;
-    unsigned npressure = 10;
+
+    unsigned nint = 10;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -75,23 +97,41 @@ int main(int argc, char* argv[])
             target_pressure = arg_in;
             printf("pressure set to: %1.2f\n", target_pressure);
         }
+        else if(arg == "--press_min")
+        {
+            double arg_in = std::stod(arg2);
+            pressure_min = arg_in;
+            printf("min pressure set to: %1.2f\n", pressure_min);
+        }
         else if(arg == "--press_max")
         {
             double arg_in = std::stod(arg2);
             pressure_max = arg_in;
-            printf("min tempering pressure set to: %1.2f\n", pressure_max);
-        }
-        else if(arg == "--npress")
-        {
-            unsigned arg_in = std::stod(arg2);
-            npressure = arg_in;
-            printf("number of pressures: %1.0d\n", npressure);
+            printf("max pressure set to: %1.2f\n", pressure_max);
         }
         else if(arg == "--temperature")
         {
             double arg_in = std::stod(arg2);
             temp = arg_in;
             printf("temperature set to: %1.2f\n", temp);
+        }
+        else if(arg == "--temp_min")
+        {
+            double arg_in = std::stod(arg2);
+            temp_min = arg_in;
+            printf("min temperature set to: %1.2f\n", temp_min);
+        }
+        else if(arg == "--temp_max")
+        {
+            double arg_in = std::stod(arg2);
+            temp_max = arg_in;
+            printf("max temperature set to: %1.2f\n", temp_max);
+        }
+        else if(arg == "--nint")
+        {
+            unsigned arg_in = std::stod(arg2);
+            nint  = arg_in;
+            printf("number of interpolation points: %.0d\n", nint);
         }
         else if(arg == "--time")
         {
@@ -209,11 +249,15 @@ int main(int argc, char* argv[])
     double sigma_hb = 0.085;
     double r_hb = 1.0;
     double epsilon = 0.1 * fabs(epsilon_hb);
+    // double epsilon = -0.1;
+    // double epsilon = 0.1; // used in the MB paper
+    // double epsilon = 0.4; // used in the best paper
 
     System* mercedes_benz = new MercedesBenz(epsilon, sigma, epsilon_hb, sigma_hb, r_hb);
 
     // make integrator
     BAOAB* integrator = new BAOAB(1.0/temp, gamma, gamma_rot, time_step, mercedes_benz, SEED);
+
 
     // calculate the cut off
     double cut_off = 4.0 * r_hb;
@@ -226,7 +270,7 @@ int main(int argc, char* argv[])
     // integrate with npt grid
     integrator->integrate_with_npt_grid(BoxS, cut_off, cluster, box_mass, target_pressure, npt_langevin_friction, write_frequency, burn_in_steps);
 
-    printf("about to read\n");
+printf("about to read\n");
     if(rebuild_bool == true)
     {
         char position[50];
@@ -262,94 +306,106 @@ int main(int argc, char* argv[])
         integrator->npt_obj().set_particles_hexagonal(cluster);
     }
 
-    // make delta pressure
-    double delta_pressure = (pressure_max - target_pressure) / (double)npressure;
-    printf("using delta pressure %f\n",delta_pressure);
+    traj.print_positions("frame", 0);
+    traj.print_simbox("simbox", 0);
 
-    // // check that initial condition is correct
-    // traj.print_positions("frame", 0);
-    // traj.print_simbox("simbox", 0);
-    // exit(-1);
+    // ----------------- Infinite Switch Simulation --------------------------//
+    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
+    //                             temp_max, nint, time_step, 1.0, temp);
 
-    // loop over pressure
-    for(unsigned press=0; press < 2 * npressure + 1; press++) {
+    InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
+            &integrator->npt_obj(), pressure_min, pressure_max, nint,
+                time_step, 1.0);
 
-        printf("on pressure: %d = %1.3f... ", press, target_pressure);
+    // set integrator to integrate with generalised infinite switch method
+    integrator->integrate_with_infinite_switch(giss);
 
-        for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
+    //     // set up for isst observables
+    // IsWeightObservable <SystemHistogramTrajectory> isPos =
+    //     IsWeightObservable<SystemHistogramTrajectory> (&integrator->is_obj(),
+    //                                 traj, write_frequency, burn_in_steps);
+    //
+    //
+    // // This breaks if we use more than 20 temperatures, for some reason not
+    // // enough memory is allocated at some point.
+    // for(unsigned i=0; i<nint; i++) {
+    //     isPos.obs[i] = *new SystemHistogramTrajectory(cluster, min, max, N);
+    // }
+
+    for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
+    {
+        // integrate forward
+        integrator->integrate(cluster);
+
+
+        // printf("V = %f\n", cluster->potential());
+        // update pressure temperature// update pressure temperature
+        integrator->npt_obj().update_pressure_temperature();
+
+        if(integrator->cell_blow_up())
         {
-            // integrate forward
-            // integrator->integrate(cluster);
-
-
-            // printf("V = %f\n", cluster->potential());
-            // update pressure temperature// update pressure temperature
-            integrator->npt_obj().update_pressure_temperature();
-
-            if(integrator->cell_blow_up())
-            {
-                printf("step %d\n", i);
-                printf("ERROR: Breaking Process %d with mu = %1.3f, nu = %1.3f\n",
-                        world_rank, box_mass, npt_langevin_friction);
-                break;
-            }
-
-            // update the energy
-            energy.update_potential();
-
-            if(i % 1000 * write_frequency == 0) {
-                traj.print_positions("frame", i/write_frequency, press);
-                traj.print_simbox("simbox", i/write_frequency, press);
-            }
-
-            if(i % write_frequency == 0 && i > burn_in_steps)
-            {
-                double time_stamp = TIME * double(i - burn_in_steps) / double(number_of_steps);
-
-                // print temperature
-                integrator->npt_obj().Temperature_pt->print("temperature",
-                                                            time_stamp,
-                                                            press);
-                // print pressure
-                integrator->npt_obj().Pressure_pt->print("pressure",
-                                                         time_stamp,
-                                                         press);
-                // print volume
-                integrator->npt_obj().Volume_pt->print("volume", time_stamp,
-                                                       press);
-               // print sphere order
-               integrator->npt_obj().SphereOrder_pt->print("order", time_stamp,
-                                                   control_number + world_rank);
-                // print potential energy
-                energy.print("potential", time_stamp, press);
-            }
+            printf("step %d\n", i);
+            printf("ERROR: Breaking Process %d with mu = %1.3f, nu = %1.3f\n",
+                    world_rank, box_mass, npt_langevin_friction);
+            break;
         }
 
-        // print positions
-        Matrix simbox = integrator->npt_obj().S;
-        traj.print_positions("position_lf", press);
-        traj.print_simbox("volume_lf", press);
 
-        // print the distribution function
-        integrator->npt_obj().Radial_pt->print("rdist", 0.0, press);
+        double tForceX = 0.0;
+        double tForceY = 0.0;
 
-        // set the burn_in to zero
-        if(press == 0) {
-            burn_in_steps = 0;
+        double tTau = 0.0;
+
+        for(auto& particle : cluster->Particles) {
+            tForceX += particle.second->f(0);
+            tForceX += particle.second->f(1);
+
+            tTau += particle.second->tau(0,0);
         }
 
-        if(press < npressure) {
-            target_pressure = target_pressure + delta_pressure;
+        // printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
+        //
+        // printf("Particle 0 = [%1.3e, %1.3e]\n", cluster->particle(0).f(0), cluster->particle(0).f(1));
+
+        // update the energy
+        energy.update_potential();
+        if(i % 1000 * write_frequency == 0) {
+
+            traj.print_positions("frame", i/write_frequency);
+            traj.print_simbox("simbox", i/write_frequency);
         }
-        else {
-            target_pressure = target_pressure - delta_pressure;
+
+        // exit(-1);
+
+        // if(i % write_frequency == 0 && i != 0 && i > burn_in_steps)
+        if(i % write_frequency == 0 && i > burn_in_steps)
+        {
+            double time_stamp = TIME * double(i - burn_in_steps) / double(number_of_steps);
+
+            // print temperature
+            integrator->npt_obj().Temperature_pt->print("temperature",
+                                                time_stamp,
+                                                control_number + world_rank);
+            // print pressure
+            integrator->npt_obj().Pressure_pt->print("pressure",
+                                                time_stamp,
+                                                control_number + world_rank);
+            // print volume
+            integrator->npt_obj().Volume_pt->print("volume", time_stamp,
+                                                control_number + world_rank);
+            // print volume
+            integrator->npt_obj().SphereOrder_pt->print("order", time_stamp,
+                                                control_number + world_rank);
+            // print potential energy
+            energy.print("potential", time_stamp, control_number + world_rank);
+
+            // print the weights
+            integrator->is_obj().print_weights("is_weights", time_stamp);
         }
+    }
 
-        integrator->npt_obj().reset_target_pressure(target_pressure, write_frequency, burn_in_steps);
+    // print the distribution function
+    integrator->npt_obj().Radial_pt->print("rdist", 0.0,
+                                                control_number + world_rank);
 
-        energy.reset(write_frequency, burn_in_steps);
-
-        printf("done\n");
-
-    } // end loop over pressures
 } // end main

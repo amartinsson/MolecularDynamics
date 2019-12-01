@@ -40,6 +40,8 @@ public:
     // initialize method to use npt or not
     void initialize_with_npt(NptGrid* npt_grid_pt);
 
+    void print_weights(const char* filename, const double& t);
+
 protected:
     // pointer to molecule
     Molecule* molecule_pt;
