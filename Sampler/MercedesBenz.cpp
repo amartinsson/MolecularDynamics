@@ -277,8 +277,10 @@ printf("about to read\n");
         char volume[50];
         char momentum[50];
 
-        sprintf(position, "Observables/Initial/position_0.csv");
-        sprintf(volume, "Observables/Initial/volume_0.csv");
+        // sprintf(position, "Observables/Initial/position_sparse.csv");
+        // sprintf(volume, "Observables/Initial/volume_sparse.csv");
+        sprintf(position, "Observables/Initial/position_dense.csv");
+        sprintf(volume, "Observables/Initial/volume_dense.csv");
         sprintf(momentum, "dummy");
         integrator->npt_set_initial(cluster, position, momentum, volume);
 
@@ -310,12 +312,12 @@ printf("about to read\n");
     traj.print_simbox("simbox", 0);
 
     // ----------------- Infinite Switch Simulation --------------------------//
-    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
-    //                             temp_max, nint, time_step, 1.0, temp);
+    InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
+                                temp_max, nint, time_step, 1.0, temp);
 
-    InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
-            &integrator->npt_obj(), pressure_min, pressure_max, nint,
-                time_step, 1.0);
+    // InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
+            // &integrator->npt_obj(), pressure_min, pressure_max, nint,
+                // time_step, 1.0);
 
     // set integrator to integrate with generalised infinite switch method
     integrator->integrate_with_infinite_switch(giss);
