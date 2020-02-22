@@ -58,6 +58,8 @@ public:
     // get the average order value
     double get_average();
 
+    void print_traj(const char* file_name, const unsigned& index);
+
 private:
     // holder for molecule
     Molecule* system;

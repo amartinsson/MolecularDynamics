@@ -240,3 +240,38 @@ Matrix SphereOrderObservable::calculate_order_param(const vector<double>& angles
 
     return RetMat;
 }
+
+// print function at time_index
+void SphereOrderObservable::print_traj(const char* file_name, const unsigned& index)
+{
+    // convert the filename to a string
+    std::string name(file_name);
+
+    // open the file to write to
+    char filename[50];
+    sprintf(filename, "Observables/Frames/%s_%i.csv", (name).c_str(), index);
+    FILE* file = fopen(filename, "w");
+
+    // loop over all the particles
+    for(const auto& particle : system->Particles)
+    {
+        // get the real an imaginary part
+        double real = 0.0;
+        double imag = 0.0;
+
+        for(unsigned i=0; i<looplmax; i++)
+        {
+            real += obsReal.at(particle.second)[i]->get_average();
+            imag += obsImag.at(particle.second)[i]->get_average();
+        }
+
+        // calculate the absolute value
+        double obs = std::sqrt(4.0 * M_PI / (2.0 * (double)lmax + 1.0) * (real * real + imag * imag));
+
+        // record the observation
+        fprintf(file, "%.4f\n", obs);
+    }
+
+    // close the file
+    fclose(file);
+}

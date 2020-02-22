@@ -47,8 +47,6 @@ int main(int argc, char* argv[])
     unsigned dimension = 2;
     unsigned number_of_particles = 20*20;
     double temp = 0.1;
-    double temp_min = 0.05;
-    double temp_max = 0.15;
 
     double momIntertia = 0.01126;
     // double momIntertia = 0.001126;
@@ -62,8 +60,7 @@ int main(int argc, char* argv[])
     double gamma_rot = 1.0;
 
     double target_pressure = 0.1;
-    double pressure_min = 0.15;
-    double pressure_max = 0.16;
+    double pressure_max = 0.15;
 
     unsigned write_frequency = 100;
     double box_mass = 100.0;
@@ -76,8 +73,6 @@ int main(int argc, char* argv[])
     unsigned control_number = 0;
 
     double burn_in_fraction = 0.1;
-
-    unsigned nint = 10;
 
   // cehck inouts
   for(int i=1;i<argc;i=i+2)
@@ -97,41 +92,11 @@ int main(int argc, char* argv[])
             target_pressure = arg_in;
             printf("pressure set to: %1.2f\n", target_pressure);
         }
-        else if(arg == "--press_min")
-        {
-            double arg_in = std::stod(arg2);
-            pressure_min = arg_in;
-            printf("min pressure set to: %1.2f\n", pressure_min);
-        }
-        else if(arg == "--press_max")
-        {
-            double arg_in = std::stod(arg2);
-            pressure_max = arg_in;
-            printf("max pressure set to: %1.2f\n", pressure_max);
-        }
         else if(arg == "--temperature")
         {
             double arg_in = std::stod(arg2);
             temp = arg_in;
             printf("temperature set to: %1.2f\n", temp);
-        }
-        else if(arg == "--temp_min")
-        {
-            double arg_in = std::stod(arg2);
-            temp_min = arg_in;
-            printf("min temperature set to: %1.2f\n", temp_min);
-        }
-        else if(arg == "--temp_max")
-        {
-            double arg_in = std::stod(arg2);
-            temp_max = arg_in;
-            printf("max temperature set to: %1.2f\n", temp_max);
-        }
-        else if(arg == "--nint")
-        {
-            unsigned arg_in = std::stod(arg2);
-            nint  = arg_in;
-            printf("number of interpolation points: %.0d\n", nint);
         }
         else if(arg == "--time")
         {
@@ -248,7 +213,7 @@ int main(int argc, char* argv[])
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
     double r_hb = 1.0;
-    double epsilon = 0.1 * fabs(epsilon_hb);
+    double epsilon = 0.4 * fabs(epsilon_hb);
     // double epsilon = -0.1;
     // double epsilon = 0.1; // used in the MB paper
     // double epsilon = 0.4; // used in the best paper
@@ -277,10 +242,8 @@ printf("about to read\n");
         char volume[50];
         char momentum[50];
 
-        // sprintf(position, "Observables/Initial/position_sparse.csv");
-        // sprintf(volume, "Observables/Initial/volume_sparse.csv");
-        sprintf(position, "Observables/Initial/position_dense.csv");
-        sprintf(volume, "Observables/Initial/volume_dense.csv");
+        sprintf(position, "Observables/Initial/position_0.csv");
+        sprintf(volume, "Observables/Initial/volume_0.csv");
         sprintf(momentum, "dummy");
         integrator->npt_set_initial(cluster, position, momentum, volume);
 
@@ -311,29 +274,6 @@ printf("about to read\n");
     traj.print_positions("frame", 0);
     traj.print_simbox("simbox", 0);
 
-    // ----------------- Infinite Switch Simulation --------------------------//
-    InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
-                                temp_max, nint, time_step, 1.0, temp);
-
-    // InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
-            // &integrator->npt_obj(), pressure_min, pressure_max, nint,
-                // time_step, 1.0);
-
-    // set integrator to integrate with generalised infinite switch method
-    integrator->integrate_with_infinite_switch(giss);
-
-    //     // set up for isst observables
-    // IsWeightObservable <SystemHistogramTrajectory> isPos =
-    //     IsWeightObservable<SystemHistogramTrajectory> (&integrator->is_obj(),
-    //                                 traj, write_frequency, burn_in_steps);
-    //
-    //
-    // // This breaks if we use more than 20 temperatures, for some reason not
-    // // enough memory is allocated at some point.
-    // for(unsigned i=0; i<nint; i++) {
-    //     isPos.obs[i] = *new SystemHistogramTrajectory(cluster, min, max, N);
-    // }
-
     for(unsigned i=0; i<number_of_steps + burn_in_steps; i++)
     {
         // integrate forward
@@ -352,29 +292,15 @@ printf("about to read\n");
             break;
         }
 
-
-        double tForceX = 0.0;
-        double tForceY = 0.0;
-
-        double tTau = 0.0;
-
-        for(auto& particle : cluster->Particles) {
-            tForceX += particle.second->f(0);
-            tForceX += particle.second->f(1);
-
-            tTau += particle.second->tau(0,0);
-        }
-
-        // printf("Fx = %1.3f, Fy = %1.3f, Tau=%1.3f\n", tForceX, tForceY, tTau);
-        //
-        // printf("Particle 0 = [%1.3e, %1.3e]\n", cluster->particle(0).f(0), cluster->particle(0).f(1));
-
         // update the energy
         energy.update_potential();
         if(i % 1000 * write_frequency == 0) {
+        // if(i % write_frequency == 0) {
 
             traj.print_positions("frame", i/write_frequency);
             traj.print_simbox("simbox", i/write_frequency);
+            integrator->npt_obj().SphereOrder_pt->print_traj("ocolor",
+                                                            i/write_frequency);
         }
 
         // exit(-1);
@@ -400,9 +326,6 @@ printf("about to read\n");
                                                 control_number + world_rank);
             // print potential energy
             energy.print("potential", time_stamp, control_number + world_rank);
-
-            // print the weights
-            integrator->is_obj().print_weights("is_weights", time_stamp);
         }
     }
 

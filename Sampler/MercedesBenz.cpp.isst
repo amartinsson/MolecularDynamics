@@ -63,6 +63,7 @@ int main(int argc, char* argv[])
 
     double target_pressure = 0.1;
     double pressure_min = 0.15;
+    double pressure_max = 0.16;
 
     unsigned write_frequency = 100;
     double box_mass = 100.0;
@@ -101,6 +102,12 @@ int main(int argc, char* argv[])
             double arg_in = std::stod(arg2);
             pressure_min = arg_in;
             printf("min pressure set to: %1.2f\n", pressure_min);
+        }
+        else if(arg == "--press_max")
+        {
+            double arg_in = std::stod(arg2);
+            pressure_max = arg_in;
+            printf("max pressure set to: %1.2f\n", pressure_max);
         }
         else if(arg == "--temperature")
         {
@@ -241,7 +248,7 @@ int main(int argc, char* argv[])
     double epsilon_hb = -1.0;
     double sigma_hb = 0.085;
     double r_hb = 1.0;
-    double epsilon = 0.1 * fabs(epsilon_hb);
+    double epsilon = 0.4 * fabs(epsilon_hb);
     // double epsilon = -0.1;
     // double epsilon = 0.1; // used in the MB paper
     // double epsilon = 0.4; // used in the best paper
@@ -270,8 +277,10 @@ printf("about to read\n");
         char volume[50];
         char momentum[50];
 
-        sprintf(position, "Observables/Initial/position_0.csv");
-        sprintf(volume, "Observables/Initial/volume_0.csv");
+        // sprintf(position, "Observables/Initial/position_sparse.csv");
+        // sprintf(volume, "Observables/Initial/volume_sparse.csv");
+        sprintf(position, "Observables/Initial/position_dense.csv");
+        sprintf(volume, "Observables/Initial/volume_dense.csv");
         sprintf(momentum, "dummy");
         integrator->npt_set_initial(cluster, position, momentum, volume);
 
@@ -303,12 +312,12 @@ printf("about to read\n");
     traj.print_simbox("simbox", 0);
 
     // ----------------- Infinite Switch Simulation --------------------------//
-    // InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
-    //                             temp_max, nint, time_step, 1.0, temp);
+    InfiniteSwitch* giss = new InfiniteSwitchSimulatedTempering(cluster, temp_min,
+                                temp_max, nint, time_step, 1.0, temp);
 
-    InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
-            &integrator->npt_obj(), pressure_min, target_pressure, nint,
-                time_step, 1.0);
+    // InfiniteSwitch* giss = new PressureInfiniteSwitchSimulation(cluster,
+            // &integrator->npt_obj(), pressure_min, pressure_max, nint,
+                // time_step, 1.0);
 
     // set integrator to integrate with generalised infinite switch method
     integrator->integrate_with_infinite_switch(giss);
@@ -366,6 +375,8 @@ printf("about to read\n");
 
             traj.print_positions("frame", i/write_frequency);
             traj.print_simbox("simbox", i/write_frequency);
+            integrator->npt_obj().SphereOrder_pt->print_traj("oframe",
+                                                            i/write_frequency);
         }
 
         // exit(-1);
@@ -374,7 +385,6 @@ printf("about to read\n");
         if(i % write_frequency == 0 && i > burn_in_steps)
         {
             double time_stamp = TIME * double(i - burn_in_steps) / double(number_of_steps);
-
 
             // print temperature
             integrator->npt_obj().Temperature_pt->print("temperature",
@@ -392,6 +402,9 @@ printf("about to read\n");
                                                 control_number + world_rank);
             // print potential energy
             energy.print("potential", time_stamp, control_number + world_rank);
+
+            // print the weights
+            integrator->is_obj().print_weights("is_weights", time_stamp);
         }
     }
 
